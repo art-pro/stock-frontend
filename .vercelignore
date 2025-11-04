@@ -1,0 +1,4 @@
+# Ignore node_modules as they'll be installed during build
+node_modules
+.next
+

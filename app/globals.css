@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* Custom scrollbar for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Table styling */
+.stock-table {
+  @apply w-full overflow-x-auto;
+}
+
+.stock-table table {
+  @apply min-w-full divide-y divide-gray-700;
+}
+
+.stock-table thead {
+  @apply bg-gray-800;
+}
+
+.stock-table th {
+  @apply px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider;
+}
+
+.stock-table tbody {
+  @apply divide-y divide-gray-700;
+}
+
+.stock-table td {
+  @apply px-3 py-4 whitespace-nowrap text-sm;
+}
+
+/* Assessment colors */
+.assessment-hold {
+  background-color: transparent;
+}
+
+.assessment-add {
+  background-color: rgba(144, 238, 144, 0.1);
+}
+
+.assessment-trim {
+  background-color: rgba(255, 213, 128, 0.1);
+}
+
+.assessment-sell {
+  background-color: rgba(255, 140, 140, 0.1);
+}
+
+/* Tooltips */
+.tooltip {
+  @apply relative inline-block;
+}
+
+.tooltip .tooltiptext {
+  @apply invisible absolute z-10 w-64 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 transition-opacity duration-300;
+}
+
+.tooltip:hover .tooltiptext {
+  @apply visible opacity-100;
+}
+
