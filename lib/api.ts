@@ -127,6 +127,7 @@ export const stockAPI = {
   updateAll: () => api.post('/stocks/update-all'),
   updateSingle: (id: number) => api.post(`/stocks/${id}/update`),
   updatePrice: (id: number, newPrice: number) => api.patch(`/stocks/${id}/price`, { current_price: newPrice }),
+  updateField: (id: number, field: string, value: number) => api.patch(`/stocks/${id}/field`, { field, value }),
   getHistory: (id: number) => api.get<StockHistory[]>(`/stocks/${id}/history`),
   exportCSV: () => api.get('/export/csv', { responseType: 'blob' }),
   importCSV: (file: File) => {

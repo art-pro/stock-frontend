@@ -10,15 +10,16 @@ interface StockTableProps {
   onDelete: (id: number) => void;
   onUpdate: (id: number) => void;
   onPriceUpdate: (id: number, newPrice: number) => void;
+  onFieldUpdate: (id: number, field: string, value: number) => void;
   updatingStockIds?: number[];
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, updatingStockIds = [] }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStockIds = [] }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
-  const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
-  const [editPrice, setEditPrice] = useState('');
+  const [editingField, setEditingField] = useState<{ stockId: number; field: string } | null>(null);
+  const [editValue, setEditValue] = useState('');
 
   const handleSort = (field: keyof Stock) => {
     if (sortField === field) {
@@ -87,22 +88,32 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
     return `${formatNumber(num, decimals)}%`;
   };
 
-  const handleEditPrice = (stock: Stock) => {
-    setEditingPriceId(stock.id);
-    setEditPrice(stock.current_price.toString());
+  const handleEditField = (stock: Stock, field: string, currentValue: number) => {
+    setEditingField({ stockId: stock.id, field });
+    setEditValue(currentValue.toString());
   };
 
-  const handleSavePrice = (stockId: number) => {
-    const newPrice = parseFloat(editPrice);
-    if (!isNaN(newPrice) && newPrice > 0) {
-      onPriceUpdate(stockId, newPrice);
-      setEditingPriceId(null);
+  const handleSaveField = () => {
+    if (!editingField) return;
+    
+    const newValue = parseFloat(editValue);
+    if (!isNaN(newValue) && newValue >= 0) {
+      if (editingField.field === 'current_price') {
+        onPriceUpdate(editingField.stockId, newValue);
+      } else {
+        onFieldUpdate(editingField.stockId, editingField.field, newValue);
+      }
+      setEditingField(null);
     }
   };
 
   const handleCancelEdit = () => {
-    setEditingPriceId(null);
-    setEditPrice('');
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  const isEditing = (stockId: number, field: string) => {
+    return editingField?.stockId === stockId && editingField?.field === field;
   };
 
   return (
@@ -248,44 +259,62 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                     {stock.sector}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                    {formatNumber(stock.avg_price_local)} {stock.avg_price_local > 0 ? stock.currency : ''}
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                    {editingPriceId === stock.id ? (
+                    {isEditing(stock.id, 'avg_price_local') ? (
                       <div className="flex items-center justify-end gap-2">
                         <input
                           type="number"
                           step="0.01"
-                          value={editPrice}
-                          onChange={(e) => setEditPrice(e.target.value)}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
                           className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
                           autoFocus
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSavePrice(stock.id);
+                            if (e.key === 'Enter') handleSaveField();
                             if (e.key === 'Escape') handleCancelEdit();
                           }}
                         />
+                        <button onClick={handleSaveField} className="text-green-400 hover:text-green-300 text-xs">Save</button>
+                        <button onClick={handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end gap-2">
+                        <span>{formatNumber(stock.avg_price_local)} {stock.avg_price_local > 0 ? stock.currency : ''}</span>
                         <button
-                          onClick={() => handleSavePrice(stock.id)}
-                          className="text-green-400 hover:text-green-300 text-xs"
+                          onClick={() => handleEditField(stock, 'avg_price_local', stock.avg_price_local)}
+                          className="text-gray-400 hover:text-primary-400 transition-colors"
+                          title="Edit average price"
                         >
-                          Save
+                          <PencilIcon className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="text-red-400 hover:text-red-300 text-xs"
-                        >
-                          Cancel
-                        </button>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                    {isEditing(stock.id, 'current_price') ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveField();
+                            if (e.key === 'Escape') handleCancelEdit();
+                          }}
+                        />
+                        <button onClick={handleSaveField} className="text-green-400 hover:text-green-300 text-xs">Save</button>
+                        <button onClick={handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
                       </div>
                     ) : (
                       <div className="flex items-center justify-end gap-2">
                         <span>{formatNumber(stock.current_price)} {stock.current_price > 0 ? stock.currency : ''}</span>
                         {stock.current_price > 0 && (
                           <button
-                            onClick={() => handleEditPrice(stock)}
+                            onClick={() => handleEditField(stock, 'current_price', stock.current_price)}
                             className="text-gray-400 hover:text-primary-400 transition-colors"
-                            title="Edit price manually"
+                            title="Edit current price"
                           >
                             <PencilIcon className="h-4 w-4" />
                           </button>
@@ -297,7 +326,35 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                     {stock.current_price > 0 ? `${formatNumber(stock.current_price * stock.shares_owned)} ${stock.currency}` : 'N/A'}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                    {formatNumber(stock.fair_value)} {stock.fair_value > 0 ? stock.currency : ''}
+                    {isEditing(stock.id, 'fair_value') ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveField();
+                            if (e.key === 'Escape') handleCancelEdit();
+                          }}
+                        />
+                        <button onClick={handleSaveField} className="text-green-400 hover:text-green-300 text-xs">Save</button>
+                        <button onClick={handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end gap-2">
+                        <span>{formatNumber(stock.fair_value)} {stock.fair_value > 0 ? stock.currency : ''}</span>
+                        <button
+                          onClick={() => handleEditField(stock, 'fair_value', stock.fair_value)}
+                          className="text-gray-400 hover:text-primary-400 transition-colors"
+                          title="Edit fair value"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className={`px-3 py-4 whitespace-nowrap text-sm text-right font-semibold ${
                     stock.upside_potential === 0 ? 'text-gray-400' :
@@ -319,7 +376,35 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                     {formatPercentage(stock.half_kelly_suggested, 1)}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                    {stock.shares_owned || 'N/A'}
+                    {isEditing(stock.id, 'shares_owned') ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <input
+                          type="number"
+                          step="1"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveField();
+                            if (e.key === 'Escape') handleCancelEdit();
+                          }}
+                        />
+                        <button onClick={handleSaveField} className="text-green-400 hover:text-green-300 text-xs">Save</button>
+                        <button onClick={handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end gap-2">
+                        <span>{stock.shares_owned || 'N/A'}</span>
+                        <button
+                          onClick={() => handleEditField(stock, 'shares_owned', stock.shares_owned)}
+                          className="text-gray-400 hover:text-primary-400 transition-colors"
+                          title="Edit shares owned"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
                     {formatPercentage(stock.weight, 1)}
