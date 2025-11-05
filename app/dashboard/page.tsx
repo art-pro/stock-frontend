@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated, removeToken } from '@/lib/auth';
-import { stockAPI, portfolioAPI, Stock, PortfolioMetrics } from '@/lib/api';
+import { stockAPI, portfolioAPI, versionAPI, Stock, PortfolioMetrics } from '@/lib/api';
+import { FRONTEND_VERSION } from '@/lib/version';
 import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
 import AddStockModal from '@/components/AddStockModal';
@@ -28,6 +29,7 @@ export default function DashboardPage() {
   const [checkingAPI, setCheckingAPI] = useState(false);
   const [updatingStockIds, setUpdatingStockIds] = useState<number[]>([]);
   const [updateProgress, setUpdateProgress] = useState({ current: 0, total: 0 });
+  const [backendVersion, setBackendVersion] = useState<string>('...');
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -36,7 +38,17 @@ export default function DashboardPage() {
     }
     fetchData();
     checkAPIStatus();
+    fetchBackendVersion();
   }, [router]);
+
+  const fetchBackendVersion = async () => {
+    try {
+      const response = await versionAPI.getBackendVersion();
+      setBackendVersion(response.data.version);
+    } catch (err) {
+      setBackendVersion('unknown');
+    }
+  };
 
   const checkAPIStatus = async () => {
     try {
@@ -213,6 +225,9 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-bold text-white">Stock Portfolio Tracker</h1>
               <p className="text-sm text-gray-400 mt-1">
                 Kelly Criterion & Expected Value Analysis
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Frontend: v{FRONTEND_VERSION} | Backend: v{backendVersion}
               </p>
             </div>
             <div className="flex items-center space-x-2">

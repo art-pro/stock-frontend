@@ -157,5 +157,10 @@ export const deletedStockAPI = {
   restore: (id: number) => api.post(`/deleted-stocks/${id}/restore`),
 };
 
+// Version API
+export const versionAPI = {
+  getBackendVersion: () => api.get('/version'),
+};
+
 export default api;
 
