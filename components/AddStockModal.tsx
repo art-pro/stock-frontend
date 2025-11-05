@@ -213,7 +213,7 @@ export default function AddStockModal({ onClose, onSuccess }: AddStockModalProps
             <p className="text-sm text-blue-200">
               <strong>Note:</strong> The system will automatically fetch current prices and 
               calculate metrics (EV, Kelly, etc.) from Grok AI. If Grok is not configured, 
-              stock data will display as "N/A" until real data is fetched. This may take a few seconds.
+              stock data will display as &ldquo;N/A&rdquo; until real data is fetched. This may take a few seconds.
             </p>
           </div>
 
