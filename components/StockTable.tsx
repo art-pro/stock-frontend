@@ -87,90 +87,90 @@ export default function StockTable({ stocks, onDelete, onUpdate }: StockTablePro
           <thead className="bg-gray-800">
             <tr>
               <th
-                className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700"
+                className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('ticker')}
               >
                 Ticker
               </th>
               <th
-                className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700"
+                className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('company_name')}
               >
                 Company
               </th>
               <th
-                className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700"
+                className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('sector')}
               >
                 Sector
               </th>
               <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 tooltip"
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('current_price')}
+                title="Current market price in local currency"
               >
                 Price
-                <span className="tooltiptext">Current market price in local currency</span>
               </th>
               <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 tooltip"
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('fair_value')}
+                title="Consensus analyst target price"
               >
                 Fair Value
-                <span className="tooltiptext">Consensus analyst target price</span>
               </th>
               <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 tooltip"
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('upside_potential')}
+                title="Potential gain to fair value: ((FV - Price) / Price) × 100"
               >
                 Upside %
-                <span className="tooltiptext">Potential gain to fair value: ((FV - Price) / Price) × 100</span>
               </th>
               <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 tooltip"
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('expected_value')}
+                title="Expected Value: (p × Upside) + ((1-p) × Downside)"
               >
                 EV %
-                <span className="tooltiptext">Expected Value: (p × Upside) + ((1-p) × Downside)</span>
               </th>
               <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 tooltip"
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('kelly_fraction')}
+                title="Optimal position size: ((b×p) - (1-p)) / b"
               >
-                Kelly f* %
-                <span className="tooltiptext">Optimal position size: ((b×p) - (1-p)) / b</span>
+                Kelly F* %
               </th>
               <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 tooltip"
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('half_kelly_suggested')}
+                title="Conservative position size (capped at 15%)"
               >
                 ½-Kelly %
-                <span className="tooltiptext">Conservative position size (capped at 15%)</span>
               </th>
               <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700"
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('shares_owned')}
               >
                 Shares
               </th>
               <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700"
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('weight')}
               >
                 Weight %
               </th>
               <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700"
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('unrealized_pnl')}
               >
                 P&L
               </th>
               <th
-                className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700"
+                className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('assessment')}
               >
                 Assessment
               </th>
-              <th className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
+              <th className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">
                 Actions
               </th>
             </tr>
