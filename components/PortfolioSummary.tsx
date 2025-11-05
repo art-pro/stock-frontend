@@ -12,6 +12,9 @@ interface PortfolioSummaryProps {
 
 export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
   const formatCurrency = (num: number) => {
+    if (num === 0 || num === null || num === undefined) {
+      return 'N/A';
+    }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -19,7 +22,10 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
   };
 
   const formatPercent = (num: number, decimals: number = 2) => {
-    return `${num?.toFixed(decimals) || '0.00'}%`;
+    if (num === 0 || num === null || num === undefined) {
+      return 'N/A';
+    }
+    return `${num?.toFixed(decimals) || 'N/A'}%`;
   };
 
   // Prepare chart data

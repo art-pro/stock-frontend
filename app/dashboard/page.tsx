@@ -26,6 +26,8 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [apiStatus, setApiStatus] = useState<any>(null);
   const [checkingAPI, setCheckingAPI] = useState(false);
+  const [updatingStockIds, setUpdatingStockIds] = useState<number[]>([]);
+  const [updateProgress, setUpdateProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -83,23 +85,43 @@ export default function DashboardPage() {
   const handleUpdateAll = async () => {
     try {
       setUpdating(true);
-      await stockAPI.updateAll();
+      setUpdateProgress({ current: 0, total: stocks.length });
+      
+      // Update stocks sequentially to show progress
+      for (let i = 0; i < stocks.length; i++) {
+        const stock = stocks[i];
+        setUpdatingStockIds([stock.id]);
+        setUpdateProgress({ current: i + 1, total: stocks.length });
+        
+        try {
+          await stockAPI.updateSingle(stock.id);
+        } catch (err) {
+          console.error(`Failed to update ${stock.ticker}:`, err);
+        }
+      }
+      
+      setUpdatingStockIds([]);
       await fetchData();
       alert('All stocks updated successfully!');
     } catch (err: any) {
       alert('Failed to update stocks: ' + (err.response?.data?.error || err.message));
     } finally {
       setUpdating(false);
+      setUpdateProgress({ current: 0, total: 0 });
+      setUpdatingStockIds([]);
     }
   };
 
   const handleUpdateSingle = async (id: number) => {
     try {
+      setUpdatingStockIds([...updatingStockIds, id]);
       await stockAPI.updateSingle(id);
       await fetchData();
       alert('Stock updated successfully!');
     } catch (err: any) {
       alert('Failed to update stock: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setUpdatingStockIds(updatingStockIds.filter(stockId => stockId !== id));
     }
   };
 
@@ -304,7 +326,7 @@ export default function DashboardPage() {
             className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
-            {updating ? 'Updating...' : 'Update All Prices'}
+            {updating ? `Updating (${updateProgress.current}/${updateProgress.total})...` : 'Update All Prices'}
           </button>
           <button
             onClick={handleExportCSV}
@@ -324,12 +346,33 @@ export default function DashboardPage() {
             />
           </label>
         </div>
+        
+        {/* Update Progress Bar */}
+        {updating && updateProgress.total > 0 && (
+          <div className="mb-6 bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-300">
+                Updating stocks from Grok... {updateProgress.current} of {updateProgress.total}
+              </span>
+              <span className="text-sm text-gray-400">
+                {Math.round((updateProgress.current / updateProgress.total) * 100)}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2.5">
+              <div
+                className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${(updateProgress.current / updateProgress.total) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
 
         {/* Stock Table */}
         <StockTable
           stocks={stocks}
           onDelete={handleDelete}
           onUpdate={handleUpdateSingle}
+          updatingStockIds={updatingStockIds}
         />
       </main>
 

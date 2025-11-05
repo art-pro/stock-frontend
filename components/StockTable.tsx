@@ -9,9 +9,10 @@ interface StockTableProps {
   stocks: Stock[];
   onDelete: (id: number) => void;
   onUpdate: (id: number) => void;
+  updatingStockIds?: number[];
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, updatingStockIds = [] }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
@@ -63,11 +64,24 @@ export default function StockTable({ stocks, onDelete, onUpdate }: StockTablePro
   };
 
   const formatNumber = (num: number, decimals: number = 2) => {
-    return num?.toFixed(decimals) || '0.00';
+    if (num === 0 || num === null || num === undefined) {
+      return 'N/A';
+    }
+    return num?.toFixed(decimals) || 'N/A';
   };
 
   const formatCurrency = (num: number) => {
-    return `$${formatNumber(num, 2)}`;
+    if (num === 0 || num === null || num === undefined) {
+      return 'N/A';
+    }
+    return `${formatNumber(num, 2)}`;
+  };
+
+  const formatPercentage = (num: number, decimals: number = 1) => {
+    if (num === 0 || num === null || num === undefined) {
+      return 'N/A';
+    }
+    return `${formatNumber(num, decimals)}%`;
   };
 
   return (
@@ -189,92 +203,106 @@ export default function StockTable({ stocks, onDelete, onUpdate }: StockTablePro
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {sortedStocks.map((stock) => (
-              <tr key={stock.id} className={getRowClass(stock.assessment)}>
-                <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-primary-400">
-                  {stock.ticker}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm">
-                  <Link
-                    href={`/stocks/${stock.id}`}
-                    className="text-primary-400 hover:text-primary-300 hover:underline"
-                  >
-                    {stock.company_name}
-                  </Link>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm">
-                  {stock.sector}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                  {formatNumber(stock.avg_price_local)} {stock.currency}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                  {formatNumber(stock.current_price)} {stock.currency}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-right font-semibold">
-                  {formatNumber(stock.current_price * stock.shares_owned)} {stock.currency}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                  {formatNumber(stock.fair_value)} {stock.currency}
-                </td>
-                <td className={`px-3 py-4 whitespace-nowrap text-sm text-right font-semibold ${
-                  stock.upside_potential > 0 ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {formatNumber(stock.upside_potential, 1)}%
-                </td>
-                <td className={`px-3 py-4 whitespace-nowrap text-sm text-right font-semibold ${
-                  stock.expected_value > 7 ? 'text-green-400' : 
-                  stock.expected_value > 0 ? 'text-yellow-400' : 'text-red-400'
-                }`}>
-                  {formatNumber(stock.expected_value, 1)}%
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                  {formatNumber(stock.kelly_fraction, 1)}%
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                  {formatNumber(stock.half_kelly_suggested, 1)}%
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                  {stock.shares_owned}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                  {formatNumber(stock.weight, 1)}%
-                </td>
-                <td className={`px-3 py-4 whitespace-nowrap text-sm text-right font-semibold ${
-                  stock.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {formatCurrency(stock.unrealized_pnl)}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    stock.assessment === 'Add' ? 'bg-green-900 text-green-200' :
-                    stock.assessment === 'Hold' ? 'bg-gray-700 text-gray-200' :
-                    stock.assessment === 'Trim' ? 'bg-orange-900 text-orange-200' :
-                    'bg-red-900 text-red-200'
+            {sortedStocks.map((stock) => {
+              const isUpdating = updatingStockIds.includes(stock.id);
+              return (
+                <tr key={stock.id} className={`${getRowClass(stock.assessment)} ${isUpdating ? 'opacity-60' : ''}`}>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-primary-400">
+                    <div className="flex items-center gap-2">
+                      {stock.ticker}
+                      {isUpdating && (
+                        <ArrowPathIcon className="h-4 w-4 animate-spin text-primary-400" />
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">
+                    <Link
+                      href={`/stocks/${stock.id}`}
+                      className="text-primary-400 hover:text-primary-300 hover:underline"
+                    >
+                      {stock.company_name}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">
+                    {stock.sector}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                    {formatNumber(stock.avg_price_local)} {stock.avg_price_local > 0 ? stock.currency : ''}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                    {formatNumber(stock.current_price)} {stock.current_price > 0 ? stock.currency : ''}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right font-semibold">
+                    {stock.current_price > 0 ? `${formatNumber(stock.current_price * stock.shares_owned)} ${stock.currency}` : 'N/A'}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                    {formatNumber(stock.fair_value)} {stock.fair_value > 0 ? stock.currency : ''}
+                  </td>
+                  <td className={`px-3 py-4 whitespace-nowrap text-sm text-right font-semibold ${
+                    stock.upside_potential === 0 ? 'text-gray-400' :
+                    stock.upside_potential > 0 ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {stock.assessment}
-                  </span>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
-                  <div className="flex justify-center space-x-2">
-                    <button
-                      onClick={() => onUpdate(stock.id)}
-                      className="text-primary-400 hover:text-primary-300 transition-colors"
-                      title="Update stock data"
-                    >
-                      <ArrowPathIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => onDelete(stock.id)}
-                      className="text-red-400 hover:text-red-300 transition-colors"
-                      title="Delete stock"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    {formatPercentage(stock.upside_potential, 1)}
+                  </td>
+                  <td className={`px-3 py-4 whitespace-nowrap text-sm text-right font-semibold ${
+                    stock.expected_value === 0 ? 'text-gray-400' :
+                    stock.expected_value > 7 ? 'text-green-400' : 
+                    stock.expected_value > 0 ? 'text-yellow-400' : 'text-red-400'
+                  }`}>
+                    {formatPercentage(stock.expected_value, 1)}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                    {formatPercentage(stock.kelly_fraction, 1)}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                    {formatPercentage(stock.half_kelly_suggested, 1)}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                    {stock.shares_owned || 'N/A'}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                    {formatPercentage(stock.weight, 1)}
+                  </td>
+                  <td className={`px-3 py-4 whitespace-nowrap text-sm text-right font-semibold ${
+                    stock.unrealized_pnl === 0 ? 'text-gray-400' :
+                    stock.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {formatCurrency(stock.unrealized_pnl)}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      stock.assessment === 'N/A' ? 'bg-gray-700 text-gray-400' :
+                      stock.assessment === 'Add' ? 'bg-green-900 text-green-200' :
+                      stock.assessment === 'Hold' ? 'bg-gray-700 text-gray-200' :
+                      stock.assessment === 'Trim' ? 'bg-orange-900 text-orange-200' :
+                      'bg-red-900 text-red-200'
+                    }`}>
+                      {stock.assessment}
+                    </span>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
+                    <div className="flex justify-center space-x-2">
+                      <button
+                        onClick={() => onUpdate(stock.id)}
+                        disabled={isUpdating}
+                        className="text-primary-400 hover:text-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Update stock data"
+                      >
+                        <ArrowPathIcon className={`h-5 w-5 ${isUpdating ? 'animate-spin' : ''}`} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(stock.id)}
+                        disabled={isUpdating}
+                        className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete stock"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
