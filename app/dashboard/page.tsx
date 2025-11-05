@@ -370,7 +370,7 @@ export default function DashboardPage() {
             className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
-            {updating ? `Updating (${updateProgress.current}/${updateProgress.total})...` : 'Update All Prices'}
+            {updating ? `Updating (${updateProgress.current}/${updateProgress.total})...` : 'Update All Data'}
           </button>
           <button
             onClick={handleExportCSV}
