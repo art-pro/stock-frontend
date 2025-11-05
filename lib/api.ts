@@ -147,6 +147,7 @@ export const portfolioAPI = {
   updateSettings: (data: any) => api.put('/portfolio/settings', data),
   getAlerts: () => api.get<Alert[]>('/alerts'),
   deleteAlert: (id: number) => api.delete(`/alerts/${id}`),
+  getAPIStatus: () => api.get('/api-status'),
 };
 
 // Deleted stocks API

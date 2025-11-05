@@ -24,6 +24,8 @@ export default function DashboardPage() {
   const [updating, setUpdating] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [error, setError] = useState('');
+  const [apiStatus, setApiStatus] = useState<any>(null);
+  const [checkingAPI, setCheckingAPI] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -31,7 +33,24 @@ export default function DashboardPage() {
       return;
     }
     fetchData();
+    checkAPIStatus();
   }, [router]);
+
+  const checkAPIStatus = async () => {
+    try {
+      const response = await portfolioAPI.getAPIStatus();
+      setApiStatus(response.data);
+      console.log('API Status:', response.data);
+    } catch (err: any) {
+      console.error('Failed to check API status:', err);
+    }
+  };
+
+  const handleTestAPI = async () => {
+    setCheckingAPI(true);
+    await checkAPIStatus();
+    setTimeout(() => setCheckingAPI(false), 1000);
+  };
 
   const fetchData = async () => {
     try {
@@ -154,7 +173,41 @@ export default function DashboardPage() {
                 Kelly Criterion & Expected Value Analysis
               </p>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex items-center space-x-2">
+              {/* Grok API Status Indicator */}
+              {apiStatus && (
+                <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-700">
+                  <div className="flex items-center space-x-2">
+                    {apiStatus.grok.status === 'connected' && (
+                      <>
+                        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span className="text-sm text-green-400 font-medium">Grok Connected</span>
+                      </>
+                    )}
+                    {apiStatus.grok.status === 'not_configured' && (
+                      <>
+                        <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                        <span className="text-sm text-yellow-400 font-medium">Mock Data</span>
+                      </>
+                    )}
+                    {apiStatus.grok.status === 'error' && (
+                      <>
+                        <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                        <span className="text-sm text-red-400 font-medium">Grok Error</span>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleTestAPI}
+                    disabled={checkingAPI}
+                    className="text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                    title="Test Grok connection"
+                  >
+                    {checkingAPI ? '...' : 'Test'}
+                  </button>
+                </div>
+              )}
+              
               <button
                 onClick={() => router.push('/settings')}
                 className="flex items-center px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
@@ -191,9 +244,40 @@ export default function DashboardPage() {
         {/* Portfolio Summary */}
         {metrics && <PortfolioSummary metrics={metrics} />}
         
-        {/* Debug Info */}
-        <div className="mb-4 text-sm text-gray-400">
-          Stocks loaded: {stocks.length}
+        {/* API Status Info */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="text-sm text-gray-400">
+            Stocks loaded: {stocks.length}
+          </div>
+          {apiStatus && apiStatus.grok.status === 'not_configured' && (
+            <div className="flex items-center space-x-2 px-3 py-2 bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded-lg">
+              <span className="text-sm text-yellow-300">
+                ℹ️ Using mock data. Add <code className="px-1 py-0.5 bg-gray-800 rounded">XAI_API_KEY</code> to .env for real Grok data.
+              </span>
+              <a
+                href="https://console.x.ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-yellow-400 hover:text-yellow-300 underline"
+              >
+                Get API Key
+              </a>
+            </div>
+          )}
+          {apiStatus && apiStatus.grok.status === 'connected' && (
+            <div className="flex items-center space-x-2 px-3 py-2 bg-green-900 bg-opacity-30 border border-green-700 rounded-lg">
+              <span className="text-sm text-green-300">
+                ✓ Connected to Grok - Real-time data active
+              </span>
+            </div>
+          )}
+          {apiStatus && apiStatus.grok.status === 'error' && (
+            <div className="flex items-center space-x-2 px-3 py-2 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg">
+              <span className="text-sm text-red-300">
+                ⚠️ Grok API Error: {apiStatus.grok.error || 'Connection failed'}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
