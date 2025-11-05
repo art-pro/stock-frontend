@@ -3,19 +3,22 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Stock } from '@/lib/api';
-import { TrashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, ArrowPathIcon, PencilIcon } from '@heroicons/react/24/outline';
 
 interface StockTableProps {
   stocks: Stock[];
   onDelete: (id: number) => void;
   onUpdate: (id: number) => void;
+  onPriceUpdate: (id: number, newPrice: number) => void;
   updatingStockIds?: number[];
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, updatingStockIds = [] }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, updatingStockIds = [] }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
+  const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
+  const [editPrice, setEditPrice] = useState('');
 
   const handleSort = (field: keyof Stock) => {
     if (sortField === field) {
@@ -82,6 +85,24 @@ export default function StockTable({ stocks, onDelete, onUpdate, updatingStockId
       return 'N/A';
     }
     return `${formatNumber(num, decimals)}%`;
+  };
+
+  const handleEditPrice = (stock: Stock) => {
+    setEditingPriceId(stock.id);
+    setEditPrice(stock.current_price.toString());
+  };
+
+  const handleSavePrice = (stockId: number) => {
+    const newPrice = parseFloat(editPrice);
+    if (!isNaN(newPrice) && newPrice > 0) {
+      onPriceUpdate(stockId, newPrice);
+      setEditingPriceId(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPriceId(null);
+    setEditPrice('');
   };
 
   return (
@@ -230,7 +251,47 @@ export default function StockTable({ stocks, onDelete, onUpdate, updatingStockId
                     {formatNumber(stock.avg_price_local)} {stock.avg_price_local > 0 ? stock.currency : ''}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                    {formatNumber(stock.current_price)} {stock.current_price > 0 ? stock.currency : ''}
+                    {editingPriceId === stock.id ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editPrice}
+                          onChange={(e) => setEditPrice(e.target.value)}
+                          className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSavePrice(stock.id);
+                            if (e.key === 'Escape') handleCancelEdit();
+                          }}
+                        />
+                        <button
+                          onClick={() => handleSavePrice(stock.id)}
+                          className="text-green-400 hover:text-green-300 text-xs"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="text-red-400 hover:text-red-300 text-xs"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end gap-2">
+                        <span>{formatNumber(stock.current_price)} {stock.current_price > 0 ? stock.currency : ''}</span>
+                        {stock.current_price > 0 && (
+                          <button
+                            onClick={() => handleEditPrice(stock)}
+                            className="text-gray-400 hover:text-primary-400 transition-colors"
+                            title="Edit price manually"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right font-semibold">
                     {stock.current_price > 0 ? `${formatNumber(stock.current_price * stock.shares_owned)} ${stock.currency}` : 'N/A'}

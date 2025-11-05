@@ -131,6 +131,15 @@ export default function DashboardPage() {
     }
   };
 
+  const handlePriceUpdate = async (id: number, newPrice: number) => {
+    try {
+      await stockAPI.updatePrice(id, newPrice);
+      await fetchData();
+    } catch (err: any) {
+      alert('Failed to update price: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   const handleDelete = async (id: number) => {
     const reason = prompt('Enter reason for deletion (optional):');
     if (reason === null) return; // User cancelled
@@ -383,6 +392,7 @@ export default function DashboardPage() {
           stocks={stocks}
           onDelete={handleDelete}
           onUpdate={handleUpdateSingle}
+          onPriceUpdate={handlePriceUpdate}
           updatingStockIds={updatingStockIds}
         />
       </main>
