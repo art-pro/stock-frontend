@@ -120,7 +120,12 @@ export default function DashboardPage() {
       await fetchData();
       alert('Stock updated successfully!');
     } catch (err: any) {
-      alert('Failed to update stock: ' + (err.response?.data?.error || err.message));
+      if (err.response?.status === 404) {
+        alert('Stock not found. The database may have been reset. Refreshing the page...');
+        await fetchData();
+      } else {
+        alert('Failed to update stock: ' + (err.response?.data?.error || err.message));
+      }
     } finally {
       setUpdatingStockIds(updatingStockIds.filter(stockId => stockId !== id));
     }
@@ -135,7 +140,12 @@ export default function DashboardPage() {
       await fetchData();
       alert('Stock deleted successfully!');
     } catch (err: any) {
-      alert('Failed to delete stock: ' + (err.response?.data?.error || err.message));
+      if (err.response?.status === 404) {
+        alert('Stock not found. It may have been already deleted. Refreshing the page...');
+        await fetchData();
+      } else {
+        alert('Failed to delete stock: ' + (err.response?.data?.error || err.message));
+      }
     }
   };
 
