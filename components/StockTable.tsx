@@ -106,10 +106,23 @@ export default function StockTable({ stocks, onDelete, onUpdate }: StockTablePro
               </th>
               <th
                 className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                onClick={() => handleSort('avg_price_local')}
+                title="Your average entry/purchase price"
+              >
+                Avg Price
+              </th>
+              <th
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('current_price')}
                 title="Current market price in local currency"
               >
-                Price
+                Current Price
+              </th>
+              <th
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                title="Total position value (Current Price × Shares)"
+              >
+                Total Value
               </th>
               <th
                 className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
@@ -193,7 +206,13 @@ export default function StockTable({ stocks, onDelete, onUpdate }: StockTablePro
                   {stock.sector}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                  {formatNumber(stock.avg_price_local)} {stock.currency}
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
                   {formatNumber(stock.current_price)} {stock.currency}
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap text-sm text-right font-semibold">
+                  {formatNumber(stock.current_price * stock.shares_owned)} {stock.currency}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
                   {formatNumber(stock.fair_value)} {stock.currency}
