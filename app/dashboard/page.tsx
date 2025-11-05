@@ -95,13 +95,14 @@ export default function DashboardPage() {
         
         try {
           await stockAPI.updateSingle(stock.id);
+          // Refresh data after each update to show progress
+          await fetchData();
         } catch (err) {
           console.error(`Failed to update ${stock.ticker}:`, err);
         }
       }
       
       setUpdatingStockIds([]);
-      await fetchData();
       alert('All stocks updated successfully!');
     } catch (err: any) {
       alert('Failed to update stocks: ' + (err.response?.data?.error || err.message));
