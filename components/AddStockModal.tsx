@@ -29,9 +29,12 @@ export default function AddStockModal({ onClose, onSuccess }: AddStockModalProps
     setLoading(true);
 
     try {
-      await stockAPI.create(formData);
+      const response = await stockAPI.create(formData);
+      console.log('Stock created successfully:', response.data);
       onSuccess();
+      onClose();
     } catch (err: any) {
+      console.error('Error creating stock:', err.response?.data || err);
       setError(err.response?.data?.error || 'Failed to add stock');
     } finally {
       setLoading(false);

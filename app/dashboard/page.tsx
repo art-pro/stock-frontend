@@ -36,13 +36,26 @@ export default function DashboardPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      // Try portfolio summary first
       const response = await portfolioAPI.getSummary();
-      setStocks(response.data.stocks || []);
+      console.log('Portfolio API Response:', response.data);
+      console.log('Stocks received:', response.data.stocks);
+      
+      // Also try fetching stocks directly to check if there's a difference
+      const directStocksResponse = await stockAPI.getAll();
+      console.log('Direct stocks API response:', directStocksResponse.data);
+      
+      // Use direct stocks if portfolio doesn't return them
+      const stocksData = response.data.stocks || directStocksResponse.data || [];
+      console.log('Final stocks to display:', stocksData);
+      
+      setStocks(stocksData);
       setMetrics(response.data.summary || null);
       setError('');
     } catch (err: any) {
       setError('Failed to load portfolio data');
-      console.error(err);
+      console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
@@ -177,6 +190,11 @@ export default function DashboardPage() {
 
         {/* Portfolio Summary */}
         {metrics && <PortfolioSummary metrics={metrics} />}
+        
+        {/* Debug Info */}
+        <div className="mb-4 text-sm text-gray-400">
+          Stocks loaded: {stocks.length}
+        </div>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-3 mb-6">
@@ -186,6 +204,15 @@ export default function DashboardPage() {
           >
             <PlusIcon className="h-5 w-5 mr-2" />
             Add Stock
+          </button>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh stock list"
+          >
+            <ArrowPathIcon className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </button>
           <button
             onClick={handleUpdateAll}
@@ -226,9 +253,12 @@ export default function DashboardPage() {
       {showAddModal && (
         <AddStockModal
           onClose={() => setShowAddModal(false)}
-          onSuccess={() => {
+          onSuccess={async () => {
+            console.log('Stock added successfully, refreshing data...');
             setShowAddModal(false);
-            fetchData();
+            // Add a small delay to ensure backend has processed the stock
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await fetchData();
           }}
         />
       )}
