@@ -66,6 +66,8 @@ export interface Stock {
   buy_zone_max: number;
   assessment: string;
   update_frequency: string;
+  data_source: string;
+  fair_value_source: string;
   last_updated: string;
 }
 

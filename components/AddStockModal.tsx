@@ -74,17 +74,19 @@ export default function AddStockModal({ onClose, onSuccess }: AddStockModalProps
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Ticker */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Ticker Symbol *
+              <label className="block text-sm font-medium text-gray-300 mb-2" title="Stock ticker symbol (e.g., AAPL for Apple)">
+                Ticker Symbol * 
+                <span className="text-gray-400 text-xs ml-1">ⓘ</span>
               </label>
               <input
                 type="text"
                 name="ticker"
                 required
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
                 value={formData.ticker}
                 onChange={handleChange}
                 placeholder="e.g., AAPL"
+                title="Enter the stock ticker symbol (e.g., AAPL, MSFT, NOVO B)"
               />
             </div>
 
@@ -191,8 +193,9 @@ export default function AddStockModal({ onClose, onSuccess }: AddStockModalProps
 
             {/* Probability Positive */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Probability of Positive Outcome (p)
+              <label className="block text-sm font-medium text-gray-300 mb-2" title="Probability of positive outcome: 0.65 for Buy, 0.7 for Strong Buy, 0.5 for Hold">
+                Probability (p) 
+                <span className="text-gray-400 text-xs ml-1">ⓘ</span>
               </label>
               <input
                 type="number"
@@ -203,17 +206,19 @@ export default function AddStockModal({ onClose, onSuccess }: AddStockModalProps
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                 value={formData.probability_positive}
                 onChange={handleChange}
+                title="Probability of positive outcome (0-1). Default: 0.65 for typical Buy rating"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Value between 0 and 1 (default: 0.65)
+                Value between 0 and 1 (default: 0.65 for Buy, 0.7 for Strong Buy)
               </p>
             </div>
           </div>
 
           <div className="mt-6 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg p-4">
             <p className="text-sm text-blue-200">
-              <strong>Note:</strong> The system will automatically fetch current prices and 
-              calculate metrics (EV, Kelly, etc.) using external APIs. This may take a few seconds.
+              <strong>Note:</strong> The system will automatically fetch current prices, beta, and analyst consensus target prices from Alpha Vantage (or Grok AI if not available). 
+              Metrics (EV, Kelly, downside risk) will be calculated using the strategy formulas. 
+              Fair values are validated to ensure they align with market consensus. This may take a few seconds.
             </p>
           </div>
 

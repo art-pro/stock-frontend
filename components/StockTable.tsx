@@ -152,6 +152,13 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               </th>
               <th
                 className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                onClick={() => handleSort('beta')}
+                title="Beta coefficient (market sensitivity)"
+              >
+                Beta
+              </th>
+              <th
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('avg_price_local')}
                 title="Your average entry/purchase price"
               >
@@ -190,6 +197,20 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                 title="Expected Value: (p × Upside) + ((1-p) × Downside)"
               >
                 EV %
+              </th>
+              <th
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                onClick={() => handleSort('probability_positive')}
+                title="Probability of positive outcome (0-1), default 0.65"
+              >
+                p
+              </th>
+              <th
+                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                onClick={() => handleSort('downside_risk')}
+                title="Downside risk % (calibrated by beta)"
+              >
+                Downside %
               </th>
               <th
                 className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
@@ -240,7 +261,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               return (
                 <tr key={stock.id} className={`${getRowClass(stock.assessment)} ${isUpdating ? 'opacity-60' : ''}`}>
                   <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-primary-400">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" title={`Data Source: ${stock.data_source || 'N/A'}\nLast Updated: ${stock.last_updated ? new Date(stock.last_updated).toLocaleString() : 'Never'}`}>
                       {stock.ticker}
                       {isUpdating && (
                         <ArrowPathIcon className="h-4 w-4 animate-spin text-primary-400" />
@@ -257,6 +278,9 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm">
                     {stock.sector}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right" title={`Beta: ${formatNumber(stock.beta, 2)}`}>
+                    {formatNumber(stock.beta, 2)}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
                     {isEditing(stock.id, 'avg_price_local') ? (
@@ -344,7 +368,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                         <button onClick={handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-2" title={`Source: ${stock.fair_value_source || 'Not available'}`}>
                         <span>{formatNumber(stock.fair_value)} {stock.fair_value > 0 ? stock.currency : ''}</span>
                         <button
                           onClick={() => handleEditField(stock, 'fair_value', stock.fair_value)}
@@ -368,6 +392,12 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                     stock.expected_value > 0 ? 'text-yellow-400' : 'text-red-400'
                   }`}>
                     {formatPercentage(stock.expected_value, 1)}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right" title={`Probability: ${formatNumber(stock.probability_positive, 2)}`}>
+                    {stock.probability_positive === 0 ? 'N/A' : formatNumber(stock.probability_positive, 2)}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right text-red-400">
+                    {formatPercentage(stock.downside_risk, 1)}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
                     {formatPercentage(stock.kelly_fraction, 1)}
