@@ -69,6 +69,8 @@ export interface Stock {
   update_frequency: string;
   data_source: string;
   fair_value_source: string;
+  alpha_vantage_fetched_at: string | null;
+  grok_fetched_at: string | null;
   comment: string;
   last_updated: string;
 }

@@ -481,6 +481,92 @@ export default function StockDetailPage() {
           </div>
         </div>
 
+        {/* Data Source Information */}
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+          <h2 className="text-xl font-bold text-white mb-4">Data Sources</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-grow">
+                <h3 className="text-sm font-medium text-gray-300 mb-1">Alpha Vantage</h3>
+                <p className="text-xs text-gray-500 mb-2">Market data & financials</p>
+                {stock.alpha_vantage_fetched_at ? (
+                  <div>
+                    <p className="text-sm text-white">
+                      {new Date(stock.alpha_vantage_fetched_at).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(stock.alpha_vantage_fetched_at).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 italic">No data fetched yet</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-grow">
+                <h3 className="text-sm font-medium text-gray-300 mb-1">Grok AI</h3>
+                <p className="text-xs text-gray-500 mb-2">Analysis & predictions</p>
+                {stock.grok_fetched_at ? (
+                  <div>
+                    <p className="text-sm text-white">
+                      {new Date(stock.grok_fetched_at).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(stock.grok_fetched_at).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 italic">No data fetched yet</p>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Additional data source info */}
+          <div className="mt-4 pt-4 border-t border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-400">Primary Source:</span>
+                <span className="ml-2 text-white">{stock.data_source || 'Not specified'}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Fair Value Source:</span>
+                <span className="ml-2 text-white">{stock.fair_value_source || 'Not specified'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Detailed Metrics */}
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-bold text-white mb-4">Detailed Metrics</h2>
