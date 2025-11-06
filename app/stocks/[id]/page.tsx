@@ -386,6 +386,50 @@ export default function StockDetailPage() {
               </>
             )}
           </div>
+          {/* ISIN */}
+          <div className="flex items-center gap-2 mt-1 group">
+            <span className="text-xs text-gray-500">ISIN:</span>
+            {editingField === 'isin' ? (
+              <span className="inline-flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value.toUpperCase())}
+                  maxLength={12}
+                  className="bg-gray-700 text-white rounded px-2 py-1 text-xs uppercase"
+                  placeholder="US0378331005"
+                  autoFocus
+                />
+                <button
+                  onClick={() => handleSaveField('isin', true)}
+                  disabled={saving}
+                  className="p-1 text-green-400 hover:text-green-300"
+                  title="Save"
+                >
+                  <CheckIcon className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  className="p-1 text-red-400 hover:text-red-300"
+                  title="Cancel"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              </span>
+            ) : (
+              <>
+                <p className="text-xs text-gray-400 font-mono">{stock.isin || 'Not set'}</p>
+                <button
+                  onClick={() => handleEditField('isin', stock.isin || '')}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-400 transition-opacity"
+                  title="Edit ISIN"
+                >
+                  <PencilIcon className="h-3 w-3" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 

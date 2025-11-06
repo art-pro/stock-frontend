@@ -12,6 +12,7 @@ interface AddStockModalProps {
 export default function AddStockModal({ onClose, onSuccess }: AddStockModalProps) {
   const [formData, setFormData] = useState({
     ticker: '',
+    isin: '',
     company_name: '',
     sector: '',
     currency: 'USD',
@@ -87,6 +88,24 @@ export default function AddStockModal({ onClose, onSuccess }: AddStockModalProps
                 onChange={handleChange}
                 placeholder="e.g., AAPL"
                 title="Enter the stock ticker symbol (e.g., AAPL, MSFT, NOVO B)"
+              />
+            </div>
+
+            {/* ISIN */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2" title="International Securities Identification Number (12 alphanumeric characters)">
+                ISIN
+                <span className="text-gray-400 text-xs ml-1">ⓘ</span>
+              </label>
+              <input
+                type="text"
+                name="isin"
+                maxLength={12}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
+                value={formData.isin}
+                onChange={handleChange}
+                placeholder="e.g., US0378331005"
+                title="12-character code to uniquely identify the security (optional but recommended)"
               />
             </div>
 

@@ -39,6 +39,7 @@ api.interceptors.response.use(
 export interface Stock {
   id: number;
   ticker: string;
+  isin: string;
   company_name: string;
   sector: string;
   current_price: number;
