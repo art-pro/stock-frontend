@@ -317,7 +317,8 @@ export default function StockDetailPage() {
             currentPrice: stock.current_price,
             fairValue: stock.fair_value,
             currency: stock.currency,
-            lastUpdated: stock.last_updated
+            lastUpdated: stock.last_updated,
+            rawJson: modalSource === 'alphavantage' ? stock.alpha_vantage_raw_json : stock.grok_raw_json
           }}
         />
       )}

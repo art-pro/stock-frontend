@@ -71,6 +71,8 @@ export interface Stock {
   fair_value_source: string;
   alpha_vantage_fetched_at: string | null;
   grok_fetched_at: string | null;
+  alpha_vantage_raw_json: string;
+  grok_raw_json: string;
   comment: string;
   last_updated: string;
 }

@@ -1,6 +1,7 @@
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CodeBracketIcon } from '@heroicons/react/24/outline';
+import JsonViewer from './JsonViewer';
 
 interface DataSourceModalProps {
   isOpen: boolean;
@@ -16,10 +17,12 @@ interface DataSourceModalProps {
     fairValue: number;
     currency: string;
     lastUpdated: string;
+    rawJson?: string;
   };
 }
 
 export default function DataSourceModal({ isOpen, onClose, source, data }: DataSourceModalProps) {
+  const [showRawJson, setShowRawJson] = useState(false);
   const isAlphaVantage = source === 'alphavantage';
   const fetchedAt = isAlphaVantage ? data.fetchedAt : data.fetchedAt;
   
@@ -226,6 +229,33 @@ export default function DataSourceModal({ isOpen, onClose, source, data }: DataS
                         : 'Advanced AI analysis and predictive modeling'}
                     </p>
                   </div>
+
+                  {/* Raw JSON Viewer Button */}
+                  {data.rawJson && (
+                    <div className="mt-4">
+                      <button
+                        onClick={() => setShowRawJson(!showRawJson)}
+                        className="flex items-center space-x-2 w-full bg-gray-800 hover:bg-gray-700 rounded-lg px-4 py-3 transition-colors"
+                      >
+                        <CodeBracketIcon className="h-5 w-5 text-blue-400" />
+                        <span className="text-sm font-medium text-gray-300">
+                          {showRawJson ? 'Hide' : 'View'} Raw JSON Response
+                        </span>
+                        <span className="ml-auto text-xs text-gray-500">
+                          {showRawJson ? '▲' : '▼'}
+                        </span>
+                      </button>
+                      
+                      {showRawJson && (
+                        <div className="mt-4">
+                          <JsonViewer 
+                            data={data.rawJson} 
+                            title={`${isAlphaVantage ? 'Alpha Vantage' : 'Grok AI'} Raw Response`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-6 flex justify-end">
