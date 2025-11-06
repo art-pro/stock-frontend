@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [apiStatus, setApiStatus] = useState<any>(null);
   const [checkingAPI, setCheckingAPI] = useState(false);
-  const [updatingStockIds, setUpdatingStockIds] = useState<number[]>([]);
+  const [updatingStocks, setUpdatingStocks] = useState<Array<{ stockId: number; source: 'grok' | 'alphavantage' }>>([]);
   const [updateProgress, setUpdateProgress] = useState({ current: 0, total: 0 });
   const [backendVersion, setBackendVersion] = useState<string>('...');
 
@@ -102,13 +102,13 @@ export default function DashboardPage() {
       // Update stocks sequentially to show progress
       for (let i = 0; i < stocks.length; i++) {
         const stock = stocks[i];
-        setUpdatingStockIds([stock.id]);
+        setUpdatingStocks([{ stockId: stock.id, source }]);
         setUpdateProgress({ current: i + 1, total: stocks.length });
         
         try {
           await stockAPI.updateSingle(stock.id, source);
           // Small delay to ensure backend has processed
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise(resolve => setTimeout(resolve, 500));
           // Refresh data after each update to show progress
           await fetchData();
         } catch (err) {
@@ -116,21 +116,23 @@ export default function DashboardPage() {
         }
       }
       
-      setUpdatingStockIds([]);
+      setUpdatingStocks([]);
       alert(`All stocks updated successfully from ${source === 'grok' ? 'Grok AI' : 'Alpha Vantage'}!`);
     } catch (err: any) {
       alert('Failed to update stocks: ' + (err.response?.data?.error || err.message));
     } finally {
       setUpdating(false);
       setUpdateProgress({ current: 0, total: 0 });
-      setUpdatingStockIds([]);
+      setUpdatingStocks([]);
     }
   };
 
   const handleUpdateSingle = async (id: number, source?: 'grok' | 'alphavantage') => {
+    if (!source) return;
+    
     console.log(`🔄 Starting update for stock ${id} from ${source}`);
     try {
-      setUpdatingStockIds(prev => [...prev, id]);
+      setUpdatingStocks(prev => [...prev, { stockId: id, source }]);
       const response = await stockAPI.updateSingle(id, source);
       console.log(`✅ Update response:`, response.data);
       // Small delay to ensure backend has processed
@@ -147,8 +149,8 @@ export default function DashboardPage() {
         alert('Failed to update stock: ' + (err.response?.data?.error || err.message));
       }
     } finally {
-      setUpdatingStockIds(prev => prev.filter(stockId => stockId !== id));
-      console.log(`🏁 Update complete for stock ${id}`);
+      setUpdatingStocks(prev => prev.filter(item => !(item.stockId === id && item.source === source)));
+      console.log(`🏁 Update complete for stock ${id} from ${source}`);
     }
   };
 
@@ -522,7 +524,7 @@ export default function DashboardPage() {
             onUpdate={handleUpdateSingle}
             onPriceUpdate={handlePriceUpdate}
             onFieldUpdate={handleFieldUpdate}
-            updatingStockIds={updatingStockIds}
+            updatingStocks={updatingStocks}
           />
         </div>
 
@@ -545,7 +547,7 @@ export default function DashboardPage() {
             onUpdate={handleUpdateSingle}
             onPriceUpdate={handlePriceUpdate}
             onFieldUpdate={handleFieldUpdate}
-            updatingStockIds={updatingStockIds}
+            updatingStocks={updatingStocks}
             isWatchlist={true}
           />
         </div>

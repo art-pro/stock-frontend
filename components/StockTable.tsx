@@ -11,11 +11,11 @@ interface StockTableProps {
   onUpdate: (id: number, source?: 'grok' | 'alphavantage') => void;
   onPriceUpdate: (id: number, newPrice: number) => void;
   onFieldUpdate: (id: number, field: string, value: number) => void;
-  updatingStockIds?: number[];
+  updatingStocks?: Array<{ stockId: number; source: 'grok' | 'alphavantage' }>;
   isWatchlist?: boolean;
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStockIds = [], isWatchlist = false }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], isWatchlist = false }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
@@ -268,13 +268,16 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
           </thead>
           <tbody className="divide-y divide-gray-700">
             {sortedStocks.map((stock) => {
-              const isUpdating = updatingStockIds.includes(stock.id);
+              const isUpdatingAlphaVantage = updatingStocks.some(u => u.stockId === stock.id && u.source === 'alphavantage');
+              const isUpdatingGrok = updatingStocks.some(u => u.stockId === stock.id && u.source === 'grok');
+              const isAnyUpdating = isUpdatingAlphaVantage || isUpdatingGrok;
+              
               return (
-                <tr key={stock.id} className={`${getRowClass(stock.assessment)} ${isUpdating ? 'opacity-60' : ''}`}>
+                <tr key={stock.id} className={`${getRowClass(stock.assessment)} ${isAnyUpdating ? 'opacity-60' : ''}`}>
                   <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-primary-400">
                     <div className="flex items-center gap-2" title={`Data Source: ${stock.data_source || 'N/A'}\nLast Updated: ${stock.last_updated ? new Date(stock.last_updated).toLocaleString() : 'Never'}`}>
                       {stock.ticker}
-                      {isUpdating && (
+                      {isAnyUpdating && (
                         <ArrowPathIcon className="h-4 w-4 animate-spin text-primary-400" />
                       )}
                     </div>
@@ -481,29 +484,29 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                     <div className="flex justify-center space-x-2">
                       <button
                         onClick={() => onUpdate(stock.id, 'alphavantage')}
-                        disabled={isUpdating}
+                        disabled={isUpdatingAlphaVantage}
                         className="text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Update from Alpha Vantage (raw financial data)"
                       >
                         <div className="flex flex-col items-center">
-                          <ArrowPathIcon className={`h-5 w-5 ${isUpdating ? 'animate-spin' : ''}`} />
+                          <ArrowPathIcon className={`h-5 w-5 ${isUpdatingAlphaVantage ? 'animate-spin' : ''}`} />
                           <span className="text-xs mt-0.5">📊</span>
                         </div>
                       </button>
                       <button
                         onClick={() => onUpdate(stock.id, 'grok')}
-                        disabled={isUpdating}
+                        disabled={isUpdatingGrok}
                         className="text-purple-400 hover:text-purple-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Update from Grok AI (analytical data)"
                       >
                         <div className="flex flex-col items-center">
-                          <ArrowPathIcon className={`h-5 w-5 ${isUpdating ? 'animate-spin' : ''}`} />
+                          <ArrowPathIcon className={`h-5 w-5 ${isUpdatingGrok ? 'animate-spin' : ''}`} />
                           <span className="text-xs mt-0.5">🤖</span>
                         </div>
                       </button>
                       <button
                         onClick={() => onDelete(stock.id)}
-                        disabled={isUpdating}
+                        disabled={isAnyUpdating}
                         className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Delete stock"
                       >
