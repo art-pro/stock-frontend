@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Force LTR text direction globally */
+* {
+  direction: ltr !important;
+}
+
+/* Specific fix for textareas and inputs */
+textarea, input {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: embed !important;
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
