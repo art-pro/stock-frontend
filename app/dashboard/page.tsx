@@ -107,6 +107,8 @@ export default function DashboardPage() {
         
         try {
           await stockAPI.updateSingle(stock.id, source);
+          // Small delay to ensure backend has processed
+          await new Promise(resolve => setTimeout(resolve, 300));
           // Refresh data after each update to show progress
           await fetchData();
         } catch (err) {
@@ -127,10 +129,11 @@ export default function DashboardPage() {
 
   const handleUpdateSingle = async (id: number, source?: 'grok' | 'alphavantage') => {
     try {
-      setUpdatingStockIds([...updatingStockIds, id]);
+      setUpdatingStockIds(prev => [...prev, id]);
       await stockAPI.updateSingle(id, source);
+      // Small delay to ensure backend has processed
+      await new Promise(resolve => setTimeout(resolve, 300));
       await fetchData();
-      alert('Stock updated successfully!');
     } catch (err: any) {
       if (err.response?.status === 404) {
         alert('Stock not found. The database may have been reset. Refreshing the page...');
@@ -139,7 +142,7 @@ export default function DashboardPage() {
         alert('Failed to update stock: ' + (err.response?.data?.error || err.message));
       }
     } finally {
-      setUpdatingStockIds(updatingStockIds.filter(stockId => stockId !== id));
+      setUpdatingStockIds(prev => prev.filter(stockId => stockId !== id));
     }
   };
 
