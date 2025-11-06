@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { stockAPI, Stock, StockHistory } from '@/lib/api';
+import DataSourceModal from '@/components/DataSourceModal';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -38,6 +39,8 @@ export default function StockDetailPage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalSource, setModalSource] = useState<'alphavantage' | 'grok'>('alphavantage');
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -104,6 +107,11 @@ export default function StockDetailPage() {
   const handleCancelEdit = () => {
     setEditingField(null);
     setEditValue('');
+  };
+
+  const openDataSourceModal = (source: 'alphavantage' | 'grok') => {
+    setModalSource(source);
+    setModalOpen(true);
   };
 
   const EditableField = ({ 
@@ -294,6 +302,26 @@ export default function StockDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-900">
+      {/* Data Source Modal */}
+      {stock && (
+        <DataSourceModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          source={modalSource}
+          data={{
+            ticker: stock.ticker,
+            companyName: stock.company_name,
+            fetchedAt: modalSource === 'alphavantage' ? stock.alpha_vantage_fetched_at : stock.grok_fetched_at,
+            dataSource: stock.data_source,
+            fairValueSource: stock.fair_value_source,
+            currentPrice: stock.current_price,
+            fairValue: stock.fair_value,
+            currency: stock.currency,
+            lastUpdated: stock.last_updated
+          }}
+        />
+      )}
+      
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -485,7 +513,10 @@ export default function StockDetailPage() {
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-bold text-white mb-4">Data Sources</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-start space-x-3">
+            <div 
+              className="flex items-start space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700/50 transition-colors"
+              onClick={() => openDataSourceModal('alphavantage')}
+            >
               <div className="flex-shrink-0">
                 <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -494,7 +525,7 @@ export default function StockDetailPage() {
                 </div>
               </div>
               <div className="flex-grow">
-                <h3 className="text-sm font-medium text-gray-300 mb-1">Alpha Vantage</h3>
+                <h3 className="text-sm font-medium text-gray-300 mb-1 group-hover:text-white">Alpha Vantage</h3>
                 <p className="text-xs text-gray-500 mb-2">Market data & financials</p>
                 {stock.alpha_vantage_fetched_at ? (
                   <div>
@@ -518,7 +549,10 @@ export default function StockDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-start space-x-3">
+            <div 
+              className="flex items-start space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700/50 transition-colors"
+              onClick={() => openDataSourceModal('grok')}
+            >
               <div className="flex-shrink-0">
                 <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -527,7 +561,7 @@ export default function StockDetailPage() {
                 </div>
               </div>
               <div className="flex-grow">
-                <h3 className="text-sm font-medium text-gray-300 mb-1">Grok AI</h3>
+                <h3 className="text-sm font-medium text-gray-300 mb-1 group-hover:text-white">Grok AI</h3>
                 <p className="text-xs text-gray-500 mb-2">Analysis & predictions</p>
                 {stock.grok_fetched_at ? (
                   <div>
