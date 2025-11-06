@@ -176,17 +176,53 @@ export default function StockDetailPage() {
                 dir="ltr"
                 style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'normal' }}
                 autoFocus
+                onFocus={(e) => e.target.select()}
+                onKeyDown={(e) => {
+                  // Allow Ctrl/Cmd+Enter to save
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    handleSaveField(field, isString);
+                  }
+                  // Allow Escape key to cancel
+                  if (e.key === 'Escape') {
+                    handleCancelEdit();
+                  }
+                }}
               />
             ) : (
               <input
-                type={isString ? 'text' : 'number'}
-                step={isString ? undefined : 'any'}
+                type="text"  // Changed from conditional to always text to handle comma input
+                inputMode={isString ? 'text' : 'decimal'}
                 value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
+                onChange={(e) => {
+                  let value = e.target.value;
+                  // For numeric fields, allow comma as decimal separator
+                  if (!isString) {
+                    // Replace comma with point for decimal numbers
+                    value = value.replace(',', '.');
+                    // Only allow numbers, minus sign, and decimal point
+                    if (!/^-?\d*\.?\d*$/.test(value) && value !== '-' && value !== '') {
+                      return; // Don't update if invalid format
+                    }
+                  }
+                  setEditValue(value);
+                }}
+                onKeyDown={(e) => {
+                  // Allow Enter key to save
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSaveField(field, isString);
+                  }
+                  // Allow Escape key to cancel
+                  if (e.key === 'Escape') {
+                    handleCancelEdit();
+                  }
+                }}
                 className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm"
                 dir="ltr"
                 style={{ direction: 'ltr', textAlign: 'left' }}
                 autoFocus
+                onFocus={(e) => e.target.select()}
               />
             )}
             <button
@@ -379,6 +415,16 @@ export default function StockDetailPage() {
                     onChange={(e) => setEditValue(e.target.value)}
                     className="bg-gray-700 text-white rounded px-2 py-1 text-xl"
                     autoFocus
+                    onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSaveField('company_name', true);
+                      }
+                      if (e.key === 'Escape') {
+                        handleCancelEdit();
+                      }
+                    }}
                   />
                   <button
                     onClick={() => handleSaveField('company_name', true)}
@@ -420,6 +466,16 @@ export default function StockDetailPage() {
                   onChange={(e) => setEditValue(e.target.value)}
                   className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
                   autoFocus
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSaveField('sector', true);
+                    }
+                    if (e.key === 'Escape') {
+                      handleCancelEdit();
+                    }
+                  }}
                 />
                 <button
                   onClick={() => handleSaveField('sector', true)}
@@ -464,6 +520,16 @@ export default function StockDetailPage() {
                   className="bg-gray-700 text-white rounded px-2 py-1 text-xs uppercase"
                   placeholder="US0378331005"
                   autoFocus
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSaveField('isin', true);
+                    }
+                    if (e.key === 'Escape') {
+                      handleCancelEdit();
+                    }
+                  }}
                 />
                 <button
                   onClick={() => handleSaveField('isin', true)}
