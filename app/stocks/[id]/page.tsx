@@ -172,7 +172,9 @@ export default function StockDetailPage() {
               <textarea
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
-                className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm min-h-[60px]"
+                className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm min-h-[60px] resize-y"
+                dir="ltr"
+                style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'normal' }}
                 autoFocus
               />
             ) : (
@@ -182,6 +184,8 @@ export default function StockDetailPage() {
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm"
+                dir="ltr"
+                style={{ direction: 'ltr', textAlign: 'left' }}
                 autoFocus
               />
             )}
