@@ -8,7 +8,7 @@ import { TrashIcon, ArrowPathIcon, PencilIcon } from '@heroicons/react/24/outlin
 interface StockTableProps {
   stocks: Stock[];
   onDelete: (id: number) => void;
-  onUpdate: (id: number) => void;
+  onUpdate: (id: number, source?: 'grok' | 'alphavantage') => void;
   onPriceUpdate: (id: number, newPrice: number) => void;
   onFieldUpdate: (id: number, field: string, value: number) => void;
   updatingStockIds?: number[];
@@ -480,12 +480,26 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
                     <div className="flex justify-center space-x-2">
                       <button
-                        onClick={() => onUpdate(stock.id)}
+                        onClick={() => onUpdate(stock.id, 'alphavantage')}
                         disabled={isUpdating}
-                        className="text-primary-400 hover:text-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Update stock data"
+                        className="text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Update from Alpha Vantage (raw financial data)"
                       >
-                        <ArrowPathIcon className={`h-5 w-5 ${isUpdating ? 'animate-spin' : ''}`} />
+                        <div className="flex flex-col items-center">
+                          <ArrowPathIcon className={`h-5 w-5 ${isUpdating ? 'animate-spin' : ''}`} />
+                          <span className="text-xs mt-0.5">📊</span>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => onUpdate(stock.id, 'grok')}
+                        disabled={isUpdating}
+                        className="text-purple-400 hover:text-purple-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Update from Grok AI (analytical data)"
+                      >
+                        <div className="flex flex-col items-center">
+                          <ArrowPathIcon className={`h-5 w-5 ${isUpdating ? 'animate-spin' : ''}`} />
+                          <span className="text-xs mt-0.5">🤖</span>
+                        </div>
                       </button>
                       <button
                         onClick={() => onDelete(stock.id)}
