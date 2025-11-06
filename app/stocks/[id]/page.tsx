@@ -176,7 +176,6 @@ export default function StockDetailPage() {
                 dir="ltr"
                 style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'normal' }}
                 autoFocus
-                onFocus={(e) => e.target.select()}
                 onKeyDown={(e) => {
                   // Allow Ctrl/Cmd+Enter to save
                   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -200,8 +199,13 @@ export default function StockDetailPage() {
                   if (!isString) {
                     // Replace comma with point for decimal numbers
                     value = value.replace(',', '.');
-                    // Only allow numbers, minus sign, and decimal point
-                    if (!/^-?\d*\.?\d*$/.test(value) && value !== '-' && value !== '') {
+                    // Allow valid number patterns including trailing decimal point
+                    // This regex allows: negative sign, digits, decimal point, and combinations
+                    // Examples: "5", "5.", "5.0", "-5", "-.5", ".5", etc.
+                    const isValidNumber = /^-?(\d*\.?\d*)?$/.test(value);
+                    const isSpecialCase = value === '-' || value === '.' || value === '-.';
+                    
+                    if (!isValidNumber && !isSpecialCase) {
                       return; // Don't update if invalid format
                     }
                   }
@@ -222,7 +226,6 @@ export default function StockDetailPage() {
                 dir="ltr"
                 style={{ direction: 'ltr', textAlign: 'left' }}
                 autoFocus
-                onFocus={(e) => e.target.select()}
               />
             )}
             <button
@@ -466,7 +469,6 @@ export default function StockDetailPage() {
                   onChange={(e) => setEditValue(e.target.value)}
                   className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
                   autoFocus
-                  onFocus={(e) => e.target.select()}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -520,7 +522,6 @@ export default function StockDetailPage() {
                   className="bg-gray-700 text-white rounded px-2 py-1 text-xs uppercase"
                   placeholder="US0378331005"
                   autoFocus
-                  onFocus={(e) => e.target.select()}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
