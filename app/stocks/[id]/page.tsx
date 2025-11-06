@@ -45,6 +45,11 @@ export default function StockDetailPage() {
   const [updatingGrok, setUpdatingGrok] = useState(false);
 
   useEffect(() => {
+    // Ensure LTR direction for the entire document
+    document.documentElement.setAttribute('dir', 'ltr');
+    document.documentElement.setAttribute('lang', 'en');
+    document.body.setAttribute('dir', 'ltr');
+    
     if (!isAuthenticated()) {
       router.push('/login');
       return;
@@ -164,17 +169,24 @@ export default function StockDetailPage() {
     const isEditing = editingField === field;
     
     return (
-      <div>
+      <div dir="ltr" style={{ direction: 'ltr' }}>
         <p className="text-sm text-gray-400 mb-1">{label}</p>
         {isEditing ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" dir="ltr">
             {multiline ? (
               <textarea
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm min-h-[60px] resize-y"
                 dir="ltr"
-                style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'normal' }}
+                lang="en"
+                spellCheck="true"
+                style={{ 
+                  direction: 'ltr !important', 
+                  textAlign: 'left !important', 
+                  unicodeBidi: 'embed',
+                  writingMode: 'horizontal-tb'
+                }}
                 autoFocus
                 onKeyDown={(e) => {
                   // Allow Ctrl/Cmd+Enter to save
