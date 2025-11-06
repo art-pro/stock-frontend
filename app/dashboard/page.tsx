@@ -94,7 +94,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleUpdateAll = async () => {
+  const handleUpdateAll = async (source: 'grok' | 'alphavantage') => {
     try {
       setUpdating(true);
       setUpdateProgress({ current: 0, total: stocks.length });
@@ -106,7 +106,7 @@ export default function DashboardPage() {
         setUpdateProgress({ current: i + 1, total: stocks.length });
         
         try {
-          await stockAPI.updateSingle(stock.id);
+          await stockAPI.updateSingle(stock.id, source);
           // Refresh data after each update to show progress
           await fetchData();
         } catch (err) {
@@ -115,7 +115,7 @@ export default function DashboardPage() {
       }
       
       setUpdatingStockIds([]);
-      alert('All stocks updated successfully!');
+      alert(`All stocks updated successfully from ${source === 'grok' ? 'Grok AI' : 'Alpha Vantage'}!`);
     } catch (err: any) {
       alert('Failed to update stocks: ' + (err.response?.data?.error || err.message));
     } finally {
@@ -125,10 +125,10 @@ export default function DashboardPage() {
     }
   };
 
-  const handleUpdateSingle = async (id: number) => {
+  const handleUpdateSingle = async (id: number, source?: 'grok' | 'alphavantage') => {
     try {
       setUpdatingStockIds([...updatingStockIds, id]);
-      await stockAPI.updateSingle(id);
+      await stockAPI.updateSingle(id, source);
       await fetchData();
       alert('Stock updated successfully!');
     } catch (err: any) {
@@ -365,12 +365,22 @@ export default function DashboardPage() {
             Refresh
           </button>
           <button
-            onClick={handleUpdateAll}
+            onClick={() => handleUpdateAll('alphavantage')}
             disabled={updating}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Update from Alpha Vantage (raw financial data: price, beta, P/E, etc.)"
           >
             <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
-            {updating ? `Updating (${updateProgress.current}/${updateProgress.total})...` : 'Update All Data'}
+            📊 {updating ? `Updating (${updateProgress.current}/${updateProgress.total})...` : 'Update from Alpha Vantage'}
+          </button>
+          <button
+            onClick={() => handleUpdateAll('grok')}
+            disabled={updating}
+            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Update from Grok AI (analytical data: EV, Kelly, assessments, probabilities)"
+          >
+            <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
+            🤖 {updating ? `Updating (${updateProgress.current}/${updateProgress.total})...` : 'Update from Grok AI'}
           </button>
           <button
             onClick={handleExportCSV}
@@ -413,12 +423,21 @@ export default function DashboardPage() {
 
         {/* Info Card */}
         <div className="mb-6 bg-blue-900 bg-opacity-20 border border-blue-700 rounded-lg p-4">
-          <p className="text-sm text-blue-200">
+          <p className="text-sm text-blue-200 mb-3">
             <span className="font-semibold">💡 Tip:</span> Your stocks are organized into two sections:
             <span className="font-medium ml-1">Portfolio</span> shows stocks you own (shares &gt; 0), and
             <span className="font-medium ml-1">Watchlist</span> shows stocks you&rsquo;re tracking (0 shares).
-            Edit shares to move stocks between sections.
           </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-blue-100">
+            <div className="bg-blue-950 bg-opacity-40 rounded p-3">
+              <div className="font-semibold mb-1">📊 Alpha Vantage (Raw Data)</div>
+              <div className="text-blue-200">Current price, beta, P/E ratio, EPS growth, dividend yield, analyst targets</div>
+            </div>
+            <div className="bg-purple-950 bg-opacity-40 rounded p-3">
+              <div className="font-semibold mb-1">🤖 Grok AI (Analytical)</div>
+              <div className="text-purple-200">Probability (p), EV, Kelly sizing, assessments, downside risk, recommendations</div>
+            </div>
+          </div>
         </div>
 
         {/* Portfolio Section (Owned Stocks) */}

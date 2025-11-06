@@ -128,7 +128,8 @@ export const stockAPI = {
   delete: (id: number, reason?: string) =>
     api.delete(`/stocks/${id}`, { params: { reason } }),
   updateAll: () => api.post('/stocks/update-all'),
-  updateSingle: (id: number) => api.post(`/stocks/${id}/update`),
+  updateSingle: (id: number, source?: 'grok' | 'alphavantage') => 
+    api.post(`/stocks/${id}/update`, {}, { params: source ? { source } : {} }),
   updatePrice: (id: number, newPrice: number) => api.patch(`/stocks/${id}/price`, { current_price: newPrice }),
   updateField: (id: number, field: string, value: number | string) => {
     const payload: any = { field };
