@@ -47,25 +47,26 @@ export default function StockDetailPage() {
       router.push('/login');
       return;
     }
+    
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [stockRes, historyRes] = await Promise.all([
+          stockAPI.getById(id),
+          stockAPI.getHistory(id),
+        ]);
+        setStock(stockRes.data);
+        setHistory(historyRes.data);
+      } catch (err) {
+        console.error(err);
+        alert('Failed to load stock details');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
     fetchData();
-  }, [id]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [stockRes, historyRes] = await Promise.all([
-        stockAPI.getById(id),
-        stockAPI.getHistory(id),
-      ]);
-      setStock(stockRes.data);
-      setHistory(historyRes.data);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to load stock details');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [id, router]);
 
   const handleEditField = (field: string, currentValue: any) => {
     setEditingField(field);

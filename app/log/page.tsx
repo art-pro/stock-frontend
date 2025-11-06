@@ -27,7 +27,7 @@ export default function LogPage() {
       return;
     }
     fetchData();
-  }, []);
+  }, [router]);
 
   const fetchData = async () => {
     try {

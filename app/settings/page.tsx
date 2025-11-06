@@ -32,7 +32,7 @@ export default function SettingsPage() {
       return;
     }
     fetchPortfolioSettings();
-  }, []);
+  }, [router]);
 
   const fetchPortfolioSettings = async () => {
     try {

@@ -54,7 +54,7 @@ export default function JsonViewer({ data, title }: JsonViewerProps) {
     if (typeof value === 'string') {
       // Truncate long strings
       const displayValue = value.length > 100 ? value.substring(0, 100) + '...' : value;
-      return <span className="text-yellow-400">"{displayValue}"</span>;
+      return <span className="text-yellow-400">&quot;{displayValue}&quot;</span>;
     }
 
     if (Array.isArray(value)) {
@@ -97,7 +97,7 @@ export default function JsonViewer({ data, title }: JsonViewerProps) {
             <div className="ml-4 mt-1">
               {keys.map((key) => (
                 <div key={key} className="my-1">
-                  <span className="text-purple-400">"{key}":</span> {renderValue(value[key], `${path}.${key}`, depth + 1)}
+                  <span className="text-purple-400">&quot;{key}&quot;:</span> {renderValue(value[key], `${path}.${key}`, depth + 1)}
                 </div>
               ))}
             </div>
