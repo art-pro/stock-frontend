@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const [updatingStocks, setUpdatingStocks] = useState<Array<{ stockId: number; source: 'grok' | 'alphavantage' }>>([]);
   const [updateProgress, setUpdateProgress] = useState({ current: 0, total: 0 });
   const [backendVersion, setBackendVersion] = useState<string>('...');
+  const [selectedStockIds, setSelectedStockIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -95,15 +96,25 @@ export default function DashboardPage() {
   };
 
   const handleUpdateAll = async (source: 'grok' | 'alphavantage') => {
+    // Get stocks to update - either selected ones or all if none selected
+    const stocksToUpdate = selectedStockIds.length > 0 
+      ? stocks.filter(s => selectedStockIds.includes(s.id))
+      : stocks;
+    
+    if (stocksToUpdate.length === 0) {
+      alert('No stocks to update. Please select at least one stock.');
+      return;
+    }
+
     try {
       setUpdating(true);
-      setUpdateProgress({ current: 0, total: stocks.length });
+      setUpdateProgress({ current: 0, total: stocksToUpdate.length });
       
       // Update stocks sequentially to show progress
-      for (let i = 0; i < stocks.length; i++) {
-        const stock = stocks[i];
+      for (let i = 0; i < stocksToUpdate.length; i++) {
+        const stock = stocksToUpdate[i];
         setUpdatingStocks([{ stockId: stock.id, source }]);
-        setUpdateProgress({ current: i + 1, total: stocks.length });
+        setUpdateProgress({ current: i + 1, total: stocksToUpdate.length });
         
         try {
           await stockAPI.updateSingle(stock.id, source);
@@ -117,7 +128,10 @@ export default function DashboardPage() {
       }
       
       setUpdatingStocks([]);
-      alert(`All stocks updated successfully from ${source === 'grok' ? 'Grok AI' : 'Alpha Vantage'}!`);
+      const message = selectedStockIds.length > 0 
+        ? `${stocksToUpdate.length} selected stock(s) updated successfully from ${source === 'grok' ? 'Grok AI' : 'Alpha Vantage'}!`
+        : `All stocks updated successfully from ${source === 'grok' ? 'Grok AI' : 'Alpha Vantage'}!`;
+      alert(message);
     } catch (err: any) {
       alert('Failed to update stocks: ' + (err.response?.data?.error || err.message));
     } finally {
@@ -169,6 +183,34 @@ export default function DashboardPage() {
       await fetchData();
     } catch (err: any) {
       alert('Failed to update field: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleSelectStock = (id: number) => {
+    setSelectedStockIds(prev => 
+      prev.includes(id) 
+        ? prev.filter(stockId => stockId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleSelectAllPortfolio = (selected: boolean) => {
+    if (selected) {
+      const portfolioIds = stocks.filter(s => s.shares_owned > 0).map(s => s.id);
+      setSelectedStockIds(prev => [...new Set([...prev, ...portfolioIds])]);
+    } else {
+      const portfolioIds = stocks.filter(s => s.shares_owned > 0).map(s => s.id);
+      setSelectedStockIds(prev => prev.filter(id => !portfolioIds.includes(id)));
+    }
+  };
+
+  const handleSelectAllWatchlist = (selected: boolean) => {
+    if (selected) {
+      const watchlistIds = stocks.filter(s => s.shares_owned === 0 || !s.shares_owned).map(s => s.id);
+      setSelectedStockIds(prev => [...new Set([...prev, ...watchlistIds])]);
+    } else {
+      const watchlistIds = stocks.filter(s => s.shares_owned === 0 || !s.shares_owned).map(s => s.id);
+      setSelectedStockIds(prev => prev.filter(id => !watchlistIds.includes(id)));
     }
   };
 
@@ -416,6 +458,21 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* Selection Info */}
+        {selectedStockIds.length > 0 && (
+          <div className="mb-4 bg-primary-900 bg-opacity-30 border border-primary-700 rounded-lg p-3 flex items-center justify-between">
+            <span className="text-sm text-primary-200">
+              ✓ {selectedStockIds.length} stock{selectedStockIds.length > 1 ? 's' : ''} selected - Updates will only apply to selected stocks
+            </span>
+            <button
+              onClick={() => setSelectedStockIds([])}
+              className="text-xs text-primary-300 hover:text-primary-100 underline"
+            >
+              Clear selection
+            </button>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-3 mb-6">
           <button
@@ -436,21 +493,33 @@ export default function DashboardPage() {
           </button>
           <button
             onClick={() => handleUpdateAll('alphavantage')}
-            disabled={updating}
+            disabled={updating || stocks.length === 0}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Update from Alpha Vantage (raw financial data: price, beta, P/E, etc.)"
+            title={selectedStockIds.length > 0 
+              ? `Update ${selectedStockIds.length} selected stock(s) from Alpha Vantage`
+              : "Update all stocks from Alpha Vantage (or select specific stocks first)"}
           >
             <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
-            📊 {updating ? `Updating (${updateProgress.current}/${updateProgress.total})...` : 'Update from Alpha Vantage'}
+            📊 {updating 
+              ? `Updating (${updateProgress.current}/${updateProgress.total})...` 
+              : selectedStockIds.length > 0 
+                ? `Update ${selectedStockIds.length} from Alpha Vantage`
+                : 'Update from Alpha Vantage'}
           </button>
           <button
             onClick={() => handleUpdateAll('grok')}
-            disabled={updating}
+            disabled={updating || stocks.length === 0}
             className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Update from Grok AI (analytical data: EV, Kelly, assessments, probabilities)"
+            title={selectedStockIds.length > 0 
+              ? `Update ${selectedStockIds.length} selected stock(s) from Grok AI`
+              : "Update all stocks from Grok AI (or select specific stocks first)"}
           >
             <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
-            🤖 {updating ? `Updating (${updateProgress.current}/${updateProgress.total})...` : 'Update from Grok AI'}
+            🤖 {updating 
+              ? `Updating (${updateProgress.current}/${updateProgress.total})...` 
+              : selectedStockIds.length > 0 
+                ? `Update ${selectedStockIds.length} from Grok AI`
+                : 'Update from Grok AI'}
           </button>
           <button
             onClick={handleExportCSV}
@@ -525,6 +594,9 @@ export default function DashboardPage() {
             onPriceUpdate={handlePriceUpdate}
             onFieldUpdate={handleFieldUpdate}
             updatingStocks={updatingStocks}
+            selectedStockIds={selectedStockIds}
+            onSelectStock={handleSelectStock}
+            onSelectAll={handleSelectAllPortfolio}
           />
         </div>
 
@@ -548,6 +620,9 @@ export default function DashboardPage() {
             onPriceUpdate={handlePriceUpdate}
             onFieldUpdate={handleFieldUpdate}
             updatingStocks={updatingStocks}
+            selectedStockIds={selectedStockIds}
+            onSelectStock={handleSelectStock}
+            onSelectAll={handleSelectAllWatchlist}
             isWatchlist={true}
           />
         </div>

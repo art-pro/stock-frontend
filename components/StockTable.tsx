@@ -12,10 +12,13 @@ interface StockTableProps {
   onPriceUpdate: (id: number, newPrice: number) => void;
   onFieldUpdate: (id: number, field: string, value: number) => void;
   updatingStocks?: Array<{ stockId: number; source: 'grok' | 'alphavantage' }>;
+  selectedStockIds?: number[];
+  onSelectStock?: (id: number) => void;
+  onSelectAll?: (selected: boolean) => void;
   isWatchlist?: boolean;
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], isWatchlist = false }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
@@ -133,6 +136,17 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-800">
             <tr>
+              <th className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                {onSelectAll && (
+                  <input
+                    type="checkbox"
+                    checked={stocks.length > 0 && selectedStockIds.length === stocks.length}
+                    onChange={(e) => onSelectAll(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500 focus:ring-offset-gray-800 cursor-pointer"
+                    title={selectedStockIds.length === stocks.length ? "Unselect all" : "Select all"}
+                  />
+                )}
+              </th>
               <th
                 className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('ticker')}
@@ -274,6 +288,17 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               
               return (
                 <tr key={stock.id} className={`${getRowClass(stock.assessment)} ${isAnyUpdating ? 'opacity-60' : ''}`}>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
+                    {onSelectStock && (
+                      <input
+                        type="checkbox"
+                        checked={selectedStockIds.includes(stock.id)}
+                        onChange={() => onSelectStock(stock.id)}
+                        className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500 focus:ring-offset-gray-800 cursor-pointer"
+                        disabled={isAnyUpdating}
+                      />
+                    )}
+                  </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-primary-400">
                     <div className="flex items-center gap-2" title={`Data Source: ${stock.data_source || 'N/A'}\nLast Updated: ${stock.last_updated ? new Date(stock.last_updated).toLocaleString() : 'Never'}`}>
                       {stock.ticker}
