@@ -68,6 +68,7 @@ export interface Stock {
   update_frequency: string;
   data_source: string;
   fair_value_source: string;
+  comment: string;
   last_updated: string;
 }
 
@@ -129,7 +130,16 @@ export const stockAPI = {
   updateAll: () => api.post('/stocks/update-all'),
   updateSingle: (id: number) => api.post(`/stocks/${id}/update`),
   updatePrice: (id: number, newPrice: number) => api.patch(`/stocks/${id}/price`, { current_price: newPrice }),
-  updateField: (id: number, field: string, value: number) => api.patch(`/stocks/${id}/field`, { field, value }),
+  updateField: (id: number, field: string, value: number | string) => {
+    const payload: any = { field };
+    if (typeof value === 'string') {
+      payload.string_value = value;
+      payload.value = value;
+    } else {
+      payload.value = value;
+    }
+    return api.patch(`/stocks/${id}/field`, payload);
+  },
   getHistory: (id: number) => api.get<StockHistory[]>(`/stocks/${id}/history`),
   exportCSV: () => api.get('/export/csv', { responseType: 'blob' }),
   importCSV: (file: File) => {

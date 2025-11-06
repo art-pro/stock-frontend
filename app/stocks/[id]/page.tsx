@@ -15,7 +15,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 ChartJS.register(
   CategoryScale,
@@ -35,6 +35,9 @@ export default function StockDetailPage() {
   const [stock, setStock] = useState<Stock | null>(null);
   const [history, setHistory] = useState<StockHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -59,6 +62,122 @@ export default function StockDetailPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditField = (field: string, currentValue: any) => {
+    setEditingField(field);
+    setEditValue(currentValue?.toString() || '');
+  };
+
+  const handleSaveField = async (field: string, isStringField: boolean = false) => {
+    if (!stock) return;
+    
+    try {
+      setSaving(true);
+      
+      let payload: any = { field };
+      
+      if (isStringField) {
+        payload.string_value = editValue;
+        payload.value = editValue;
+      } else {
+        const numValue = parseFloat(editValue);
+        if (isNaN(numValue)) {
+          alert('Invalid number');
+          return;
+        }
+        payload.value = numValue;
+      }
+      
+      const response = await stockAPI.updateField(id, field, isStringField ? editValue : parseFloat(editValue));
+      setStock(response.data);
+      setEditingField(null);
+      setEditValue('');
+    } catch (err: any) {
+      console.error('Error updating field:', err);
+      alert(`Failed to update ${field}: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  const EditableField = ({ 
+    field, 
+    label, 
+    value, 
+    suffix = '', 
+    isString = false,
+    multiline = false 
+  }: { 
+    field: string; 
+    label: string; 
+    value: any; 
+    suffix?: string;
+    isString?: boolean;
+    multiline?: boolean;
+  }) => {
+    const isEditing = editingField === field;
+    
+    return (
+      <div>
+        <p className="text-sm text-gray-400 mb-1">{label}</p>
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            {multiline ? (
+              <textarea
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm min-h-[60px]"
+                autoFocus
+              />
+            ) : (
+              <input
+                type={isString ? 'text' : 'number'}
+                step={isString ? undefined : 'any'}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm"
+                autoFocus
+              />
+            )}
+            <button
+              onClick={() => handleSaveField(field, isString)}
+              disabled={saving}
+              className="p-1 text-green-400 hover:text-green-300 disabled:opacity-50"
+              title="Save"
+            >
+              <CheckIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              disabled={saving}
+              className="p-1 text-red-400 hover:text-red-300 disabled:opacity-50"
+              title="Cancel"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between group">
+            <p className="text-lg font-semibold text-white">
+              {isString ? value : (typeof value === 'number' ? value.toFixed(2) : 'N/A')} {suffix}
+            </p>
+            <button
+              onClick={() => handleEditField(field, value)}
+              className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-400 transition-opacity"
+              title={`Edit ${label}`}
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -185,10 +304,88 @@ export default function StockDetailPage() {
             <ArrowLeftIcon className="h-5 w-5 mr-2" />
             Back to Dashboard
           </button>
-          <h1 className="text-2xl font-bold text-white">
-            {stock.ticker} - {stock.company_name}
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">{stock.sector}</p>
+          <div className="flex items-center gap-3 group">
+            <h1 className="text-2xl font-bold text-white">
+              {stock.ticker} - {editingField === 'company_name' ? (
+                <span className="inline-flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    className="bg-gray-700 text-white rounded px-2 py-1 text-xl"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleSaveField('company_name', true)}
+                    disabled={saving}
+                    className="p-1 text-green-400 hover:text-green-300"
+                    title="Save"
+                  >
+                    <CheckIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                    className="p-1 text-red-400 hover:text-red-300"
+                    title="Cancel"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </span>
+              ) : (
+                <>
+                  {stock.company_name}
+                  <button
+                    onClick={() => handleEditField('company_name', stock.company_name)}
+                    className="ml-2 opacity-0 group-hover:opacity-100 inline-block p-1 text-gray-400 hover:text-primary-400 transition-opacity"
+                    title="Edit company name"
+                  >
+                    <PencilIcon className="h-4 w-4 inline" />
+                  </button>
+                </>
+              )}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 mt-1 group">
+            {editingField === 'sector' ? (
+              <span className="inline-flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
+                  autoFocus
+                />
+                <button
+                  onClick={() => handleSaveField('sector', true)}
+                  disabled={saving}
+                  className="p-1 text-green-400 hover:text-green-300"
+                  title="Save"
+                >
+                  <CheckIcon className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  className="p-1 text-red-400 hover:text-red-300"
+                  title="Cancel"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              </span>
+            ) : (
+              <>
+                <p className="text-sm text-gray-400">{stock.sector}</p>
+                <button
+                  onClick={() => handleEditField('sector', stock.sector)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-400 transition-opacity"
+                  title="Edit sector"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -197,17 +394,21 @@ export default function StockDetailPage() {
         {/* Key Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Current Price</h3>
-            <p className="text-2xl font-bold text-white">
-              {stock.current_price.toFixed(2)} {stock.currency}
-            </p>
+            <EditableField 
+              field="current_price" 
+              label="Current Price" 
+              value={stock.current_price} 
+              suffix={stock.currency}
+            />
           </div>
 
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Fair Value</h3>
-            <p className="text-2xl font-bold text-white">
-              {stock.fair_value.toFixed(2)} {stock.currency}
-            </p>
+            <EditableField 
+              field="fair_value" 
+              label="Fair Value" 
+              value={stock.fair_value} 
+              suffix={stock.currency}
+            />
           </div>
 
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
@@ -219,6 +420,7 @@ export default function StockDetailPage() {
             }`}>
               {stock.expected_value.toFixed(2)}%
             </p>
+            <p className="text-xs text-gray-500 mt-1">Calculated (not editable)</p>
           </div>
 
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
@@ -231,6 +433,7 @@ export default function StockDetailPage() {
             }`}>
               {stock.assessment}
             </p>
+            <p className="text-xs text-gray-500 mt-1">Calculated (not editable)</p>
           </div>
         </div>
 
@@ -238,77 +441,90 @@ export default function StockDetailPage() {
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-bold text-white mb-4">Detailed Metrics</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Calculated field - not editable */}
             <div>
-              <p className="text-sm text-gray-400">Upside Potential</p>
+              <p className="text-sm text-gray-400 mb-1">Upside Potential</p>
               <p className="text-lg font-semibold text-green-400">
                 {stock.upside_potential.toFixed(2)}%
               </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
+            
+            <EditableField 
+              field="downside_risk" 
+              label="Downside Risk" 
+              value={stock.downside_risk} 
+              suffix="%"
+            />
+            
+            <EditableField 
+              field="probability_positive" 
+              label="Probability Positive (p)" 
+              value={stock.probability_positive}
+            />
+            
+            <EditableField 
+              field="beta" 
+              label="Beta" 
+              value={stock.beta}
+            />
+            
+            <EditableField 
+              field="volatility" 
+              label="Volatility (σ)" 
+              value={stock.volatility} 
+              suffix="%"
+            />
+            
+            <EditableField 
+              field="pe_ratio" 
+              label="P/E Ratio" 
+              value={stock.pe_ratio}
+            />
+            
+            <EditableField 
+              field="eps_growth_rate" 
+              label="EPS Growth Rate" 
+              value={stock.eps_growth_rate} 
+              suffix="%"
+            />
+            
+            <EditableField 
+              field="debt_to_ebitda" 
+              label="Debt to EBITDA" 
+              value={stock.debt_to_ebitda}
+            />
+            
+            <EditableField 
+              field="dividend_yield" 
+              label="Dividend Yield" 
+              value={stock.dividend_yield} 
+              suffix="%"
+            />
+            
+            {/* Calculated fields - not editable */}
             <div>
-              <p className="text-sm text-gray-400">Downside Risk</p>
-              <p className="text-lg font-semibold text-red-400">
-                {stock.downside_risk.toFixed(2)}%
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">Probability Positive (p)</p>
-              <p className="text-lg font-semibold text-white">
-                {stock.probability_positive.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">Beta</p>
-              <p className="text-lg font-semibold text-white">
-                {stock.beta.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">Volatility (σ)</p>
-              <p className="text-lg font-semibold text-white">
-                {stock.volatility.toFixed(2)}%
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">P/E Ratio</p>
-              <p className="text-lg font-semibold text-white">
-                {stock.pe_ratio.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">EPS Growth Rate</p>
-              <p className="text-lg font-semibold text-white">
-                {stock.eps_growth_rate.toFixed(2)}%
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">Debt to EBITDA</p>
-              <p className="text-lg font-semibold text-white">
-                {stock.debt_to_ebitda.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">Dividend Yield</p>
-              <p className="text-lg font-semibold text-white">
-                {stock.dividend_yield.toFixed(2)}%
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">b Ratio</p>
+              <p className="text-sm text-gray-400 mb-1">b Ratio</p>
               <p className="text-lg font-semibold text-white">
                 {stock.b_ratio.toFixed(2)}
               </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
+            
             <div>
-              <p className="text-sm text-gray-400">Kelly f*</p>
+              <p className="text-sm text-gray-400 mb-1">Kelly f*</p>
               <p className="text-lg font-semibold text-white">
                 {stock.kelly_fraction.toFixed(2)}%
               </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
+            
             <div>
-              <p className="text-sm text-gray-400">½-Kelly Suggested</p>
+              <p className="text-sm text-gray-400 mb-1">½-Kelly Suggested</p>
               <p className="text-lg font-semibold text-primary-400">
                 {stock.half_kelly_suggested.toFixed(2)}%
               </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
           </div>
         </div>
@@ -317,57 +533,80 @@ export default function StockDetailPage() {
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-bold text-white mb-4">Position Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <EditableField 
+              field="shares_owned" 
+              label="Shares Owned" 
+              value={stock.shares_owned}
+            />
+            
+            <EditableField 
+              field="avg_price_local" 
+              label="Average Entry Price" 
+              value={stock.avg_price_local} 
+              suffix={stock.currency}
+            />
+            
             <div>
-              <p className="text-sm text-gray-400">Shares Owned</p>
-              <p className="text-lg font-semibold text-white">
-                {stock.shares_owned}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">Average Entry Price</p>
-              <p className="text-lg font-semibold text-white">
-                {stock.avg_price_local.toFixed(2)} {stock.currency}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400">Current Value (USD)</p>
+              <p className="text-sm text-gray-400 mb-1">Current Value (USD)</p>
               <p className="text-lg font-semibold text-white">
                 ${stock.current_value_usd.toFixed(2)}
               </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
+            
             <div>
-              <p className="text-sm text-gray-400">Portfolio Weight</p>
+              <p className="text-sm text-gray-400 mb-1">Portfolio Weight</p>
               <p className="text-lg font-semibold text-white">
                 {stock.weight.toFixed(2)}%
               </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
+            
             <div>
-              <p className="text-sm text-gray-400">Unrealized P&L</p>
+              <p className="text-sm text-gray-400 mb-1">Unrealized P&L</p>
               <p className={`text-lg font-semibold ${
                 stock.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'
               }`}>
                 ${stock.unrealized_pnl.toFixed(2)}
               </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
+            
             <div>
-              <p className="text-sm text-gray-400">Buy Zone (Min)</p>
+              <p className="text-sm text-gray-400 mb-1">Buy Zone (Min)</p>
               <p className="text-lg font-semibold text-white">
                 {stock.buy_zone_min.toFixed(2)} {stock.currency}
               </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
+            
             <div>
-              <p className="text-sm text-gray-400">Buy Zone (Max)</p>
+              <p className="text-sm text-gray-400 mb-1">Buy Zone (Max)</p>
               <p className="text-lg font-semibold text-white">
                 {stock.buy_zone_max.toFixed(2)} {stock.currency}
               </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
+            
             <div>
-              <p className="text-sm text-gray-400">Last Updated</p>
+              <p className="text-sm text-gray-400 mb-1">Last Updated</p>
               <p className="text-lg font-semibold text-white">
                 {new Date(stock.last_updated).toLocaleDateString()}
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Comment Section */}
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+          <h2 className="text-xl font-bold text-white mb-4">Notes & Comments</h2>
+          <EditableField 
+            field="comment" 
+            label="Personal notes, memos, and analysis for this stock"
+            value={stock.comment || 'No comments yet. Click edit to add notes.'} 
+            isString={true}
+            multiline={true}
+          />
         </div>
 
         {/* Historical Chart */}
