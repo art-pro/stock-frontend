@@ -12,9 +12,10 @@ interface StockTableProps {
   onPriceUpdate: (id: number, newPrice: number) => void;
   onFieldUpdate: (id: number, field: string, value: number) => void;
   updatingStockIds?: number[];
+  isWatchlist?: boolean;
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStockIds = [] }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStockIds = [], isWatchlist = false }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
@@ -157,13 +158,15 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               >
                 Beta
               </th>
-              <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
-                onClick={() => handleSort('avg_price_local')}
-                title="Your average entry/purchase price"
-              >
-                Avg Price
-              </th>
+              {!isWatchlist && (
+                <th
+                  className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                  onClick={() => handleSort('avg_price_local')}
+                  title="Your average entry/purchase price"
+                >
+                  Avg Price
+                </th>
+              )}
               <th
                 className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('current_price')}
@@ -171,12 +174,14 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               >
                 Current Price
               </th>
-              <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap"
-                title="Total position value (Current Price × Shares)"
-              >
-                Total Value
-              </th>
+              {!isWatchlist && (
+                <th
+                  className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap"
+                  title="Total position value (Current Price × Shares)"
+                >
+                  Total Value
+                </th>
+              )}
               <th
                 className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('fair_value')}
@@ -226,24 +231,30 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               >
                 ½-Kelly %
               </th>
-              <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
-                onClick={() => handleSort('shares_owned')}
-              >
-                Shares
-              </th>
-              <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
-                onClick={() => handleSort('weight')}
-              >
-                Weight %
-              </th>
-              <th
-                className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
-                onClick={() => handleSort('unrealized_pnl')}
-              >
-                P&L
-              </th>
+              {!isWatchlist && (
+                <th
+                  className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                  onClick={() => handleSort('shares_owned')}
+                >
+                  Shares
+                </th>
+              )}
+              {!isWatchlist && (
+                <th
+                  className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                  onClick={() => handleSort('weight')}
+                >
+                  Weight %
+                </th>
+              )}
+              {!isWatchlist && (
+                <th
+                  className="px-3 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                  onClick={() => handleSort('unrealized_pnl')}
+                >
+                  P&L
+                </th>
+              )}
               <th
                 className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                 onClick={() => handleSort('assessment')}
@@ -282,37 +293,39 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right" title={`Beta: ${formatNumber(stock.beta, 2)}`}>
                     {formatNumber(stock.beta, 2)}
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                    {isEditing(stock.id, 'avg_price_local') ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveField();
-                            if (e.key === 'Escape') handleCancelEdit();
-                          }}
-                        />
-                        <button onClick={handleSaveField} className="text-green-400 hover:text-green-300 text-xs">Save</button>
-                        <button onClick={handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-end gap-2">
-                        <span>{formatNumber(stock.avg_price_local)} {stock.avg_price_local > 0 ? stock.currency : ''}</span>
-                        <button
-                          onClick={() => handleEditField(stock, 'avg_price_local', stock.avg_price_local)}
-                          className="text-gray-400 hover:text-primary-400 transition-colors"
-                          title="Edit average price"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
+                  {!isWatchlist && (
+                    <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                      {isEditing(stock.id, 'avg_price_local') ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveField();
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                          />
+                          <button onClick={handleSaveField} className="text-green-400 hover:text-green-300 text-xs">Save</button>
+                          <button onClick={handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-2">
+                          <span>{formatNumber(stock.avg_price_local)} {stock.avg_price_local > 0 ? stock.currency : ''}</span>
+                          <button
+                            onClick={() => handleEditField(stock, 'avg_price_local', stock.avg_price_local)}
+                            className="text-gray-400 hover:text-primary-400 transition-colors"
+                            title="Edit average price"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  )}
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
                     {isEditing(stock.id, 'current_price') ? (
                       <div className="flex items-center justify-end gap-2">
@@ -346,9 +359,11 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                       </div>
                     )}
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right font-semibold">
-                    {stock.current_price > 0 ? `${formatNumber(stock.current_price * stock.shares_owned)} ${stock.currency}` : 'N/A'}
-                  </td>
+                  {!isWatchlist && (
+                    <td className="px-3 py-4 whitespace-nowrap text-sm text-right font-semibold">
+                      {stock.current_price > 0 ? `${formatNumber(stock.current_price * stock.shares_owned)} ${stock.currency}` : 'N/A'}
+                    </td>
+                  )}
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
                     {isEditing(stock.id, 'fair_value') ? (
                       <div className="flex items-center justify-end gap-2">
@@ -405,46 +420,52 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
                     {formatPercentage(stock.half_kelly_suggested, 1)}
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                    {isEditing(stock.id, 'shares_owned') ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <input
-                          type="number"
-                          step="1"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveField();
-                            if (e.key === 'Escape') handleCancelEdit();
-                          }}
-                        />
-                        <button onClick={handleSaveField} className="text-green-400 hover:text-green-300 text-xs">Save</button>
-                        <button onClick={handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-end gap-2">
-                        <span>{stock.shares_owned || 'N/A'}</span>
-                        <button
-                          onClick={() => handleEditField(stock, 'shares_owned', stock.shares_owned)}
-                          className="text-gray-400 hover:text-primary-400 transition-colors"
-                          title="Edit shares owned"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
-                    {formatPercentage(stock.weight, 1)}
-                  </td>
-                  <td className={`px-3 py-4 whitespace-nowrap text-sm text-right font-semibold ${
-                    stock.unrealized_pnl === 0 ? 'text-gray-400' :
-                    stock.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {formatCurrency(stock.unrealized_pnl)}
-                  </td>
+                  {!isWatchlist && (
+                    <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                      {isEditing(stock.id, 'shares_owned') ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <input
+                            type="number"
+                            step="1"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveField();
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                          />
+                          <button onClick={handleSaveField} className="text-green-400 hover:text-green-300 text-xs">Save</button>
+                          <button onClick={handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-2">
+                          <span>{stock.shares_owned || 'N/A'}</span>
+                          <button
+                            onClick={() => handleEditField(stock, 'shares_owned', stock.shares_owned)}
+                            className="text-gray-400 hover:text-primary-400 transition-colors"
+                            title="Edit shares owned"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  )}
+                  {!isWatchlist && (
+                    <td className="px-3 py-4 whitespace-nowrap text-sm text-right">
+                      {formatPercentage(stock.weight, 1)}
+                    </td>
+                  )}
+                  {!isWatchlist && (
+                    <td className={`px-3 py-4 whitespace-nowrap text-sm text-right font-semibold ${
+                      stock.unrealized_pnl === 0 ? 'text-gray-400' :
+                      stock.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {formatCurrency(stock.unrealized_pnl)}
+                    </td>
+                  )}
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       stock.assessment === 'N/A' ? 'bg-gray-700 text-gray-400' :
@@ -485,7 +506,11 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
 
       {sortedStocks.length === 0 && (
         <div className="text-center py-12 text-gray-400">
-          <p>No stocks found. Add your first stock to get started.</p>
+          <p>
+            {isWatchlist 
+              ? 'No stocks in watchlist. Add stocks with 0 shares to watch them.'
+              : 'No stocks in portfolio. Add stocks with shares to track your investments.'}
+          </p>
         </div>
       )}
     </div>

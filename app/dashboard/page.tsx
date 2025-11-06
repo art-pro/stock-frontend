@@ -411,15 +411,57 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Stock Table */}
-        <StockTable
-          stocks={stocks}
-          onDelete={handleDelete}
-          onUpdate={handleUpdateSingle}
-          onPriceUpdate={handlePriceUpdate}
-          onFieldUpdate={handleFieldUpdate}
-          updatingStockIds={updatingStockIds}
-        />
+        {/* Info Card */}
+        <div className="mb-6 bg-blue-900 bg-opacity-20 border border-blue-700 rounded-lg p-4">
+          <p className="text-sm text-blue-200">
+            <span className="font-semibold">💡 Tip:</span> Your stocks are organized into two sections:
+            <span className="font-medium ml-1">Portfolio</span> shows stocks you own (shares &gt; 0), and
+            <span className="font-medium ml-1">Watchlist</span> shows stocks you&rsquo;re tracking (0 shares).
+            Edit shares to move stocks between sections.
+          </p>
+        </div>
+
+        {/* Portfolio Section (Owned Stocks) */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white">📈 Portfolio (Owned Stocks)</h2>
+            <span className="text-sm text-gray-400">
+              {stocks.filter(s => s.shares_owned > 0).length} stocks
+            </span>
+          </div>
+          <StockTable
+            stocks={stocks.filter(s => s.shares_owned > 0)}
+            onDelete={handleDelete}
+            onUpdate={handleUpdateSingle}
+            onPriceUpdate={handlePriceUpdate}
+            onFieldUpdate={handleFieldUpdate}
+            updatingStockIds={updatingStockIds}
+          />
+        </div>
+
+        {/* Divider */}
+        {stocks.filter(s => s.shares_owned > 0).length > 0 && stocks.filter(s => s.shares_owned === 0 || !s.shares_owned).length > 0 && (
+          <div className="my-8 border-t border-gray-700"></div>
+        )}
+
+        {/* Watchlist Section (Non-Owned Stocks) */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white">👁️ Watchlist</h2>
+            <span className="text-sm text-gray-400">
+              {stocks.filter(s => s.shares_owned === 0 || !s.shares_owned).length} stocks
+            </span>
+          </div>
+          <StockTable
+            stocks={stocks.filter(s => s.shares_owned === 0 || !s.shares_owned)}
+            onDelete={handleDelete}
+            onUpdate={handleUpdateSingle}
+            onPriceUpdate={handlePriceUpdate}
+            onFieldUpdate={handleFieldUpdate}
+            updatingStockIds={updatingStockIds}
+            isWatchlist={true}
+          />
+        </div>
       </main>
 
       {/* Add Stock Modal */}
