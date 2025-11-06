@@ -41,6 +41,8 @@ export default function StockDetailPage() {
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalSource, setModalSource] = useState<'alphavantage' | 'grok'>('alphavantage');
+  const [updatingAlphaVantage, setUpdatingAlphaVantage] = useState(false);
+  const [updatingGrok, setUpdatingGrok] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -113,6 +115,35 @@ export default function StockDetailPage() {
   const openDataSourceModal = (source: 'alphavantage' | 'grok') => {
     setModalSource(source);
     setModalOpen(true);
+  };
+
+  const handleUpdateFromSource = async (source: 'alphavantage' | 'grok') => {
+    if (!stock) return;
+    
+    try {
+      if (source === 'alphavantage') {
+        setUpdatingAlphaVantage(true);
+      } else {
+        setUpdatingGrok(true);
+      }
+      
+      const response = await stockAPI.updateSingle(stock.id, source);
+      setStock(response.data);
+      
+      // Show success message
+      const sourceName = source === 'alphavantage' ? 'Alpha Vantage' : 'Grok AI';
+      alert(`Successfully updated from ${sourceName}`);
+    } catch (err: any) {
+      console.error('Error updating stock:', err);
+      const sourceName = source === 'alphavantage' ? 'Alpha Vantage' : 'Grok AI';
+      alert(`Failed to update from ${sourceName}: ${err.response?.data?.error || err.message}`);
+    } finally {
+      if (source === 'alphavantage') {
+        setUpdatingAlphaVantage(false);
+      } else {
+        setUpdatingGrok(false);
+      }
+    }
   };
 
   const EditableField = ({ 
@@ -465,6 +496,33 @@ export default function StockDetailPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Update Buttons */}
+        <div className="flex gap-4 mb-6">
+          <button
+            onClick={() => handleUpdateFromSource('alphavantage')}
+            disabled={updatingAlphaVantage || updatingGrok}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+            title="Fetch latest data from Alpha Vantage"
+          >
+            <svg className={`w-5 h-5 ${updatingAlphaVantage ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{updatingAlphaVantage ? 'Updating...' : 'Update from Alpha Vantage'}</span>
+          </button>
+          
+          <button
+            onClick={() => handleUpdateFromSource('grok')}
+            disabled={updatingGrok || updatingAlphaVantage}
+            className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+            title="Fetch latest analysis from Grok AI"
+          >
+            <svg className={`w-5 h-5 ${updatingGrok ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span>{updatingGrok ? 'Updating...' : 'Update from Grok AI'}</span>
+          </button>
+        </div>
+
         {/* Key Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
