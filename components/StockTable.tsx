@@ -300,10 +300,28 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                     )}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-primary-400">
-                    <div className="flex items-center gap-2" title={`Data Source: ${stock.data_source || 'N/A'}\nLast Updated: ${stock.last_updated ? new Date(stock.last_updated).toLocaleString() : 'Never'}`}>
-                      {stock.ticker}
+                    <div className="flex items-center gap-2">
+                      <span title={`Data Source: ${stock.data_source || 'N/A'}\nLast Updated: ${stock.last_updated ? new Date(stock.last_updated).toLocaleString() : 'Never'}`}>
+                        {stock.ticker}
+                      </span>
                       {isAnyUpdating && (
                         <ArrowPathIcon className="h-4 w-4 animate-spin text-primary-400" />
+                      )}
+                      {stock.data_source && (
+                        <span 
+                          className={`text-xs px-1.5 py-0.5 rounded ${
+                            stock.data_source.includes('Alpha Vantage') 
+                              ? 'bg-blue-900 text-blue-200 border border-blue-700' 
+                              : stock.data_source.includes('Grok')
+                              ? 'bg-purple-900 text-purple-200 border border-purple-700'
+                              : 'bg-gray-700 text-gray-300 border border-gray-600'
+                          }`}
+                          title={`Data Source: ${stock.data_source}\nLast Updated: ${stock.last_updated ? new Date(stock.last_updated).toLocaleString() : 'Never'}`}
+                        >
+                          {stock.data_source.includes('Alpha Vantage') ? '📊 AV' : 
+                           stock.data_source.includes('Grok') ? '🤖 Grok' : 
+                           stock.data_source || 'N/A'}
+                        </span>
                       )}
                     </div>
                   </td>
