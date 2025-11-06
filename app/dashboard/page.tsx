@@ -128,13 +128,18 @@ export default function DashboardPage() {
   };
 
   const handleUpdateSingle = async (id: number, source?: 'grok' | 'alphavantage') => {
+    console.log(`🔄 Starting update for stock ${id} from ${source}`);
     try {
       setUpdatingStockIds(prev => [...prev, id]);
-      await stockAPI.updateSingle(id, source);
+      const response = await stockAPI.updateSingle(id, source);
+      console.log(`✅ Update response:`, response.data);
       // Small delay to ensure backend has processed
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`📊 Fetching fresh data...`);
       await fetchData();
+      console.log(`✅ Data refresh complete`);
     } catch (err: any) {
+      console.error(`❌ Update failed:`, err);
       if (err.response?.status === 404) {
         alert('Stock not found. The database may have been reset. Refreshing the page...');
         await fetchData();
@@ -143,6 +148,7 @@ export default function DashboardPage() {
       }
     } finally {
       setUpdatingStockIds(prev => prev.filter(stockId => stockId !== id));
+      console.log(`🏁 Update complete for stock ${id}`);
     }
   };
 
@@ -243,20 +249,45 @@ export default function DashboardPage() {
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              {/* Grok API Status Indicator */}
+              {/* API Status Indicators */}
               {apiStatus && (
-                <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-700">
-                  <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
+                  {/* Alpha Vantage Status */}
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-700">
+                    <span className="text-xs">📊</span>
+                    {apiStatus.alpha_vantage?.status === 'connected' && (
+                      <>
+                        <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
+                        <span className="text-sm text-blue-400 font-medium">Alpha Vantage</span>
+                      </>
+                    )}
+                    {apiStatus.alpha_vantage?.status === 'not_configured' && (
+                      <>
+                        <div className="h-2 w-2 rounded-full bg-gray-500"></div>
+                        <span className="text-sm text-gray-400 font-medium">AV Off</span>
+                      </>
+                    )}
+                    {apiStatus.alpha_vantage?.status === 'error' && (
+                      <>
+                        <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                        <span className="text-sm text-red-400 font-medium">AV Error</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Grok Status */}
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-700">
+                    <span className="text-xs">🤖</span>
                     {apiStatus.grok.status === 'connected' && (
                       <>
-                        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-sm text-green-400 font-medium">Grok Connected</span>
+                        <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse"></div>
+                        <span className="text-sm text-purple-400 font-medium">Grok AI</span>
                       </>
                     )}
                     {apiStatus.grok.status === 'not_configured' && (
                       <>
                         <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
-                        <span className="text-sm text-yellow-400 font-medium">Mock Data</span>
+                        <span className="text-sm text-yellow-400 font-medium">Mock</span>
                       </>
                     )}
                     {apiStatus.grok.status === 'error' && (
@@ -266,11 +297,12 @@ export default function DashboardPage() {
                       </>
                     )}
                   </div>
+                  
                   <button
                     onClick={handleTestAPI}
                     disabled={checkingAPI}
-                    className="text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-                    title="Test Grok connection"
+                    className="text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50 px-2 py-1 bg-gray-700 rounded"
+                    title="Test API connections"
                   >
                     {checkingAPI ? '...' : 'Test'}
                   </button>
@@ -314,14 +346,47 @@ export default function DashboardPage() {
         {metrics && <PortfolioSummary metrics={metrics} />}
         
         {/* API Status Info */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 space-y-3">
           <div className="text-sm text-gray-400">
             Stocks loaded: {stocks.length}
           </div>
+          
+          {/* Alpha Vantage Status Messages */}
+          {apiStatus && apiStatus.alpha_vantage?.status === 'not_configured' && (
+            <div className="flex items-center space-x-2 px-3 py-2 bg-gray-900 bg-opacity-30 border border-gray-700 rounded-lg">
+              <span className="text-sm text-gray-300">
+                📊 Alpha Vantage not configured. Add <code className="px-1 py-0.5 bg-gray-800 rounded">ALPHA_VANTAGE_API_KEY</code> for real-time financial data.
+              </span>
+              <a
+                href="https://www.alphavantage.co/support/#api-key"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-400 hover:text-blue-300 underline"
+              >
+                Get Free Key
+              </a>
+            </div>
+          )}
+          {apiStatus && apiStatus.alpha_vantage?.status === 'connected' && (
+            <div className="flex items-center space-x-2 px-3 py-2 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg">
+              <span className="text-sm text-blue-300">
+                ✓ Alpha Vantage Connected - Real-time financial data active
+              </span>
+            </div>
+          )}
+          {apiStatus && apiStatus.alpha_vantage?.status === 'error' && (
+            <div className="flex items-center space-x-2 px-3 py-2 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg">
+              <span className="text-sm text-red-300">
+                ⚠️ Alpha Vantage Error: {apiStatus.alpha_vantage.error || 'Connection failed'}
+              </span>
+            </div>
+          )}
+
+          {/* Grok Status Messages */}
           {apiStatus && apiStatus.grok.status === 'not_configured' && (
             <div className="flex items-center space-x-2 px-3 py-2 bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded-lg">
               <span className="text-sm text-yellow-300">
-                ℹ️ Using mock data. Add <code className="px-1 py-0.5 bg-gray-800 rounded">XAI_API_KEY</code> to .env for real Grok data.
+                🤖 Using mock data. Add <code className="px-1 py-0.5 bg-gray-800 rounded">XAI_API_KEY</code> to .env for Grok AI analytics.
               </span>
               <a
                 href="https://console.x.ai/"
@@ -334,9 +399,9 @@ export default function DashboardPage() {
             </div>
           )}
           {apiStatus && apiStatus.grok.status === 'connected' && (
-            <div className="flex items-center space-x-2 px-3 py-2 bg-green-900 bg-opacity-30 border border-green-700 rounded-lg">
-              <span className="text-sm text-green-300">
-                ✓ Connected to Grok - Real-time data active
+            <div className="flex items-center space-x-2 px-3 py-2 bg-purple-900 bg-opacity-30 border border-purple-700 rounded-lg">
+              <span className="text-sm text-purple-300">
+                ✓ Grok AI Connected - Analytical data active
               </span>
             </div>
           )}
