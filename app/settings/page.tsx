@@ -231,9 +231,10 @@ export default function SettingsPage() {
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
+                  <option value="manually">Manually</option>
                 </select>
                 <p className="text-xs text-gray-400 mt-1">
-                  How often stocks should be automatically updated
+                  How often stocks should be updated (Manually = only when you trigger updates)
                 </p>
               </div>
 
