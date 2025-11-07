@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { stockAPI, Stock, StockHistory } from '@/lib/api';
 import DataSourceModal from '@/components/DataSourceModal';
+import TooltipIcon from '@/components/Tooltip';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -157,7 +158,8 @@ export default function StockDetailPage() {
     value, 
     suffix = '', 
     isString = false,
-    multiline = false 
+    multiline = false,
+    tooltip = ''
   }: { 
     field: string; 
     label: string; 
@@ -165,6 +167,7 @@ export default function StockDetailPage() {
     suffix?: string;
     isString?: boolean;
     multiline?: boolean;
+    tooltip?: string;
   }) => {
     const isEditing = editingField === field;
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -181,7 +184,10 @@ export default function StockDetailPage() {
     
     return (
       <div dir="ltr" style={{ direction: 'ltr' }}>
-        <p className="text-sm text-gray-400 mb-1">{label}</p>
+        <p className="text-sm text-gray-400 mb-1 flex items-center">
+          {label}
+          {tooltip && <TooltipIcon text={tooltip} />}
+        </p>
         {isEditing ? (
           <div className="flex items-center gap-2" dir="ltr">
             {multiline ? (
@@ -626,6 +632,7 @@ export default function StockDetailPage() {
               label="Current Price" 
               value={stock.current_price} 
               suffix={stock.currency}
+              tooltip="The current market price of the stock. This is what you would pay to buy one share right now."
             />
           </div>
 
@@ -635,11 +642,15 @@ export default function StockDetailPage() {
               label="Fair Value" 
               value={stock.fair_value} 
               suffix={stock.currency}
+              tooltip="The estimated true value of the stock based on analysis. If the current price is below this, the stock might be undervalued."
             />
           </div>
 
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Expected Value</h3>
+            <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center">
+              Expected Value
+              <TooltipIcon text="The probability-weighted average return. Combines upside potential, downside risk, and probability of success. Above 7% is attractive." />
+            </h3>
             <p className={`text-2xl font-bold ${
               stock.expected_value > 7 ? 'text-green-400' : 
               stock.expected_value > 0 ? 'text-yellow-400' : 
@@ -651,7 +662,10 @@ export default function StockDetailPage() {
           </div>
 
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h3 className="text-sm font-medium text-gray-400 mb-2">Assessment</h3>
+            <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center">
+              Assessment
+              <TooltipIcon text="Action recommendation based on Expected Value. Add: EV > 7% (buy more), Hold: EV 0-7% (keep position), Trim: EV 0 to -3% (reduce position), Sell: EV < -3% (exit position)." />
+            </h3>
             <p className={`text-2xl font-bold ${
               stock.assessment === 'Add' ? 'text-green-400' :
               stock.assessment === 'Hold' ? 'text-gray-300' :
@@ -762,7 +776,10 @@ export default function StockDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Calculated field - not editable */}
             <div>
-              <p className="text-sm text-gray-400 mb-1">Upside Potential</p>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Upside Potential
+                <TooltipIcon text="The potential percentage gain if the stock reaches its fair value. Calculated as (Fair Value - Current Price) / Current Price." />
+              </p>
               <p className="text-lg font-semibold text-green-400">
                 {stock.upside_potential.toFixed(2)}%
               </p>
@@ -774,18 +791,21 @@ export default function StockDetailPage() {
               label="Downside Risk" 
               value={stock.downside_risk} 
               suffix="%"
+              tooltip="The estimated percentage loss if things go badly. A -20% downside risk means you could lose 20% of your investment in a worst-case scenario."
             />
             
             <EditableField 
               field="probability_positive" 
               label="Probability Positive (p)" 
               value={stock.probability_positive}
+              tooltip="The likelihood (0 to 1) that this investment will be profitable. 0.7 means 70% chance of making money."
             />
             
             <EditableField 
               field="beta" 
               label="Beta" 
               value={stock.beta}
+              tooltip="Measures how volatile the stock is compared to the market. Beta > 1 means more volatile than market, < 1 means less volatile."
             />
             
             <EditableField 
@@ -793,12 +813,14 @@ export default function StockDetailPage() {
               label="Volatility (σ)" 
               value={stock.volatility} 
               suffix="%"
+              tooltip="How much the stock price typically moves up and down. Higher volatility means bigger price swings and more risk."
             />
             
             <EditableField 
               field="pe_ratio" 
               label="P/E Ratio" 
               value={stock.pe_ratio}
+              tooltip="Price-to-Earnings ratio. Shows how much investors pay for each dollar of earnings. Lower might mean undervalued."
             />
             
             <EditableField 
@@ -806,12 +828,14 @@ export default function StockDetailPage() {
               label="EPS Growth Rate" 
               value={stock.eps_growth_rate} 
               suffix="%"
+              tooltip="How fast the company's earnings per share are growing annually. Higher growth often justifies higher stock prices."
             />
             
             <EditableField 
               field="debt_to_ebitda" 
               label="Debt to EBITDA" 
               value={stock.debt_to_ebitda}
+              tooltip="Company's debt relative to earnings. Lower is better - shows how easily the company can pay off its debts."
             />
             
             <EditableField 
@@ -819,11 +843,15 @@ export default function StockDetailPage() {
               label="Dividend Yield" 
               value={stock.dividend_yield} 
               suffix="%"
+              tooltip="Annual dividend payment as a percentage of stock price. A 3% yield means you get $3 yearly for every $100 invested."
             />
             
             {/* Calculated fields - not editable */}
             <div>
-              <p className="text-sm text-gray-400 mb-1">b Ratio</p>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                b Ratio
+                <TooltipIcon text="The reward-to-risk ratio. Compares potential upside to downside risk. Higher is better - means more upside than downside." />
+              </p>
               <p className="text-lg font-semibold text-white">
                 {stock.b_ratio.toFixed(2)}
               </p>
@@ -831,7 +859,10 @@ export default function StockDetailPage() {
             </div>
             
             <div>
-              <p className="text-sm text-gray-400 mb-1">Kelly f*</p>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Kelly f*
+                <TooltipIcon text="The Kelly Criterion optimal bet size. Mathematically optimal percentage of portfolio to invest for maximum long-term growth." />
+              </p>
               <p className="text-lg font-semibold text-white">
                 {stock.kelly_fraction.toFixed(2)}%
               </p>
@@ -839,7 +870,10 @@ export default function StockDetailPage() {
             </div>
             
             <div>
-              <p className="text-sm text-gray-400 mb-1">½-Kelly Suggested</p>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                ½-Kelly Suggested
+                <TooltipIcon text="Half of the Kelly fraction, capped at 15%. A more conservative position size that reduces volatility while maintaining good returns." />
+              </p>
               <p className="text-lg font-semibold text-primary-400">
                 {stock.half_kelly_suggested.toFixed(2)}%
               </p>
@@ -856,6 +890,7 @@ export default function StockDetailPage() {
               field="shares_owned" 
               label="Shares Owned" 
               value={stock.shares_owned}
+              tooltip="The number of shares you currently own of this stock."
             />
             
             <EditableField 
@@ -863,10 +898,14 @@ export default function StockDetailPage() {
               label="Average Entry Price" 
               value={stock.avg_price_local} 
               suffix={stock.currency}
+              tooltip="Your average purchase price per share. Used to calculate your profit or loss."
             />
             
             <div>
-              <p className="text-sm text-gray-400 mb-1">Current Value (USD)</p>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Current Value (USD)
+                <TooltipIcon text="The total current market value of your position in US dollars (shares owned × current price × exchange rate)." />
+              </p>
               <p className="text-lg font-semibold text-white">
                 ${stock.current_value_usd.toFixed(2)}
               </p>
@@ -874,7 +913,10 @@ export default function StockDetailPage() {
             </div>
             
             <div>
-              <p className="text-sm text-gray-400 mb-1">Portfolio Weight</p>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Portfolio Weight
+                <TooltipIcon text="What percentage of your total portfolio this stock represents. Helps track diversification." />
+              </p>
               <p className="text-lg font-semibold text-white">
                 {stock.weight.toFixed(2)}%
               </p>
@@ -882,7 +924,10 @@ export default function StockDetailPage() {
             </div>
             
             <div>
-              <p className="text-sm text-gray-400 mb-1">Unrealized P&L</p>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Unrealized P&L
+                <TooltipIcon text="Your profit or loss if you sold now. Green means profit, red means loss. Unrealized until you actually sell." />
+              </p>
               <p className={`text-lg font-semibold ${
                 stock.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'
               }`}>
@@ -892,7 +937,10 @@ export default function StockDetailPage() {
             </div>
             
             <div>
-              <p className="text-sm text-gray-400 mb-1">Buy Zone (Min)</p>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Buy Zone (Min)
+                <TooltipIcon text="The lower bound of the attractive buying range. Consider adding to position if price falls to this level." />
+              </p>
               <p className="text-lg font-semibold text-white">
                 {stock.buy_zone_min.toFixed(2)} {stock.currency}
               </p>
@@ -900,7 +948,10 @@ export default function StockDetailPage() {
             </div>
             
             <div>
-              <p className="text-sm text-gray-400 mb-1">Buy Zone (Max)</p>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Buy Zone (Max)
+                <TooltipIcon text="The upper bound of the attractive buying range. Above this, the stock may be too expensive for good returns." />
+              </p>
               <p className="text-lg font-semibold text-white">
                 {stock.buy_zone_max.toFixed(2)} {stock.currency}
               </p>
