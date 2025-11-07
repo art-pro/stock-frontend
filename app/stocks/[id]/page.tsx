@@ -185,39 +185,21 @@ export default function StockDetailPage() {
         {isEditing ? (
           <div className="flex items-center gap-2" dir="ltr">
             {multiline ? (
-              <div
-                contentEditable
-                suppressContentEditableWarning={true}
-                ref={(el) => {
-                  if (el && !el.textContent) {
-                    el.textContent = editValue;
-                  }
-                }}
-                onInput={(e) => {
-                  const text = e.currentTarget.textContent || '';
-                  setEditValue(text);
-                }}
-                className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm min-h-[60px] overflow-y-auto cursor-text"
+              <textarea
+                ref={textareaRef}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm min-h-[60px] resize-y ltr-textarea"
                 dir="ltr"
                 style={{
                   direction: 'ltr',
                   textAlign: 'left',
-                  unicodeBidi: 'plaintext',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word'
+                  unicodeBidi: 'plaintext'
                 }}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
                 autoFocus
-                onFocus={(e) => {
-                  // Move cursor to end
-                  const range = document.createRange();
-                  const sel = window.getSelection();
-                  if (e.currentTarget.childNodes.length > 0) {
-                    range.setStart(e.currentTarget.childNodes[0], e.currentTarget.textContent?.length || 0);
-                    range.collapse(true);
-                    sel?.removeAllRanges();
-                    sel?.addRange(range);
-                  }
-                }}
                 onKeyDown={(e) => {
                   // Allow Ctrl/Cmd+Enter to save
                   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -229,7 +211,7 @@ export default function StockDetailPage() {
                     handleCancelEdit();
                   }
                 }}
-              >{editValue}</div>
+              />
             ) : (
               <input
                 type="text"  // Changed from conditional to always text to handle comma input

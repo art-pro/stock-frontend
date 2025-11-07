@@ -1,0 +1,33 @@
+[
+  {
+    "ticker": "",
+    "company_name": "",
+    "isin": "",
+    "sector": "",
+    "current_price": 0,
+    "currency": "USD",
+    "fair_value": 0,
+    "upside_potential": 0,
+    "downside_risk": 0,
+    "probability_positive": 0,
+    "expected_value": 0,
+    "beta": 0,
+    "volatility": 0,
+    "pe_ratio": 0,
+    "eps_growth_rate": 0,
+    "debt_to_ebitda": 0,
+    "dividend_yield": 0,
+    "b_ratio": 0,
+    "kelly_fraction": 0,
+    "half_kelly_suggested": 0,
+    "shares_owned": 0,
+    "avg_price_local": 0,
+    "buy_zone_min": 0,
+    "buy_zone_max": 0,
+    "assessment": "",
+    "update_frequency": "daily",
+    "data_source": "Manual",
+    "fair_value_source": "",
+    "comment": ""
+  }
+]

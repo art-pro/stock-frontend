@@ -8,11 +8,13 @@ import { FRONTEND_VERSION } from '@/lib/version';
 import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
 import AddStockModal from '@/components/AddStockModal';
+import JsonUploadModal from '@/components/JsonUploadModal';
 import {
   PlusIcon,
   ArrowPathIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
+  DocumentArrowUpIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
@@ -24,6 +26,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showJsonUploadModal, setShowJsonUploadModal] = useState(false);
   const [error, setError] = useState('');
   const [apiStatus, setApiStatus] = useState<any>(null);
   const [checkingAPI, setCheckingAPI] = useState(false);
@@ -538,6 +541,13 @@ export default function DashboardPage() {
               className="hidden"
             />
           </label>
+          <button
+            onClick={() => setShowJsonUploadModal(true)}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <DocumentArrowUpIcon className="h-5 w-5 mr-2" />
+            Upload JSON
+          </button>
         </div>
         
         {/* Update Progress Bar */}
@@ -641,6 +651,16 @@ export default function DashboardPage() {
           }}
         />
       )}
+
+      {/* JSON Upload Modal */}
+      <JsonUploadModal
+        isOpen={showJsonUploadModal}
+        onClose={() => setShowJsonUploadModal(false)}
+        onSuccess={async () => {
+          setShowJsonUploadModal(false);
+          await fetchData();
+        }}
+      />
     </div>
   );
 }

@@ -14,6 +14,17 @@ textarea, input {
   unicode-bidi: embed !important;
 }
 
+/* Extra strong LTR enforcement for the comment textarea */
+.ltr-textarea {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: plaintext !important;
+  writing-mode: horizontal-tb !important;
+  -webkit-text-direction: ltr !important;
+  -moz-text-direction: ltr !important;
+  -ms-text-direction: ltr !important;
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
