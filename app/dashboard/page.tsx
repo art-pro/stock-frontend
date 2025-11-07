@@ -9,6 +9,7 @@ import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
 import AddStockModal from '@/components/AddStockModal';
 import JsonUploadModal from '@/components/JsonUploadModal';
+import ExchangeRateTable from '@/components/ExchangeRateTable';
 import {
   PlusIcon,
   ArrowPathIcon,
@@ -635,6 +636,11 @@ export default function DashboardPage() {
             onSelectAll={handleSelectAllWatchlist}
             isWatchlist={true}
           />
+        </div>
+        
+        {/* Exchange Rates Section */}
+        <div className="my-8">
+          <ExchangeRateTable />
         </div>
       </main>
 

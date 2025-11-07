@@ -181,5 +181,25 @@ export const versionAPI = {
   getBackendVersion: () => api.get('/version'),
 };
 
+// Exchange Rate API
+export interface ExchangeRate {
+  id: number;
+  currency_code: string;
+  rate: number;
+  last_updated: string;
+  is_active: boolean;
+  is_manual: boolean;
+}
+
+export const exchangeRateAPI = {
+  getAll: () => api.get('/exchange-rates'),
+  refresh: () => api.post('/exchange-rates/refresh'),
+  add: (data: { currency_code: string; rate: number; is_manual: boolean }) => 
+    api.post('/exchange-rates', data),
+  update: (code: string, data: { rate: number; is_manual: boolean }) => 
+    api.put(`/exchange-rates/${code}`, data),
+  delete: (code: string) => api.delete(`/exchange-rates/${code}`),
+};
+
 export default api;
 
