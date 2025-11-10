@@ -82,7 +82,7 @@ export default function JsonUploadModal({ isOpen, onClose, onSuccess }: JsonUplo
       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
       
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/stocks/bulk-update`,
+        `${process.env.NEXT_PUBLIC_API_URL}/stocks/bulk-update`,
         { stocks: data },
         {
           headers: {
