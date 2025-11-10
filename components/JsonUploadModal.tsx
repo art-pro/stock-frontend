@@ -272,33 +272,74 @@ export default function JsonUploadModal({ isOpen, onClose, onSuccess }: JsonUplo
                     </button>
                   </div>
 
-                  <div className="border-2 border-dashed border-gray-600 rounded-lg p-4">
-                    <label className="flex flex-col items-center cursor-pointer">
-                      <DocumentArrowUpIcon className="h-12 w-12 text-gray-400 mb-2" />
-                      <span className="text-gray-300">Click to upload or drag and drop</span>
-                      <span className="text-gray-500 text-sm">JSON files only</span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".json"
-                        onChange={handleFileUpload}
-                      />
-                    </label>
-                  </div>
+                  <div className="space-y-4">
+                    {/* File Upload Section */}
+                    <div>
+                      <h4 className="text-white text-sm font-medium mb-2">Option 1: Upload JSON File</h4>
+                      <div className="border-2 border-dashed border-gray-600 rounded-lg p-4">
+                        <label className="flex flex-col items-center cursor-pointer">
+                          <DocumentArrowUpIcon className="h-12 w-12 text-gray-400 mb-2" />
+                          <span className="text-gray-300">Click to upload or drag and drop</span>
+                          <span className="text-gray-500 text-sm">JSON files only</span>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".json"
+                            onChange={handleFileUpload}
+                          />
+                        </label>
+                      </div>
+                    </div>
 
-                  {jsonContent && (
-                    <div className="mt-4">
-                      <h4 className="text-white mb-2">JSON Content:</h4>
+                    {/* Divider */}
+                    <div className="flex items-center">
+                      <div className="flex-grow border-t border-gray-600"></div>
+                      <span className="px-4 text-gray-400 text-sm">OR</span>
+                      <div className="flex-grow border-t border-gray-600"></div>
+                    </div>
+
+                    {/* Paste JSON Section */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="text-white text-sm font-medium">Option 2: Paste JSON Directly</h4>
+                        {jsonContent && (
+                          <button
+                            onClick={() => {
+                              setJsonContent('');
+                              setError('');
+                              setValidationErrors([]);
+                            }}
+                            className="text-xs text-gray-400 hover:text-white"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
                       <textarea
                         value={jsonContent}
                         onChange={(e) => {
                           setJsonContent(e.target.value);
-                          validateJson(e.target.value);
+                          if (e.target.value.trim()) {
+                            validateJson(e.target.value);
+                          } else {
+                            setError('');
+                            setValidationErrors([]);
+                          }
                         }}
-                        className="w-full h-64 p-2 bg-gray-700 text-gray-300 rounded font-mono text-sm"
+                        placeholder='Paste your JSON here, e.g.:
+[
+  {
+    "ticker": "AAPL",
+    "company_name": "Apple Inc.",
+    "current_price": 175.50,
+    "fair_value": 200.00,
+    ...
+  }
+]'
+                        className="w-full h-64 p-3 bg-gray-700 text-gray-300 rounded font-mono text-sm border border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder:text-gray-500 placeholder:text-xs"
                       />
                     </div>
-                  )}
+                  </div>
 
                   {error && (
                     <div className="mt-4 p-3 bg-red-900/50 border border-red-600 rounded">
