@@ -20,7 +20,14 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
       try {
         const response = await cashAPI.getAll();
         setCashHoldings(response.data);
-        const totalCash = response.data.reduce((total, cash) => total + cash.usd_value, 0);
+        const totalCash = response.data.reduce((total, cash) => {
+          // For EUR (base currency), use the original amount instead of converted usd_value
+          if (cash.currency_code === 'EUR') {
+            return total + cash.amount;
+          }
+          // For other currencies, use the converted value
+          return total + cash.usd_value;
+        }, 0);
         setTotalCashValue(totalCash);
       } catch (err) {
         // If cash API fails, set to 0 (cash management might not be enabled)

@@ -152,7 +152,14 @@ export default function CashManagementTable() {
   };
 
   const getTotalEURValue = () => {
-    return cashHoldings.reduce((total, cash) => total + cash.usd_value, 0);
+    return cashHoldings.reduce((total, cash) => {
+      // For EUR (base currency), use the original amount instead of converted usd_value
+      if (cash.currency_code === 'EUR') {
+        return total + cash.amount;
+      }
+      // For other currencies, use the converted value
+      return total + cash.usd_value;
+    }, 0);
   };
 
   const getAvailableCurrencies = () => {
@@ -308,7 +315,10 @@ export default function CashManagementTable() {
                   </td>
                   <td className="py-3 text-right">
                     <span className="text-green-400 font-semibold">
-                      {formatCurrency(cash.usd_value, 'EUR')}
+                      {formatCurrency(
+                        cash.currency_code === 'EUR' ? cash.amount : cash.usd_value, 
+                        'EUR'
+                      )}
                     </span>
                   </td>
                   <td className="py-3">
@@ -378,6 +388,7 @@ export default function CashManagementTable() {
       
       <div className="mt-4 text-sm text-gray-400">
         <p>• Cash holdings are converted to EUR using current exchange rates</p>
+        <p>• EUR is the base currency and is not converted (shows actual amount)</p>
         <p>• Click &quot;Refresh EUR&quot; to update values when exchange rates change</p>
         <p>• Total purchasing power: <span className="font-semibold text-green-400">{formatCurrency(getTotalEURValue(), 'EUR')}</span></p>
       </div>
