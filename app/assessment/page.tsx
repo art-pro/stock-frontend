@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { stockAPI, assessmentAPI } from '@/lib/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   MagnifyingGlassIcon,
   ChartBarIcon,
@@ -79,21 +81,31 @@ export default function AssessmentPage() {
     }
   };
 
-  const formatAssessment = (text: string) => {
-    // Split by lines and format as markdown-like structure
-    return text.split('\n').map((line, index) => {
-      if (line.startsWith('##') || line.includes('Analysis') || line.includes('Assessment')) {
-        return <h3 key={index} className="text-lg font-bold text-white mt-6 mb-3">{line.replace('##', '').trim()}</h3>;
-      } else if (line.startsWith('**') && line.endsWith('**')) {
-        return <h4 key={index} className="text-md font-semibold text-blue-400 mt-4 mb-2">{line.replace(/\*\*/g, '')}</h4>;
-      } else if (line.startsWith('Step ')) {
-        return <h4 key={index} className="text-md font-semibold text-green-400 mt-4 mb-2">{line}</h4>;
-      } else if (line.trim() === '') {
-        return <br key={index} />;
-      } else {
-        return <p key={index} className="text-gray-300 mb-2 leading-relaxed">{line}</p>;
-      }
-    });
+  // Custom markdown components for proper styling
+  const markdownComponents = {
+    h1: ({ children }: any) => <h1 className="text-2xl font-bold text-white mt-8 mb-4 border-b border-gray-600 pb-2">{children}</h1>,
+    h2: ({ children }: any) => <h2 className="text-xl font-bold text-white mt-6 mb-3">{children}</h2>,
+    h3: ({ children }: any) => <h3 className="text-lg font-bold text-blue-300 mt-5 mb-3">{children}</h3>,
+    h4: ({ children }: any) => <h4 className="text-md font-semibold text-green-400 mt-4 mb-2">{children}</h4>,
+    h5: ({ children }: any) => <h5 className="text-sm font-semibold text-yellow-400 mt-3 mb-2">{children}</h5>,
+    h6: ({ children }: any) => <h6 className="text-sm font-medium text-gray-300 mt-3 mb-2">{children}</h6>,
+    p: ({ children }: any) => <p className="text-gray-300 mb-3 leading-relaxed">{children}</p>,
+    strong: ({ children }: any) => <strong className="text-white font-semibold">{children}</strong>,
+    em: ({ children }: any) => <em className="text-gray-200 italic">{children}</em>,
+    ul: ({ children }: any) => <ul className="list-disc list-inside mb-4 ml-4 space-y-1">{children}</ul>,
+    ol: ({ children }: any) => <ol className="list-decimal list-inside mb-4 ml-4 space-y-1">{children}</ol>,
+    li: ({ children }: any) => <li className="text-gray-300">{children}</li>,
+    blockquote: ({ children }: any) => <blockquote className="border-l-4 border-blue-500 pl-4 py-2 mb-4 bg-gray-800 rounded-r">{children}</blockquote>,
+    code: ({ children }: any) => <code className="bg-gray-800 text-green-400 px-1 py-0.5 rounded text-sm font-mono">{children}</code>,
+    pre: ({ children }: any) => <pre className="bg-gray-800 text-gray-300 p-4 rounded-lg mb-4 overflow-x-auto">{children}</pre>,
+    table: ({ children }: any) => <table className="min-w-full border border-gray-600 mb-4">{children}</table>,
+    thead: ({ children }: any) => <thead className="bg-gray-700">{children}</thead>,
+    tbody: ({ children }: any) => <tbody>{children}</tbody>,
+    tr: ({ children }: any) => <tr className="border-b border-gray-600">{children}</tr>,
+    th: ({ children }: any) => <th className="px-4 py-2 text-left text-gray-300 font-semibold">{children}</th>,
+    td: ({ children }: any) => <td className="px-4 py-2 text-gray-300">{children}</td>,
+    a: ({ children, href }: any) => <a href={href} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+    hr: () => <hr className="border-gray-600 my-6" />,
   };
 
   const formatDate = (dateString: string) => {
@@ -222,8 +234,13 @@ export default function AssessmentPage() {
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
             <h2 className="text-xl font-bold text-white mb-4">Assessment Result</h2>
             <div className="prose prose-invert max-w-none">
-              <div className="bg-gray-900 rounded-lg p-6 font-mono text-sm overflow-auto">
-                {formatAssessment(assessment)}
+              <div className="bg-gray-900 rounded-lg p-6 overflow-auto">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={markdownComponents}
+                >
+                  {assessment}
+                </ReactMarkdown>
               </div>
             </div>
           </div>
