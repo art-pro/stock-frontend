@@ -373,7 +373,7 @@ export default function CashManagementTable() {
       
       <div className="mt-4 text-sm text-gray-400">
         <p>• Cash holdings are converted to USD using current exchange rates</p>
-        <p>• Click "Refresh USD" to update values when exchange rates change</p>
+        <p>• Click &quot;Refresh USD&quot; to update values when exchange rates change</p>
         <p>• Total purchasing power: <span className="font-semibold text-green-400">{formatCurrency(getTotalUSDValue(), 'USD')}</span></p>
       </div>
     </div>
