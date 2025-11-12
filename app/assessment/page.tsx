@@ -36,6 +36,8 @@ export default function AssessmentPage() {
   const [assessment, setAssessment] = useState<string>('');
   const [error, setError] = useState('');
   const [recentAssessments, setRecentAssessments] = useState<AssessmentResponse[]>([]);
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentResponse | null>(null);
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -127,6 +129,16 @@ export default function AssessmentPage() {
       default:
         return <ClockIcon className="h-5 w-5 text-yellow-400" />;
     }
+  };
+
+  const handleOpenAssessment = (assessment: AssessmentResponse) => {
+    setSelectedAssessment(assessment);
+    setShowAssessmentModal(true);
+  };
+
+  const handleCloseAssessmentModal = () => {
+    setSelectedAssessment(null);
+    setShowAssessmentModal(false);
   };
 
   return (
@@ -252,12 +264,21 @@ export default function AssessmentPage() {
             <h2 className="text-xl font-bold text-white mb-4">Recent Assessments</h2>
             <div className="space-y-3">
               {recentAssessments.map((item, index) => (
-                <div key={index} className="flex items-center justify-between bg-gray-700 rounded-lg p-4">
+                <div 
+                  key={index} 
+                  onClick={() => item.status === 'completed' && handleOpenAssessment(item)}
+                  className={`flex items-center justify-between bg-gray-700 rounded-lg p-4 ${
+                    item.status === 'completed' ? 'cursor-pointer hover:bg-gray-600 transition-colors' : ''
+                  }`}
+                >
                   <div className="flex items-center space-x-3">
                     {getStatusIcon(item.status)}
                     <div>
                       <span className="text-white font-medium">{item.ticker}</span>
                       <span className="text-gray-400 ml-2">via {item.source}</span>
+                      {item.status === 'completed' && (
+                        <span className="text-xs text-blue-400 ml-2">(Click to view)</span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -285,6 +306,45 @@ export default function AssessmentPage() {
                 <div>
                   <p className="text-white font-medium">Generating Assessment</p>
                   <p className="text-gray-400 text-sm">This may take 30-60 seconds...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Assessment Detail Modal */}
+        {showAssessmentModal && selectedAssessment && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-700">
+                <div>
+                  <h2 className="text-xl font-bold text-white">
+                    Assessment: {selectedAssessment.ticker}
+                  </h2>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Generated via {selectedAssessment.source} on {formatDate(selectedAssessment.created_at)}
+                  </p>
+                </div>
+                <button
+                  onClick={handleCloseAssessmentModal}
+                  className="text-gray-400 hover:text-white transition-colors p-2"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Modal Content */}
+              <div className="overflow-y-auto max-h-[calc(90vh-100px)] p-6">
+                <div className="prose prose-invert max-w-none">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
+                    {selectedAssessment.assessment}
+                  </ReactMarkdown>
                 </div>
               </div>
             </div>
