@@ -55,12 +55,32 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
     return `${num?.toFixed(decimals) || 'N/A'}%`;
   };
 
-  // Prepare chart data
+  // Prepare chart data including cash
+  const totalPortfolioValue = metrics.total_value + totalCashValue;
+  const cashPercentage = totalPortfolioValue > 0 ? (totalCashValue / totalPortfolioValue) * 100 : 0;
+  
+  // Adjust sector weights to account for cash
+  const adjustedSectorWeights = Object.fromEntries(
+    Object.entries(metrics.sector_weights).map(([sector, weight]) => [
+      sector, 
+      totalPortfolioValue > 0 ? (weight * metrics.total_value) / totalPortfolioValue : weight
+    ])
+  );
+  
+  const chartLabels = [...Object.keys(adjustedSectorWeights)];
+  const chartValues = [...Object.values(adjustedSectorWeights)];
+  
+  // Add cash segment if there is cash available
+  if (cashPercentage > 0) {
+    chartLabels.push('Cash');
+    chartValues.push(cashPercentage);
+  }
+  
   const chartData = {
-    labels: Object.keys(metrics.sector_weights),
+    labels: chartLabels,
     datasets: [
       {
-        data: Object.values(metrics.sector_weights),
+        data: chartValues,
         backgroundColor: [
           'rgba(59, 130, 246, 0.8)', // blue
           'rgba(16, 185, 129, 0.8)', // green
@@ -69,6 +89,7 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
           'rgba(139, 92, 246, 0.8)', // purple
           'rgba(236, 72, 153, 0.8)', // pink
           'rgba(20, 184, 166, 0.8)', // teal
+          'rgba(107, 114, 128, 0.8)', // gray for cash
         ],
         borderColor: 'rgba(31, 41, 55, 1)',
         borderWidth: 2,
