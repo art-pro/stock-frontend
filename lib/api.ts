@@ -228,5 +228,28 @@ export const cashAPI = {
   refreshUSD: () => api.post('/cash/refresh'),
 };
 
+// Assessment API
+export interface AssessmentRequest {
+  ticker: string;
+  source: 'grok' | 'deepseek';
+}
+
+export interface AssessmentResponse {
+  ticker: string;
+  source: string;
+  assessment: string;
+  created_at: string;
+  status: 'pending' | 'completed' | 'failed';
+}
+
+export const assessmentAPI = {
+  request: (data: AssessmentRequest) => 
+    api.post<{ assessment: string }>('/assessment/request', data),
+  getRecent: () => 
+    api.get<AssessmentResponse[]>('/assessment/recent'),
+  getById: (id: number) => 
+    api.get<AssessmentResponse>(`/assessment/${id}`),
+};
+
 export default api;
 

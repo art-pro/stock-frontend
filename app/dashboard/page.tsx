@@ -19,6 +19,7 @@ import {
   DocumentArrowUpIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 export default function DashboardPage() {
@@ -359,6 +360,14 @@ export default function DashboardPage() {
               )}
               
               <button
+                onClick={() => router.push('/assessment')}
+                className="flex items-center px-3 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                title="Stock Assessment"
+              >
+                <ChartBarIcon className="h-5 w-5 mr-2" />
+                <span className="hidden sm:inline">Assessment</span>
+              </button>
+              <button
                 onClick={() => router.push('/settings')}
                 className="flex items-center px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
                 title="Settings"
@@ -549,6 +558,13 @@ export default function DashboardPage() {
           >
             <DocumentArrowUpIcon className="h-5 w-5 mr-2" />
             Upload JSON
+          </button>
+          <button
+            onClick={() => router.push('/assessment')}
+            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <ChartBarIcon className="h-5 w-5 mr-2" />
+            Stock Assessment
           </button>
         </div>
         
