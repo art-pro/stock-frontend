@@ -8,8 +8,15 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'password' | 'portfolio'>('password');
+  const [activeTab, setActiveTab] = useState<'username' | 'password' | 'portfolio'>('username');
+  const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
   
+  // Username form
+  const [usernamePassword, setUsernamePassword] = useState('');
+  const [newUsername, setNewUsername] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [usernameSuccess, setUsernameSuccess] = useState('');
+
   // Password form
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -31,8 +38,19 @@ export default function SettingsPage() {
       router.push('/login');
       return;
     }
+    fetchCurrentUser();
     fetchPortfolioSettings();
   }, [router]);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await authAPI.getCurrentUser();
+      setCurrentUser({ username: response.data.username });
+      setNewUsername(response.data.username); // Set current username as default
+    } catch (err) {
+      console.error('Failed to fetch current user:', err);
+    }
+  };
 
   const fetchPortfolioSettings = async () => {
     try {
@@ -44,6 +62,37 @@ export default function SettingsPage() {
       });
     } catch (err) {
       console.error('Failed to fetch settings:', err);
+    }
+  };
+
+  const handleUsernameSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setUsernameError('');
+    setUsernameSuccess('');
+
+    if (!newUsername.trim()) {
+      setUsernameError('Username cannot be empty');
+      return;
+    }
+
+    if (newUsername.length < 3) {
+      setUsernameError('Username must be at least 3 characters');
+      return;
+    }
+
+    if (newUsername === currentUser?.username) {
+      setUsernameError('New username must be different from current username');
+      return;
+    }
+
+    try {
+      await authAPI.changeUsername(usernamePassword, newUsername);
+      setUsernameSuccess('Username changed successfully!');
+      setUsernamePassword('');
+      // Update current user info
+      setCurrentUser({ username: newUsername });
+    } catch (err: any) {
+      setUsernameError(err.response?.data?.error || 'Failed to change username');
     }
   };
 
@@ -107,6 +156,16 @@ export default function SettingsPage() {
         {/* Tabs */}
         <div className="flex space-x-4 mb-6 border-b border-gray-700">
           <button
+            onClick={() => setActiveTab('username')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'username'
+                ? 'text-primary-400 border-b-2 border-primary-400'
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Change Username
+          </button>
+          <button
             onClick={() => setActiveTab('password')}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === 'password'
@@ -127,6 +186,85 @@ export default function SettingsPage() {
             Portfolio Settings
           </button>
         </div>
+
+        {/* Username Tab */}
+        {activeTab === 'username' && (
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 className="text-xl font-bold text-white mb-4">Change Username</h2>
+            
+            {/* Current Username Display */}
+            <div className="mb-6 p-4 bg-gray-700 rounded-lg">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Current Username
+              </label>
+              <p className="text-white font-semibold text-lg">
+                {currentUser?.username || 'Loading...'}
+              </p>
+            </div>
+
+            <form onSubmit={handleUsernameSubmit} className="space-y-4">
+              {usernameError && (
+                <div className="bg-red-900 bg-opacity-50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
+                  {usernameError}
+                </div>
+              )}
+              {usernameSuccess && (
+                <div className="bg-green-900 bg-opacity-50 border border-green-700 text-green-200 px-4 py-3 rounded-lg">
+                  {usernameSuccess}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  New Username
+                </label>
+                <input
+                  type="text"
+                  required
+                  minLength={3}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value.trim())}
+                  placeholder="Enter new username"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Minimum 3 characters, no spaces
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={usernamePassword}
+                  onChange={(e) => setUsernamePassword(e.target.value)}
+                  placeholder="Enter your current password to confirm"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Verification required to change username
+                </p>
+              </div>
+
+              <div className="bg-amber-900 bg-opacity-30 border border-amber-700 rounded-lg p-4">
+                <p className="text-sm text-amber-200">
+                  <strong>⚠️ Important:</strong> Changing your username will affect your login credentials. 
+                  Make sure to remember your new username for future logins.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                Change Username
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Password Tab */}
         {activeTab === 'password' && (

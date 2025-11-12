@@ -27,3 +27,4 @@ This file contains information for Claude Code to help with development tasks.
   - The stock with fewer filled fields becomes the source (merged and deleted)
   - Empty fields in the target are filled with data from the source
 - **Visual Feedback**: Clear UI showing which stock will be kept and what data will be merged
+- **Username Management**: Users can change their username from the Settings page with password verification

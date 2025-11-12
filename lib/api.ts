@@ -120,6 +120,11 @@ export const authAPI = {
       current_password: currentPassword,
       new_password: newPassword,
     }),
+  changeUsername: (currentPassword: string, newUsername: string) =>
+    api.post('/change-username', {
+      current_password: currentPassword,
+      new_username: newUsername,
+    }),
   getCurrentUser: () => api.get('/me'),
 };
 
