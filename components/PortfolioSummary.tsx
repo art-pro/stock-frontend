@@ -1,6 +1,7 @@
 'use client';
 
-import { PortfolioMetrics } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { PortfolioMetrics, CashHolding, cashAPI } from '@/lib/api';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 
@@ -11,6 +12,25 @@ interface PortfolioSummaryProps {
 }
 
 export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
+  const [cashHoldings, setCashHoldings] = useState<CashHolding[]>([]);
+  const [totalCashValue, setTotalCashValue] = useState(0);
+
+  useEffect(() => {
+    const fetchCashData = async () => {
+      try {
+        const response = await cashAPI.getAll();
+        setCashHoldings(response.data);
+        const totalCash = response.data.reduce((total, cash) => total + cash.usd_value, 0);
+        setTotalCashValue(totalCash);
+      } catch (err) {
+        // If cash API fails, set to 0 (cash management might not be enabled)
+        setTotalCashValue(0);
+        console.warn('Failed to fetch cash holdings:', err);
+      }
+    };
+
+    fetchCashData();
+  }, []);
   const formatCurrency = (num: number) => {
     if (num === 0 || num === null || num === undefined) {
       return 'N/A';
@@ -74,11 +94,16 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
       {/* Total Portfolio Value */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 className="text-sm font-medium text-gray-400 mb-2">
-          Total Portfolio Value
+          Total Portfolio Value {totalCashValue > 0 ? '(Stocks + Cash)' : ''}
         </h3>
         <p className="text-2xl font-bold text-white">
-          {formatCurrency(metrics.total_value)}
+          {formatCurrency(metrics.total_value + totalCashValue)}
         </p>
+        {totalCashValue > 0 && (
+          <p className="text-xs text-gray-400 mt-1">
+            Stocks: {formatCurrency(metrics.total_value)} + Cash: {formatCurrency(totalCashValue)}
+          </p>
+        )}
       </div>
 
       {/* Overall EV */}
