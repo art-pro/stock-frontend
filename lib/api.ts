@@ -196,6 +196,17 @@ export interface ExchangeRate {
   is_manual: boolean;
 }
 
+export interface CashHolding {
+  id: number;
+  currency_code: string;
+  amount: number;
+  usd_value: number;
+  description: string;
+  last_updated: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const exchangeRateAPI = {
   getAll: () => api.get('/exchange-rates'),
   refresh: () => api.post('/exchange-rates/refresh'),
@@ -204,6 +215,17 @@ export const exchangeRateAPI = {
   update: (code: string, data: { rate: number; is_manual: boolean }) => 
     api.put(`/exchange-rates/${code}`, data),
   delete: (code: string) => api.delete(`/exchange-rates/${code}`),
+};
+
+// Cash Holdings API
+export const cashAPI = {
+  getAll: () => api.get<CashHolding[]>('/cash'),
+  create: (data: { currency_code: string; amount: number; description?: string }) => 
+    api.post<CashHolding>('/cash', data),
+  update: (id: number, data: { amount: number; description?: string }) => 
+    api.put<CashHolding>(`/cash/${id}`, data),
+  delete: (id: number) => api.delete(`/cash/${id}`),
+  refreshUSD: () => api.post('/cash/refresh'),
 };
 
 export default api;

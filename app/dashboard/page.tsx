@@ -10,6 +10,7 @@ import PortfolioSummary from '@/components/PortfolioSummary';
 import AddStockModal from '@/components/AddStockModal';
 import JsonUploadModal from '@/components/JsonUploadModal';
 import ExchangeRateTable from '@/components/ExchangeRateTable';
+import CashManagementTable from '@/components/CashManagementTable';
 import {
   PlusIcon,
   ArrowPathIcon,
@@ -588,6 +589,11 @@ export default function DashboardPage() {
               <div className="text-purple-200">Probability (p), EV, Kelly sizing, assessments, downside risk, recommendations</div>
             </div>
           </div>
+        </div>
+
+        {/* Cash Management Section */}
+        <div className="mb-8">
+          <CashManagementTable />
         </div>
 
         {/* Portfolio Section (Owned Stocks) */}
