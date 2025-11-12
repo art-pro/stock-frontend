@@ -17,7 +17,7 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
     }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
     }).format(num);
   };
 

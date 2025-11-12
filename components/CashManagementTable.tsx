@@ -42,21 +42,26 @@ export default function CashManagementTable() {
       setExchangeRates(ratesResponse.data);
       setError('');
     } catch (err: any) {
-      setError('Failed to fetch cash holdings');
+      // Check if it's a 500 error from missing endpoint
+      if (err.response?.status === 500) {
+        setError('Cash management feature not available - backend endpoint missing');
+      } else {
+        setError('Failed to fetch cash holdings');
+      }
       console.error('Error fetching cash data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRefreshUSD = async () => {
+  const handleRefreshEUR = async () => {
     try {
       setRefreshing(true);
       await cashAPI.refreshUSD();
       await fetchData();
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to refresh USD values');
+      setError(err.response?.data?.error || 'Failed to refresh EUR values');
     } finally {
       setRefreshing(false);
     }
@@ -132,7 +137,7 @@ export default function CashManagementTable() {
   const formatCurrency = (amount: number, currencyCode: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currencyCode === 'USD' ? 'USD' : 'EUR',
+      currency: currencyCode,
     }).format(amount);
   };
 
@@ -146,7 +151,7 @@ export default function CashManagementTable() {
     });
   };
 
-  const getTotalUSDValue = () => {
+  const getTotalEURValue = () => {
     return cashHoldings.reduce((total, cash) => total + cash.usd_value, 0);
   };
 
@@ -171,18 +176,18 @@ export default function CashManagementTable() {
         <div className="flex items-center">
           <CurrencyDollarIcon className="h-6 w-6 mr-2 text-green-400" />
           <h2 className="text-xl font-bold text-white">
-            Available Cash ({formatCurrency(getTotalUSDValue(), 'USD')})
+            Available Cash ({formatCurrency(getTotalEURValue(), 'EUR')})
           </h2>
         </div>
         <div className="flex gap-2">
           <button
-            onClick={handleRefreshUSD}
+            onClick={handleRefreshEUR}
             disabled={refreshing}
             className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            title="Refresh USD values using current exchange rates"
+            title="Refresh EUR values using current exchange rates"
           >
             <ArrowPathIcon className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh USD
+            Refresh EUR
           </button>
           <button
             onClick={() => setShowAddForm(true)}
@@ -267,7 +272,7 @@ export default function CashManagementTable() {
               <tr className="border-b border-gray-700">
                 <th className="pb-3 text-gray-400 font-medium">Currency</th>
                 <th className="pb-3 text-gray-400 font-medium text-right">Amount</th>
-                <th className="pb-3 text-gray-400 font-medium text-right">USD Value</th>
+                <th className="pb-3 text-gray-400 font-medium text-right">EUR Value</th>
                 <th className="pb-3 text-gray-400 font-medium">Description</th>
                 <th className="pb-3 text-gray-400 font-medium">Last Updated</th>
                 <th className="pb-3 text-gray-400 font-medium text-right">Actions</th>
@@ -303,7 +308,7 @@ export default function CashManagementTable() {
                   </td>
                   <td className="py-3 text-right">
                     <span className="text-green-400 font-semibold">
-                      {formatCurrency(cash.usd_value, 'USD')}
+                      {formatCurrency(cash.usd_value, 'EUR')}
                     </span>
                   </td>
                   <td className="py-3">
@@ -372,9 +377,9 @@ export default function CashManagementTable() {
       )}
       
       <div className="mt-4 text-sm text-gray-400">
-        <p>• Cash holdings are converted to USD using current exchange rates</p>
-        <p>• Click &quot;Refresh USD&quot; to update values when exchange rates change</p>
-        <p>• Total purchasing power: <span className="font-semibold text-green-400">{formatCurrency(getTotalUSDValue(), 'USD')}</span></p>
+        <p>• Cash holdings are converted to EUR using current exchange rates</p>
+        <p>• Click &quot;Refresh EUR&quot; to update values when exchange rates change</p>
+        <p>• Total purchasing power: <span className="font-semibold text-green-400">{formatCurrency(getTotalEURValue(), 'EUR')}</span></p>
       </div>
     </div>
   );
