@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Stock } from '@/lib/api';
 import { TrashIcon, ArrowPathIcon, PencilIcon } from '@heroicons/react/24/outline';
+import EditTickerModal from './EditTickerModal';
 
 interface StockTableProps {
   stocks: Stock[];
@@ -16,14 +17,16 @@ interface StockTableProps {
   onSelectStock?: (id: number) => void;
   onSelectAll?: (selected: boolean) => void;
   isWatchlist?: boolean;
+  onTickerUpdate?: () => void;
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false, onTickerUpdate }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
   const [editingField, setEditingField] = useState<{ stockId: number; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editingTicker, setEditingTicker] = useState<Stock | null>(null);
 
   const handleSort = (field: keyof Stock) => {
     if (sortField === field) {
@@ -304,6 +307,15 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                       <span title={`Data Source: ${stock.data_source || 'N/A'}\nLast Updated: ${stock.last_updated ? new Date(stock.last_updated).toLocaleString() : 'Never'}`}>
                         {stock.ticker}
                       </span>
+                      {onTickerUpdate && (
+                        <button
+                          onClick={() => setEditingTicker(stock)}
+                          className="text-gray-400 hover:text-primary-400 transition-colors"
+                          title="Edit ticker symbol"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                      )}
                       {isAnyUpdating && (
                         <ArrowPathIcon className="h-4 w-4 animate-spin text-primary-400" />
                       )}
@@ -572,6 +584,19 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               : 'No stocks in portfolio. Add stocks with shares to track your investments.'}
           </p>
         </div>
+      )}
+
+      {/* Edit Ticker Modal */}
+      {editingTicker && (
+        <EditTickerModal
+          stock={editingTicker}
+          allStocks={stocks}
+          onClose={() => setEditingTicker(null)}
+          onSuccess={() => {
+            setEditingTicker(null);
+            onTickerUpdate?.();
+          }}
+        />
       )}
     </div>
   );

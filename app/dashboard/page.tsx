@@ -608,6 +608,7 @@ export default function DashboardPage() {
             selectedStockIds={selectedStockIds}
             onSelectStock={handleSelectStock}
             onSelectAll={handleSelectAllPortfolio}
+            onTickerUpdate={fetchData}
           />
         </div>
 
@@ -635,6 +636,7 @@ export default function DashboardPage() {
             onSelectStock={handleSelectStock}
             onSelectAll={handleSelectAllWatchlist}
             isWatchlist={true}
+            onTickerUpdate={fetchData}
           />
         </div>
         
