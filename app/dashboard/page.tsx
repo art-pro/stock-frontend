@@ -621,6 +621,9 @@ export default function DashboardPage() {
             onSelectedStockIdsChange={setSelectedStockIds}
             onStockUpdate={handleUpdateSingle}
             onStockDelete={handleDelete}
+            onPriceUpdate={handlePriceUpdate}
+            onFieldUpdate={handleFieldUpdate}
+            updatingStocks={updatingStocks}
           />
         </div>
         

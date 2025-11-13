@@ -18,8 +18,11 @@ interface PortfolioTabsProps {
   onStockChange?: () => void;
   selectedStockIds: number[];
   onSelectedStockIdsChange: (ids: number[]) => void;
-  onStockUpdate?: (stockId: number, source: 'grok' | 'alphavantage') => void;
+  onStockUpdate?: (stockId: number, source?: 'grok' | 'alphavantage') => void;
   onStockDelete?: (id: number) => void;
+  onPriceUpdate?: (id: number, newPrice: number) => void;
+  onFieldUpdate?: (id: number, field: string, value: number) => void;
+  updatingStocks?: Array<{ stockId: number; source: 'grok' | 'alphavantage' }>;
 }
 
 export default function PortfolioTabs({ 
@@ -27,7 +30,10 @@ export default function PortfolioTabs({
   selectedStockIds, 
   onSelectedStockIdsChange,
   onStockUpdate,
-  onStockDelete
+  onStockDelete,
+  onPriceUpdate,
+  onFieldUpdate,
+  updatingStocks = []
 }: PortfolioTabsProps) {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<number>(1); // Default to first portfolio
@@ -273,10 +279,26 @@ export default function PortfolioTabs({
         <StockTable
           stocks={stocks}
           selectedStockIds={selectedStockIds}
-          onSelectedStockIdsChange={onSelectedStockIdsChange}
-          onStockUpdate={onStockUpdate}
-          onStockDelete={onStockDelete}
-          loading={loading}
+          onSelectStock={(id) => {
+            const newSelected = selectedStockIds.includes(id) 
+              ? selectedStockIds.filter(sid => sid !== id)
+              : [...selectedStockIds, id];
+            onSelectedStockIdsChange(newSelected);
+          }}
+          onSelectAll={(selected) => {
+            if (selected) {
+              const allIds = stocks.map(s => s.id);
+              onSelectedStockIdsChange([...new Set([...selectedStockIds, ...allIds])]);
+            } else {
+              const stockIds = stocks.map(s => s.id);
+              onSelectedStockIdsChange(selectedStockIds.filter(id => !stockIds.includes(id)));
+            }
+          }}
+          onUpdate={onStockUpdate || (() => {})}
+          onDelete={onStockDelete || (() => {})}
+          onPriceUpdate={onPriceUpdate || (() => {})}
+          onFieldUpdate={onFieldUpdate || (() => {})}
+          updatingStocks={updatingStocks}
         />
       </div>
 
