@@ -6,6 +6,7 @@ import { isAuthenticated, removeToken } from '@/lib/auth';
 import { stockAPI, portfolioAPI, versionAPI, Stock, PortfolioMetrics } from '@/lib/api';
 import { FRONTEND_VERSION } from '@/lib/version';
 import StockTable from '@/components/StockTable';
+import PortfolioTabs from '@/components/PortfolioTabs';
 import PortfolioSummary from '@/components/PortfolioSummary';
 import AddStockModal from '@/components/AddStockModal';
 import JsonUploadModal from '@/components/JsonUploadModal';
@@ -612,53 +613,14 @@ export default function DashboardPage() {
           <CashManagementTable />
         </div>
 
-        {/* Portfolio Section (Owned Stocks) */}
+        {/* Portfolio Tabs Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">📈 Portfolio (Owned Stocks)</h2>
-            <span className="text-sm text-gray-400">
-              {stocks.filter(s => s.shares_owned > 0).length} stocks
-            </span>
-          </div>
-          <StockTable
-            stocks={stocks.filter(s => s.shares_owned > 0)}
-            onDelete={handleDelete}
-            onUpdate={handleUpdateSingle}
-            onPriceUpdate={handlePriceUpdate}
-            onFieldUpdate={handleFieldUpdate}
-            updatingStocks={updatingStocks}
+          <PortfolioTabs
+            onStockChange={fetchData}
             selectedStockIds={selectedStockIds}
-            onSelectStock={handleSelectStock}
-            onSelectAll={handleSelectAllPortfolio}
-            onTickerUpdate={fetchData}
-          />
-        </div>
-
-        {/* Divider */}
-        {stocks.filter(s => s.shares_owned > 0).length > 0 && stocks.filter(s => s.shares_owned === 0 || !s.shares_owned).length > 0 && (
-          <div className="my-8 border-t border-gray-700"></div>
-        )}
-
-        {/* Watchlist Section (Non-Owned Stocks) */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">👁️ Watchlist</h2>
-            <span className="text-sm text-gray-400">
-              {stocks.filter(s => s.shares_owned === 0 || !s.shares_owned).length} stocks
-            </span>
-          </div>
-          <StockTable
-            stocks={stocks.filter(s => s.shares_owned === 0 || !s.shares_owned)}
-            onDelete={handleDelete}
-            onUpdate={handleUpdateSingle}
-            onPriceUpdate={handlePriceUpdate}
-            onFieldUpdate={handleFieldUpdate}
-            updatingStocks={updatingStocks}
-            selectedStockIds={selectedStockIds}
-            onSelectStock={handleSelectStock}
-            onSelectAll={handleSelectAllWatchlist}
-            isWatchlist={true}
-            onTickerUpdate={fetchData}
+            onSelectedStockIdsChange={setSelectedStockIds}
+            onStockUpdate={handleUpdateSingle}
+            onStockDelete={handleDelete}
           />
         </div>
         
