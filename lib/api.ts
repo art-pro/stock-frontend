@@ -36,8 +36,20 @@ api.interceptors.response.use(
   }
 );
 
+export interface Portfolio {
+  id: number;
+  name: string;
+  description: string;
+  is_default: boolean;
+  total_value: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Stock {
   id: number;
+  portfolio_id: number;
+  portfolio?: Portfolio;
   ticker: string;
   isin: string;
   company_name: string;
@@ -128,9 +140,25 @@ export const authAPI = {
   getCurrentUser: () => api.get('/me'),
 };
 
+// Portfolio API
+export const portfolioManagementAPI = {
+  getAll: () => api.get<Portfolio[]>('/portfolios'),
+  getById: (id: number) => api.get<Portfolio>(`/portfolios/${id}`),
+  create: (data: { name: string; description?: string }) => 
+    api.post<Portfolio>('/portfolios', data),
+  update: (id: number, data: { name: string; description?: string; is_default?: boolean }) =>
+    api.put<Portfolio>(`/portfolios/${id}`, data),
+  delete: (id: number) => api.delete(`/portfolios/${id}`),
+  getStocks: (id: number) => api.get<Stock[]>(`/portfolios/${id}/stocks`),
+  setDefault: (id: number) => api.post(`/portfolios/${id}/set-default`),
+};
+
 // Stock API
 export const stockAPI = {
-  getAll: () => api.get<Stock[]>('/stocks'),
+  getAll: (portfolioId?: number) => {
+    const params = portfolioId ? { portfolio_id: portfolioId } : {};
+    return api.get<Stock[]>('/stocks', { params });
+  },
   getById: (id: number) => api.get<Stock>(`/stocks/${id}`),
   create: (data: Partial<Stock>) => api.post<Stock>('/stocks', data),
   update: (id: number, data: Partial<Stock>) =>
