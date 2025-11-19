@@ -76,20 +76,20 @@ export default function DashboardPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
+
       // Try portfolio summary first
       const response = await portfolioAPI.getSummary();
       console.log('Portfolio API Response:', response.data);
       console.log('Stocks received:', response.data.stocks);
-      
+
       // Also try fetching stocks directly to check if there's a difference
       const directStocksResponse = await stockAPI.getAll();
       console.log('Direct stocks API response:', directStocksResponse.data);
-      
+
       // Use direct stocks if portfolio doesn't return them
       const stocksData = response.data.stocks || directStocksResponse.data || [];
       console.log('Final stocks to display:', stocksData);
-      
+
       setStocks(stocksData);
       setMetrics(response.data.summary || null);
       setError('');
@@ -103,10 +103,10 @@ export default function DashboardPage() {
 
   const handleUpdateAll = async (source: 'grok' | 'alphavantage') => {
     // Get stocks to update - either selected ones or all if none selected
-    const stocksToUpdate = selectedStockIds.length > 0 
+    const stocksToUpdate = selectedStockIds.length > 0
       ? stocks.filter(s => selectedStockIds.includes(s.id))
       : stocks;
-    
+
     if (stocksToUpdate.length === 0) {
       alert('No stocks to update. Please select at least one stock.');
       return;
@@ -115,13 +115,13 @@ export default function DashboardPage() {
     try {
       setUpdating(true);
       setUpdateProgress({ current: 0, total: stocksToUpdate.length });
-      
+
       // Update stocks sequentially to show progress
       for (let i = 0; i < stocksToUpdate.length; i++) {
         const stock = stocksToUpdate[i];
         setUpdatingStocks([{ stockId: stock.id, source }]);
         setUpdateProgress({ current: i + 1, total: stocksToUpdate.length });
-        
+
         try {
           await stockAPI.updateSingle(stock.id, source);
           // Small delay to ensure backend has processed
@@ -132,9 +132,9 @@ export default function DashboardPage() {
           console.error(`Failed to update ${stock.ticker}:`, err);
         }
       }
-      
+
       setUpdatingStocks([]);
-      const message = selectedStockIds.length > 0 
+      const message = selectedStockIds.length > 0
         ? `${stocksToUpdate.length} selected stock(s) updated successfully from ${source === 'grok' ? 'Grok AI' : 'Alpha Vantage'}!`
         : `All stocks updated successfully from ${source === 'grok' ? 'Grok AI' : 'Alpha Vantage'}!`;
       alert(message);
@@ -149,7 +149,7 @@ export default function DashboardPage() {
 
   const handleUpdateSingle = async (id: number, source?: 'grok' | 'alphavantage') => {
     if (!source) return;
-    
+
     console.log(`🔄 Starting update for stock ${id} from ${source}`);
     try {
       setUpdatingStocks(prev => [...prev, { stockId: id, source }]);
@@ -193,8 +193,8 @@ export default function DashboardPage() {
   };
 
   const handleSelectStock = (id: number) => {
-    setSelectedStockIds(prev => 
-      prev.includes(id) 
+    setSelectedStockIds(prev =>
+      prev.includes(id)
         ? prev.filter(stockId => stockId !== id)
         : [...prev, id]
     );
@@ -238,33 +238,19 @@ export default function DashboardPage() {
     }
   };
 
-  const handleExportCSV = async () => {
+  const handleExportJSON = async () => {
     try {
-      const response = await stockAPI.exportCSV();
+      const response = await stockAPI.exportJSON();
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `stocks-${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `portfolio-${new Date().toISOString().split('T')[0]}.json`);
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (err: any) {
-      alert('Failed to export CSV: ' + (err.response?.data?.error || err.message));
+      alert('Failed to export JSON: ' + (err.response?.data?.error || err.message));
     }
-  };
-
-  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      await stockAPI.importCSV(file);
-      await fetchData();
-      alert('CSV imported successfully!');
-    } catch (err: any) {
-      alert('Failed to import CSV: ' + (err.response?.data?.error || err.message));
-    }
-    e.target.value = ''; // Reset file input
   };
 
   const handleLogout = () => {
@@ -347,7 +333,7 @@ export default function DashboardPage() {
                       </>
                     )}
                   </div>
-                  
+
                   <button
                     onClick={handleTestAPI}
                     disabled={checkingAPI}
@@ -358,7 +344,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
               )}
-              
+
               <button
                 onClick={() => router.push('/assessment')}
                 className="flex items-center px-3 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-600 transition-colors"
@@ -402,13 +388,13 @@ export default function DashboardPage() {
 
         {/* Portfolio Summary */}
         {metrics && <PortfolioSummary metrics={metrics} />}
-        
+
         {/* API Status Info */}
         <div className="mb-4 space-y-3">
           <div className="text-sm text-gray-400">
             Stocks loaded: {stocks.length}
           </div>
-          
+
           {/* Alpha Vantage Status Messages */}
           {apiStatus && apiStatus.alpha_vantage?.status === 'not_configured' && (
             <div className="flex items-center space-x-2 px-3 py-2 bg-gray-900 bg-opacity-30 border border-gray-700 rounded-lg">
@@ -509,14 +495,14 @@ export default function DashboardPage() {
             onClick={() => handleUpdateAll('alphavantage')}
             disabled={updating || stocks.length === 0}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={selectedStockIds.length > 0 
+            title={selectedStockIds.length > 0
               ? `Update ${selectedStockIds.length} selected stock(s) from Alpha Vantage`
               : "Update all stocks from Alpha Vantage (or select specific stocks first)"}
           >
             <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
-            📊 {updating 
-              ? `Updating (${updateProgress.current}/${updateProgress.total})...` 
-              : selectedStockIds.length > 0 
+            📊 {updating
+              ? `Updating (${updateProgress.current}/${updateProgress.total})...`
+              : selectedStockIds.length > 0
                 ? `Update ${selectedStockIds.length} from Alpha Vantage`
                 : 'Update from Alpha Vantage'}
           </button>
@@ -524,34 +510,24 @@ export default function DashboardPage() {
             onClick={() => handleUpdateAll('grok')}
             disabled={updating || stocks.length === 0}
             className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={selectedStockIds.length > 0 
+            title={selectedStockIds.length > 0
               ? `Update ${selectedStockIds.length} selected stock(s) from Grok AI`
               : "Update all stocks from Grok AI (or select specific stocks first)"}
           >
             <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
-            🤖 {updating 
-              ? `Updating (${updateProgress.current}/${updateProgress.total})...` 
-              : selectedStockIds.length > 0 
+            🤖 {updating
+              ? `Updating (${updateProgress.current}/${updateProgress.total})...`
+              : selectedStockIds.length > 0
                 ? `Update ${selectedStockIds.length} from Grok AI`
                 : 'Update from Grok AI'}
           </button>
           <button
-            onClick={handleExportCSV}
+            onClick={handleExportJSON}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export CSV
+            Export JSON
           </button>
-          <label className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
-            <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
-            Import CSV
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleImportCSV}
-              className="hidden"
-            />
-          </label>
           <button
             onClick={() => setShowJsonUploadModal(true)}
             className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -567,7 +543,7 @@ export default function DashboardPage() {
             Stock Assessment
           </button>
         </div>
-        
+
         {/* Update Progress Bar */}
         {updating && updateProgress.total > 0 && (
           <div className="mb-6 bg-gray-800 rounded-lg p-4 border border-gray-700">
@@ -661,7 +637,7 @@ export default function DashboardPage() {
             onTickerUpdate={fetchData}
           />
         </div>
-        
+
         {/* Exchange Rates Section */}
         <div className="my-8">
           <ExchangeRateTable />

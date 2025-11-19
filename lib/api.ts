@@ -152,14 +152,7 @@ export const stockAPI = {
     return api.patch(`/stocks/${id}/field`, payload);
   },
   getHistory: (id: number) => api.get<StockHistory[]>(`/stocks/${id}/history`),
-  exportCSV: () => api.get('/export/csv', { responseType: 'blob' }),
-  importCSV: (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return api.post('/import/csv', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-  },
+  exportJSON: () => api.get('/export/json', { responseType: 'blob' }),
 };
 
 // Portfolio API
