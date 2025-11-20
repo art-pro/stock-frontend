@@ -155,8 +155,19 @@ export const stockAPI = {
   exportJSON: () => api.get('/export/json', { responseType: 'blob' }),
 };
 
+export interface Portfolio {
+  id: number;
+  user_id: number;
+  name: string;
+  description: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // Portfolio API
 export const portfolioAPI = {
+  // Legacy endpoints (use default portfolio)
   getSummary: () =>
     api.get<{ summary: PortfolioMetrics; stocks: Stock[] }>(
       '/portfolio/summary'
@@ -166,6 +177,30 @@ export const portfolioAPI = {
   getAlerts: () => api.get<Alert[]>('/alerts'),
   deleteAlert: (id: number) => api.delete(`/alerts/${id}`),
   getAPIStatus: () => api.get('/api-status'),
+
+  // Multi-portfolio endpoints
+  getAll: () => api.get<{ portfolios: Portfolio[] }>('/portfolios'),
+  getDefault: () => api.get<{ portfolio: Portfolio }>('/portfolios/default'),
+  getById: (portfolioId: number) => api.get<{ portfolio: Portfolio }>(`/portfolios/${portfolioId}`),
+  create: (data: { name: string; description?: string; is_default?: boolean }) =>
+    api.post<{ portfolio: Portfolio }>('/portfolios', data),
+  update: (portfolioId: number, data: { name?: string; description?: string }) =>
+    api.put<{ portfolio: Portfolio }>(`/portfolios/${portfolioId}`, data),
+  delete: (portfolioId: number) => api.delete(`/portfolios/${portfolioId}`),
+  setDefault: (portfolioId: number) =>
+    api.post<{ portfolio: Portfolio }>(`/portfolios/${portfolioId}/set-default`),
+
+  // Portfolio-specific operations
+  getPortfolioSummary: (portfolioId: number) =>
+    api.get<{ summary: PortfolioMetrics; stocks: Stock[] }>(`/portfolios/${portfolioId}/summary`),
+  getPortfolioSettings: (portfolioId: number) =>
+    api.get(`/portfolios/${portfolioId}/settings`),
+  updatePortfolioSettings: (portfolioId: number, data: any) =>
+    api.put(`/portfolios/${portfolioId}/settings`, data),
+  getPortfolioAlerts: (portfolioId: number) =>
+    api.get<Alert[]>(`/portfolios/${portfolioId}/alerts`),
+  deletePortfolioAlert: (portfolioId: number, alertId: number) =>
+    api.delete(`/portfolios/${portfolioId}/alerts/${alertId}`),
 };
 
 // Deleted stocks API

@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { PortfolioProvider } from '@/contexts/PortfolioContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,7 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en" dir="ltr" className="dark">
       <body className={`${inter.className} bg-gray-900 text-gray-100`} dir="ltr">
-        {children}
+        <PortfolioProvider>
+          {children}
+        </PortfolioProvider>
       </body>
     </html>
   )
