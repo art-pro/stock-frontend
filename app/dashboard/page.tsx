@@ -20,7 +20,6 @@ import {
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   ChartBarIcon,
-  BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 
 export default function DashboardPage() {
@@ -353,13 +352,6 @@ export default function DashboardPage() {
               >
                 <ChartBarIcon className="h-5 w-5 mr-2" />
                 <span className="hidden sm:inline">Assessment</span>
-              </button>
-              <button
-                onClick={() => router.push('/portfolios')}
-                className="flex items-center px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                title="Manage Portfolios"
-              >
-                <BriefcaseIcon className="h-5 w-5" />
               </button>
               <button
                 onClick={() => router.push('/settings')}
