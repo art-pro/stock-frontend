@@ -272,106 +272,75 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-white">Stock Portfolio Tracker</h1>
-              <p className="text-sm text-gray-400 mt-1">
-                Kelly Criterion & Expected Value Analysis
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Frontend: v{FRONTEND_VERSION} | Backend: v{backendVersion}
+              <h1 className="text-xl font-bold text-white">Portfolio Dashboard</h1>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Kelly Criterion Analysis • v{FRONTEND_VERSION} / v{backendVersion}
               </p>
             </div>
-            <div className="flex items-center space-x-2">
-              {/* API Status Indicators */}
+
+            <div className="flex items-center space-x-3">
+              {/* Compact API Status */}
               {apiStatus && (
-                <div className="flex items-center space-x-3">
-                  {/* Alpha Vantage Status */}
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-700">
+                <div className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gray-700/50 backdrop-blur-sm border border-gray-600">
+                  {/* Alpha Vantage */}
+                  <div className="flex items-center space-x-1.5" title={`Alpha Vantage: ${apiStatus.alpha_vantage?.status || 'unknown'}`}>
                     <span className="text-xs">📊</span>
-                    {apiStatus.alpha_vantage?.status === 'connected' && (
-                      <>
-                        <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
-                        <span className="text-sm text-blue-400 font-medium">Alpha Vantage</span>
-                      </>
-                    )}
-                    {apiStatus.alpha_vantage?.status === 'not_configured' && (
-                      <>
-                        <div className="h-2 w-2 rounded-full bg-gray-500"></div>
-                        <span className="text-sm text-gray-400 font-medium">AV Off</span>
-                      </>
-                    )}
-                    {apiStatus.alpha_vantage?.status === 'error' && (
-                      <>
-                        <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                        <span className="text-sm text-red-400 font-medium">AV Error</span>
-                      </>
-                    )}
+                    <div className={`h-2 w-2 rounded-full ${
+                      apiStatus.alpha_vantage?.status === 'connected' ? 'bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500' :
+                      apiStatus.alpha_vantage?.status === 'error' ? 'bg-red-500' : 'bg-gray-500'
+                    }`}></div>
                   </div>
 
-                  {/* Grok Status */}
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-700">
+                  <div className="h-3 w-px bg-gray-600"></div>
+
+                  {/* Grok */}
+                  <div className="flex items-center space-x-1.5" title={`Grok AI: ${apiStatus.grok.status}`}>
                     <span className="text-xs">🤖</span>
-                    {apiStatus.grok.status === 'connected' && (
-                      <>
-                        <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse"></div>
-                        <span className="text-sm text-purple-400 font-medium">Grok AI</span>
-                      </>
-                    )}
-                    {apiStatus.grok.status === 'not_configured' && (
-                      <>
-                        <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
-                        <span className="text-sm text-yellow-400 font-medium">Mock</span>
-                      </>
-                    )}
-                    {apiStatus.grok.status === 'error' && (
-                      <>
-                        <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                        <span className="text-sm text-red-400 font-medium">Grok Error</span>
-                      </>
-                    )}
+                    <div className={`h-2 w-2 rounded-full ${
+                      apiStatus.grok.status === 'connected' ? 'bg-violet-500 animate-pulse shadow-sm shadow-violet-500' :
+                      apiStatus.grok.status === 'error' ? 'bg-red-500' : 'bg-amber-500'
+                    }`}></div>
                   </div>
 
                   <button
                     onClick={handleTestAPI}
                     disabled={checkingAPI}
-                    className="text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50 px-2 py-1 bg-gray-700 rounded"
-                    title="Test API connections"
+                    className="text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50 ml-1"
+                    title="Refresh API status"
                   >
-                    {checkingAPI ? '...' : 'Test'}
+                    {checkingAPI ? '⟳' : '↻'}
                   </button>
                 </div>
               )}
 
-              <button
-                onClick={() => router.push('/assessment')}
-                className="flex items-center px-3 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-600 transition-colors"
-                title="Stock Assessment"
-              >
-                <ChartBarIcon className="h-5 w-5 mr-2" />
-                <span className="hidden sm:inline">Assessment</span>
-              </button>
-              <button
-                onClick={() => router.push('/settings')}
-                className="flex items-center px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                title="Settings"
-              >
-                <Cog6ToothIcon className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => router.push('/log')}
-                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                View Log
-              </button>
+              {/* Navigation Group */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => router.push('/assessment')}
+                  className="p-2 bg-gray-700/50 text-gray-300 rounded-lg hover:bg-indigo-600 hover:text-white transition-all"
+                  title="Stock Assessment"
+                >
+                  <ChartBarIcon className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => router.push('/settings')}
+                  className="p-2 bg-gray-700/50 text-gray-300 rounded-lg hover:bg-gray-600 hover:text-white transition-all"
+                  title="Settings"
+                >
+                  <Cog6ToothIcon className="h-5 w-5" />
+                </button>
+              </div>
+
               <button
                 onClick={handleLogout}
-                className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="flex items-center px-3 py-2 bg-red-600/90 text-white rounded-lg hover:bg-red-600 transition-all shadow-sm"
+                title="Logout"
               >
-                <ArrowRightOnRectangleIcon className="h-5 w-5 mr-2" />
-                Logout
+                <ArrowRightOnRectangleIcon className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -389,211 +358,148 @@ export default function DashboardPage() {
         {/* Portfolio Summary */}
         {metrics && <PortfolioSummary metrics={metrics} />}
 
-        {/* API Status Info */}
-        <div className="mb-4 space-y-3">
-          <div className="text-sm text-gray-400">
-            Stocks loaded: {stocks.length}
-          </div>
+        {/* Compact Status Bar */}
+        <div className="mb-4 flex items-center justify-between text-xs px-1">
+          <span className="text-gray-400">{stocks.length} positions tracked</span>
 
-          {/* Alpha Vantage Status Messages */}
-          {apiStatus && apiStatus.alpha_vantage?.status === 'not_configured' && (
-            <div className="flex items-center space-x-2 px-3 py-2 bg-gray-900 bg-opacity-30 border border-gray-700 rounded-lg">
-              <span className="text-sm text-gray-300">
-                📊 Alpha Vantage not configured. Add <code className="px-1 py-0.5 bg-gray-800 rounded">ALPHA_VANTAGE_API_KEY</code> for real-time financial data.
-              </span>
+          {apiStatus && (apiStatus.alpha_vantage?.status === 'not_configured' || apiStatus.grok.status === 'not_configured' ||
+                        apiStatus.alpha_vantage?.status === 'error' || apiStatus.grok.status === 'error') && (
+            <div className="flex items-center space-x-2 text-gray-400">
+              <span className="text-amber-500">⚠️</span>
+              <span>API configuration needed</span>
               <a
                 href="https://www.alphavantage.co/support/#api-key"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-400 hover:text-blue-300 underline"
+                className="text-emerald-400 hover:text-emerald-300 underline ml-2"
               >
-                Get Free Key
+                Alpha Vantage
               </a>
-            </div>
-          )}
-          {apiStatus && apiStatus.alpha_vantage?.status === 'connected' && (
-            <div className="flex items-center space-x-2 px-3 py-2 bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg">
-              <span className="text-sm text-blue-300">
-                ✓ Alpha Vantage Connected - Real-time financial data active
-              </span>
-            </div>
-          )}
-          {apiStatus && apiStatus.alpha_vantage?.status === 'error' && (
-            <div className="flex items-center space-x-2 px-3 py-2 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg">
-              <span className="text-sm text-red-300">
-                ⚠️ Alpha Vantage Error: {apiStatus.alpha_vantage.error || 'Connection failed'}
-              </span>
-            </div>
-          )}
-
-          {/* Grok Status Messages */}
-          {apiStatus && apiStatus.grok.status === 'not_configured' && (
-            <div className="flex items-center space-x-2 px-3 py-2 bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded-lg">
-              <span className="text-sm text-yellow-300">
-                🤖 Using mock data. Add <code className="px-1 py-0.5 bg-gray-800 rounded">XAI_API_KEY</code> to .env for Grok AI analytics.
-              </span>
+              <span>•</span>
               <a
                 href="https://console.x.ai/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-yellow-400 hover:text-yellow-300 underline"
+                className="text-violet-400 hover:text-violet-300 underline"
               >
-                Get API Key
+                Grok AI
               </a>
-            </div>
-          )}
-          {apiStatus && apiStatus.grok.status === 'connected' && (
-            <div className="flex items-center space-x-2 px-3 py-2 bg-purple-900 bg-opacity-30 border border-purple-700 rounded-lg">
-              <span className="text-sm text-purple-300">
-                ✓ Grok AI Connected - Analytical data active
-              </span>
-            </div>
-          )}
-          {apiStatus && apiStatus.grok.status === 'error' && (
-            <div className="flex items-center space-x-2 px-3 py-2 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg">
-              <span className="text-sm text-red-300">
-                ⚠️ Grok API Error: {apiStatus.grok.error || 'Connection failed'}
-              </span>
             </div>
           )}
         </div>
 
         {/* Selection Info */}
         {selectedStockIds.length > 0 && (
-          <div className="mb-4 bg-primary-900 bg-opacity-30 border border-primary-700 rounded-lg p-3 flex items-center justify-between">
-            <span className="text-sm text-primary-200">
-              ✓ {selectedStockIds.length} stock{selectedStockIds.length > 1 ? 's' : ''} selected - Updates will only apply to selected stocks
+          <div className="mb-4 bg-indigo-900/20 border border-indigo-700/50 rounded-lg px-3 py-2 flex items-center justify-between backdrop-blur-sm">
+            <span className="text-sm text-indigo-200">
+              ✓ {selectedStockIds.length} selected
             </span>
             <button
               onClick={() => setSelectedStockIds([])}
-              className="text-xs text-primary-300 hover:text-primary-100 underline"
+              className="text-xs text-indigo-300 hover:text-indigo-100 underline"
             >
-              Clear selection
+              Clear
             </button>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add Stock
-          </button>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="flex items-center px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Refresh stock list"
-          >
-            <ArrowPathIcon className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-          <button
-            onClick={() => handleUpdateAll('alphavantage')}
-            disabled={updating || stocks.length === 0}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={selectedStockIds.length > 0
-              ? `Update ${selectedStockIds.length} selected stock(s) from Alpha Vantage`
-              : "Update all stocks from Alpha Vantage (or select specific stocks first)"}
-          >
-            <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
-            📊 {updating
-              ? `Updating (${updateProgress.current}/${updateProgress.total})...`
-              : selectedStockIds.length > 0
-                ? `Update ${selectedStockIds.length} from Alpha Vantage`
-                : 'Update from Alpha Vantage'}
-          </button>
-          <button
-            onClick={() => handleUpdateAll('grok')}
-            disabled={updating || stocks.length === 0}
-            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={selectedStockIds.length > 0
-              ? `Update ${selectedStockIds.length} selected stock(s) from Grok AI`
-              : "Update all stocks from Grok AI (or select specific stocks first)"}
-          >
-            <ArrowPathIcon className={`h-5 w-5 mr-2 ${updating ? 'animate-spin' : ''}`} />
-            🤖 {updating
-              ? `Updating (${updateProgress.current}/${updateProgress.total})...`
-              : selectedStockIds.length > 0
-                ? `Update ${selectedStockIds.length} from Grok AI`
-                : 'Update from Grok AI'}
-          </button>
-          <button
-            onClick={handleExportJSON}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export JSON
-          </button>
-          <button
-            onClick={() => setShowJsonUploadModal(true)}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <DocumentArrowUpIcon className="h-5 w-5 mr-2" />
-            Upload JSON
-          </button>
-          <button
-            onClick={() => router.push('/assessment')}
-            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <ChartBarIcon className="h-5 w-5 mr-2" />
-            Stock Assessment
-          </button>
+        {/* Action Toolbar - Organized by Purpose */}
+        <div className="mb-6 flex flex-wrap gap-3">
+          {/* Primary Actions */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-md hover:shadow-lg"
+            >
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Add Position
+            </button>
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="p-2 bg-gray-700/50 text-gray-300 rounded-lg hover:bg-gray-600 hover:text-white transition-all disabled:opacity-50"
+              title="Refresh data"
+            >
+              <ArrowPathIcon className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {/* Data Source Updates */}
+          <div className="flex gap-2 pl-3 border-l border-gray-700">
+            <button
+              onClick={() => handleUpdateAll('alphavantage')}
+              disabled={updating || stocks.length === 0}
+              className="flex items-center px-3 py-2 bg-emerald-600/90 text-white rounded-lg hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-sm"
+              title={selectedStockIds.length > 0 ? `Update ${selectedStockIds.length} selected positions` : "Update all positions from Alpha Vantage"}
+            >
+              <span className="text-sm">📊</span>
+              <span className="ml-1.5 text-sm font-medium">
+                {updating ? `${updateProgress.current}/${updateProgress.total}` : selectedStockIds.length > 0 ? `(${selectedStockIds.length})` : 'Market Data'}
+              </span>
+            </button>
+            <button
+              onClick={() => handleUpdateAll('grok')}
+              disabled={updating || stocks.length === 0}
+              className="flex items-center px-3 py-2 bg-violet-600/90 text-white rounded-lg hover:bg-violet-600 transition-all disabled:opacity-50 shadow-sm"
+              title={selectedStockIds.length > 0 ? `Update ${selectedStockIds.length} selected positions` : "Update all positions from Grok AI"}
+            >
+              <span className="text-sm">🤖</span>
+              <span className="ml-1.5 text-sm font-medium">
+                {updating ? `${updateProgress.current}/${updateProgress.total}` : selectedStockIds.length > 0 ? `(${selectedStockIds.length})` : 'AI Analysis'}
+              </span>
+            </button>
+          </div>
+
+          {/* Import/Export */}
+          <div className="flex gap-2 pl-3 border-l border-gray-700">
+            <button
+              onClick={() => setShowJsonUploadModal(true)}
+              className="flex items-center px-3 py-2 bg-teal-600/90 text-white rounded-lg hover:bg-teal-600 transition-all shadow-sm"
+              title="Import portfolio"
+            >
+              <ArrowUpTrayIcon className="h-4 w-4 mr-1.5" />
+              <span className="text-sm font-medium">Import</span>
+            </button>
+            <button
+              onClick={handleExportJSON}
+              className="flex items-center px-3 py-2 bg-teal-600/90 text-white rounded-lg hover:bg-teal-600 transition-all shadow-sm"
+              title="Export portfolio"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4 mr-1.5" />
+              <span className="text-sm font-medium">Export</span>
+            </button>
+          </div>
         </div>
 
         {/* Update Progress Bar */}
         {updating && updateProgress.total > 0 && (
-          <div className="mb-6 bg-gray-800 rounded-lg p-4 border border-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-300">
-                Updating stocks from Grok... {updateProgress.current} of {updateProgress.total}
+          <div className="mb-4 bg-gradient-to-r from-gray-800 to-gray-800/50 rounded-lg p-3 border border-gray-700/50 backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-gray-300 font-medium">
+                Processing {updateProgress.current} / {updateProgress.total}
               </span>
-              <span className="text-sm text-gray-400">
+              <span className="text-xs text-indigo-400 font-semibold">
                 {Math.round((updateProgress.current / updateProgress.total) * 100)}%
               </span>
             </div>
-            <div className="w-full bg-gray-700 rounded-full h-2.5">
+            <div className="w-full bg-gray-700/50 rounded-full h-2 overflow-hidden">
               <div
-                className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
+                className="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full transition-all duration-300 shadow-sm"
                 style={{ width: `${(updateProgress.current / updateProgress.total) * 100}%` }}
               ></div>
             </div>
           </div>
         )}
 
-        {/* Info Card */}
-        <div className="mb-6 bg-blue-900 bg-opacity-20 border border-blue-700 rounded-lg p-4">
-          <p className="text-sm text-blue-200 mb-3">
-            <span className="font-semibold">💡 Tip:</span> Your stocks are organized into two sections:
-            <span className="font-medium ml-1">Portfolio</span> shows stocks you own (shares &gt; 0), and
-            <span className="font-medium ml-1">Watchlist</span> shows stocks you&rsquo;re tracking (0 shares).
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-blue-100">
-            <div className="bg-blue-950 bg-opacity-40 rounded p-3">
-              <div className="font-semibold mb-1">📊 Alpha Vantage (Raw Data)</div>
-              <div className="text-blue-200">Current price, beta, P/E ratio, EPS growth, dividend yield, analyst targets</div>
-            </div>
-            <div className="bg-purple-950 bg-opacity-40 rounded p-3">
-              <div className="font-semibold mb-1">🤖 Grok AI (Analytical)</div>
-              <div className="text-purple-200">Probability (p), EV, Kelly sizing, assessments, downside risk, recommendations</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Cash Management Section */}
-        <div className="mb-8">
-          <CashManagementTable />
-        </div>
-
         {/* Portfolio Section (Owned Stocks) */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">📈 Portfolio (Owned Stocks)</h2>
-            <span className="text-sm text-gray-400">
-              {stocks.filter(s => s.shares_owned > 0).length} stocks
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-white flex items-center">
+              <span className="text-emerald-500 mr-2">●</span>
+              Active Positions
+            </h2>
+            <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">
+              {stocks.filter(s => s.shares_owned > 0).length}
             </span>
           </div>
           <StockTable
@@ -616,11 +522,14 @@ export default function DashboardPage() {
         )}
 
         {/* Watchlist Section (Non-Owned Stocks) */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">👁️ Watchlist</h2>
-            <span className="text-sm text-gray-400">
-              {stocks.filter(s => s.shares_owned === 0 || !s.shares_owned).length} stocks
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-white flex items-center">
+              <span className="text-amber-500 mr-2">○</span>
+              Watchlist
+            </h2>
+            <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">
+              {stocks.filter(s => s.shares_owned === 0 || !s.shares_owned).length}
             </span>
           </div>
           <StockTable
@@ -638,9 +547,37 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Exchange Rates Section */}
-        <div className="my-8">
-          <ExchangeRateTable />
+        {/* Additional Tools - Collapsible Sections */}
+        <div className="mt-10 pt-8 border-t border-gray-700/50">
+          <details className="group mb-6">
+            <summary className="cursor-pointer list-none hover:opacity-80 transition-opacity">
+              <div className="flex items-center justify-between mb-3 select-none">
+                <h2 className="text-lg font-bold text-white inline-flex items-center">
+                  <span className="text-teal-500 mr-2">💰</span>
+                  Cash Management
+                  <span className="ml-2 text-xs text-gray-500 group-open:rotate-180 transition-transform duration-200">▼</span>
+                </h2>
+              </div>
+            </summary>
+            <div className="mt-3 animate-in fade-in duration-200">
+              <CashManagementTable />
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="cursor-pointer list-none hover:opacity-80 transition-opacity">
+              <div className="flex items-center justify-between mb-3 select-none">
+                <h2 className="text-lg font-bold text-white inline-flex items-center">
+                  <span className="text-blue-500 mr-2">💱</span>
+                  Exchange Rates
+                  <span className="ml-2 text-xs text-gray-500 group-open:rotate-180 transition-transform duration-200">▼</span>
+                </h2>
+              </div>
+            </summary>
+            <div className="mt-3 animate-in fade-in duration-200">
+              <ExchangeRateTable />
+            </div>
+          </details>
         </div>
       </main>
 
