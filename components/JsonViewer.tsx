@@ -37,7 +37,7 @@ export default function JsonViewer({ data, title }: JsonViewerProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const renderValue = (value: any, path: string = '', depth: number = 0): JSX.Element => {
+  const renderValue = (value: any, path: string = '', depth: number = 0): React.JSX.Element => {
     if (value === null) return <span className="text-gray-500">null</span>;
     if (value === undefined) return <span className="text-gray-500">undefined</span>;
     

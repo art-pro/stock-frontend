@@ -4,8 +4,8 @@ This file contains information for Claude Code to help with development tasks.
 
 ## Project Information
 - **Type**: Stock Frontend Application
-- **Framework**: Next.js 14.0.4 (React 18.2.0)
-- **Language**: TypeScript 5.3.3
+- **Framework**: Next.js 16.0.7 (React 19.2.0)
+- **Language**: TypeScript 5.7.2
 
 ## Common Commands
 - **Lint**: npm run lint
@@ -15,7 +15,9 @@ This file contains information for Claude Code to help with development tasks.
 - **Dev Server**: npm run dev
 
 ## Notes
-- Current version: 1.3.2 (as of 2025-11-10)
+- Current version: 1.5.0 (as of 2025-12-04)
+- Updated all dependencies to latest versions (Next.js 16.0.7, React 19.2.0, TypeScript 5.7.2)
+- Now using Next.js 16 with Turbopack for faster development builds
 - Recent features: JSON upload modal improvements, favicon addition, bulk stock updates API endpoint
 - New feature: Ticker editing with duplicate detection and automatic merging
 
