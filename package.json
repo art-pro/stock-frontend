@@ -17,9 +17,9 @@
     "js-cookie": "^3.0.5",
     "next": "^16.0.7",
     "postcss": "^8.4.49",
-    "react": "^19.2.0",
+    "react": "^19.2.1",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "^19.2.0",
+    "react-dom": "^19.2.1",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tailwindcss": "^3.4.17"
