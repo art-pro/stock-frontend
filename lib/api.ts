@@ -315,8 +315,8 @@ export interface AssessmentResponse {
 export const assessmentAPI = {
   request: (data: AssessmentRequest) => 
     api.post<{ assessment: string }>('/assessment/request', data),
-  extractFromImages: (images: string[]) =>
-    api.post<any>('/assessment/extract-from-images', { images }),
+  extractFromImages: (images: string[], source?: 'grok' | 'deepseek') =>
+    api.post<any>('/assessment/extract-from-images', { images, source }),
   getRecent: () => 
     api.get<AssessmentResponse[]>('/assessment/recent'),
   getById: (id: number) => 

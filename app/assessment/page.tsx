@@ -48,6 +48,7 @@ export default function AssessmentPage() {
 
   // Extraction State
   const [files, setFiles] = useState<File[]>([]);
+  const [extractionSource, setExtractionSource] = useState<'grok' | 'deepseek'>('grok');
   const [extractionLoading, setExtractionLoading] = useState(false);
   const [extractedJson, setExtractedJson] = useState<string>('');
   const [extractionError, setExtractionError] = useState('');
@@ -141,7 +142,7 @@ export default function AssessmentPage() {
 
     try {
       const base64Images = await Promise.all(files.map(convertFileToBase64));
-      const response = await assessmentAPI.extractFromImages(base64Images);
+      const response = await assessmentAPI.extractFromImages(base64Images, extractionSource);
       
       // Format JSON nicely
       setExtractedJson(JSON.stringify(response.data, null, 2));
@@ -440,6 +441,23 @@ export default function AssessmentPage() {
             <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
               <h2 className="text-xl font-bold text-white mb-4">Extract Data from Screenshots</h2>
               
+              {/* Source Selection */}
+              <div className="mb-6">
+                <label htmlFor="extraction-source" className="block text-sm font-medium text-gray-400 mb-2">
+                  AI Source
+                </label>
+                <select
+                  id="extraction-source"
+                  value={extractionSource}
+                  onChange={(e) => setExtractionSource(e.target.value as 'grok' | 'deepseek')}
+                  className="w-full md:w-64 bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                  disabled={extractionLoading}
+                >
+                  <option value="grok">Grok AI</option>
+                  <option value="deepseek">Deepseek</option>
+                </select>
+              </div>
+
               {/* File Upload */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-400 mb-2">
