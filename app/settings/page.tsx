@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { authAPI, portfolioAPI } from '@/lib/api';
@@ -76,9 +76,9 @@ export default function SettingsPage() {
     }
   };
 
-  const handleColumnSettingsChange = (columns: ColumnConfig[]) => {
+  const handleColumnSettingsChange = useCallback((columns: ColumnConfig[]) => {
     hookSaveSettings(columns);
-  };
+  }, [hookSaveSettings]);
 
   const handleUsernameSubmit = async (e: FormEvent) => {
     e.preventDefault();
