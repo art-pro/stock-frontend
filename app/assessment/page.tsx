@@ -45,7 +45,7 @@ export default function AssessmentPage() {
   const [currentPrice, setCurrentPrice] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [currencies, setCurrencies] = useState<string[]>(['USD', 'EUR', 'GBP']);
-  const [source, setSource] = useState<'grok'>('grok');
+  const [source, setSource] = useState<'grok' | 'deepseek'>('grok');
   const [loading, setLoading] = useState(false);
   const [assessment, setAssessment] = useState<string>('');
   const [error, setError] = useState('');
@@ -411,11 +411,12 @@ export default function AssessmentPage() {
                     <select
                       id="source"
                       value={source}
-                      onChange={(e) => setSource(e.target.value as 'grok')}
+                      onChange={(e) => setSource(e.target.value as 'grok' | 'deepseek')}
                       className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
                       disabled={loading}
                     >
                       <option value="grok">Grok AI</option>
+                      <option value="deepseek">Deepseek</option>
                     </select>
                   </div>
                 </div>
