@@ -112,7 +112,7 @@ body {
 
 .stock-table th.ticker-column {
   position: sticky;
-  left: 60px; /* Width of checkbox column + padding */
+  left: 41px; /* Precisely positioned to eliminate gap */
   z-index: 11;
   background-color: #1f2937; /* bg-gray-800 */
   border-right: 2px solid #4b5563 !important; /* Stronger border for visibility */
@@ -121,7 +121,7 @@ body {
 
 .stock-table td.ticker-column {
   position: sticky;
-  left: 60px; /* Width of checkbox column + padding */
+  left: 41px; /* Precisely positioned to eliminate gap */
   z-index: 10;
   background-color: #1f2937; /* Default background - matches header */
   border-right: 2px solid #4b5563 !important; /* Stronger border for visibility */
