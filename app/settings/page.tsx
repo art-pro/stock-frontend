@@ -39,12 +39,11 @@ export default function SettingsPage() {
   const { 
     columnSettings: hookColumnSettings, 
     saveSettings: hookSaveSettings,
-    isLoading: columnsLoading
+    isLoading: columnsLoading,
+    saveStatus,
+    saveError
   } = useColumnSettings();
   
-  const [columnError, setColumnError] = useState('');
-  const [columnSuccess, setColumnSuccess] = useState('');
-
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login');
@@ -79,10 +78,6 @@ export default function SettingsPage() {
 
   const handleColumnSettingsChange = (columns: ColumnConfig[]) => {
     hookSaveSettings(columns);
-    setColumnSuccess('Column settings saved successfully!');
-    setColumnError('');
-    // Clear success message after 3 seconds
-    setTimeout(() => setColumnSuccess(''), 3000);
   };
 
   const handleUsernameSubmit = async (e: FormEvent) => {
@@ -460,14 +455,20 @@ export default function SettingsPage() {
         {/* Column Settings Tab */}
         {activeTab === 'columns' && (
           <div>
-            {columnError && (
+            {saveStatus === 'error' && saveError && (
               <div className="bg-red-900 bg-opacity-50 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-4">
-                {columnError}
+                {saveError}
               </div>
             )}
-            {columnSuccess && (
+            {saveStatus === 'success' && (
               <div className="bg-green-900 bg-opacity-50 border border-green-700 text-green-200 px-4 py-3 rounded-lg mb-4">
-                {columnSuccess}
+                Column settings saved successfully!
+              </div>
+            )}
+            {saveStatus === 'saving' && (
+              <div className="bg-blue-900 bg-opacity-30 border border-blue-700 text-blue-200 px-4 py-3 rounded-lg mb-4 flex items-center">
+                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-200 mr-3"></div>
+                 Saving changes...
               </div>
             )}
 

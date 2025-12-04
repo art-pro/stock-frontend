@@ -8,6 +8,8 @@ import { isAuthenticated } from '@/lib/auth';
 export function useColumnSettings() {
   const [columnSettings, setColumnSettings] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
   const [isLoading, setLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -77,6 +79,9 @@ export function useColumnSettings() {
       }
 
       if (isAuthenticated()) {
+          setSaveStatus('saving');
+          setSaveError(null);
+
           if (saveTimerRef.current) {
             clearTimeout(saveTimerRef.current);
           }
@@ -84,10 +89,19 @@ export function useColumnSettings() {
           saveTimerRef.current = setTimeout(async () => {
             try {
                 await settingsAPI.saveColumnSettings(settingsJson);
-            } catch (err) {
+                setSaveStatus('success');
+                // Reset to idle after a delay to clear message
+                setTimeout(() => setSaveStatus('idle'), 3000);
+            } catch (err: any) {
                 console.error('Failed to save column settings to API:', err);
+                setSaveStatus('error');
+                setSaveError(err.response?.data?.error || 'Failed to save settings');
             }
           }, 1000);
+      } else {
+          // If not authenticated, treat local storage save as success
+          setSaveStatus('success');
+          setTimeout(() => setSaveStatus('idle'), 3000);
       }
   };
 
@@ -120,6 +134,8 @@ export function useColumnSettings() {
     isColumnVisible,
     refreshSettings: loadColumnSettings,
     saveSettings: saveColumnSettings,
-    isLoading
+    isLoading,
+    saveStatus,
+    saveError
   };
 }
