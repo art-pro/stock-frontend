@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated, removeToken } from '@/lib/auth';
-import { stockAPI, portfolioAPI, versionAPI, Stock, PortfolioMetrics } from '@/lib/api';
+import { stockAPI, portfolioAPI, versionAPI, invalidateCache, Stock, PortfolioMetrics } from '@/lib/api';
 import { FRONTEND_VERSION } from '@/lib/version';
 import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
@@ -77,19 +77,10 @@ export default function DashboardPage() {
     try {
       setLoading(true);
 
-      // Try portfolio summary first
+      // Fetch portfolio summary (includes stocks and metrics)
       const response = await portfolioAPI.getSummary();
-      console.log('Portfolio API Response:', response.data);
-      console.log('Stocks received:', response.data.stocks);
 
-      // Also try fetching stocks directly to check if there's a difference
-      const directStocksResponse = await stockAPI.getAll();
-      console.log('Direct stocks API response:', directStocksResponse.data);
-
-      // Use direct stocks if portfolio doesn't return them
-      const stocksData = response.data.stocks || directStocksResponse.data || [];
-      console.log('Final stocks to display:', stocksData);
-
+      const stocksData = response.data.stocks || [];
       setStocks(stocksData);
       setMetrics(response.data.summary || null);
       setError('');
@@ -155,6 +146,7 @@ export default function DashboardPage() {
       setUpdatingStocks(prev => [...prev, { stockId: id, source }]);
       const response = await stockAPI.updateSingle(id, source);
       console.log(`✅ Update response:`, response.data);
+      invalidateCache('portfolio'); // Invalidate cache
       // Small delay to ensure backend has processed
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log(`📊 Fetching fresh data...`);
@@ -177,6 +169,7 @@ export default function DashboardPage() {
   const handlePriceUpdate = async (id: number, newPrice: number) => {
     try {
       await stockAPI.updatePrice(id, newPrice);
+      invalidateCache('portfolio'); // Invalidate cache
       await fetchData();
     } catch (err: any) {
       alert('Failed to update price: ' + (err.response?.data?.error || err.message));
@@ -186,6 +179,7 @@ export default function DashboardPage() {
   const handleFieldUpdate = async (id: number, field: string, value: number) => {
     try {
       await stockAPI.updateField(id, field, value);
+      invalidateCache('portfolio'); // Invalidate cache
       await fetchData();
     } catch (err: any) {
       alert('Failed to update field: ' + (err.response?.data?.error || err.message));
@@ -226,6 +220,7 @@ export default function DashboardPage() {
 
     try {
       await stockAPI.delete(id, reason);
+      invalidateCache('portfolio'); // Invalidate cache
       await fetchData();
       alert('Stock deleted successfully!');
     } catch (err: any) {

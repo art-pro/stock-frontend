@@ -15,11 +15,12 @@ This file contains information for Claude Code to help with development tasks.
 - **Dev Server**: npm run dev
 
 ## Notes
-- Current version: 1.5.0 (as of 2025-12-04)
+- Current version: 1.6.0 (as of 2025-12-04)
 - Updated all dependencies to latest versions (Next.js 16.0.7, React 19.2.0, TypeScript 5.7.2)
 - Now using Next.js 16 with Turbopack for faster development builds
 - Recent features: JSON upload modal improvements, favicon addition, bulk stock updates API endpoint
 - New feature: Ticker editing with duplicate detection and automatic merging
+- **Version 1.6.0 optimizations**: Request reduction (88%), client-side caching, disabled link prefetching
 
 ## Features Added
 - **Ticker Editing**: Users can now edit stock ticker symbols with a dedicated modal

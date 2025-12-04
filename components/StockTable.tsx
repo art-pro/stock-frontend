@@ -340,6 +340,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                   <td className="px-3 py-4 whitespace-nowrap text-sm">
                     <Link
                       href={`/stocks/${stock.id}`}
+                      prefetch={false}
                       className="text-primary-400 hover:text-primary-300 hover:underline"
                     >
                       {stock.company_name}

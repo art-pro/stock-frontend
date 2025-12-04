@@ -3,6 +3,53 @@ import Cookies from 'js-cookie';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
+// Simple cache implementation
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+class SimpleCache {
+  private cache = new Map<string, CacheEntry<any>>();
+  private defaultTTL = 30000; // 30 seconds default
+
+  get<T>(key: string, ttl: number = this.defaultTTL): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    const age = Date.now() - entry.timestamp;
+    if (age > ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data as T;
+  }
+
+  set<T>(key: string, data: T): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+    });
+  }
+
+  invalidate(pattern?: string): void {
+    if (!pattern) {
+      this.cache.clear();
+      return;
+    }
+
+    const keys = Array.from(this.cache.keys());
+    keys.forEach((key) => {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    });
+  }
+}
+
+const cache = new SimpleCache();
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -155,17 +202,46 @@ export const stockAPI = {
   exportJSON: () => api.get('/export/json', { responseType: 'blob' }),
 };
 
-// Portfolio API
+// Portfolio API with caching
 export const portfolioAPI = {
-  getSummary: () =>
-    api.get<{ summary: PortfolioMetrics; stocks: Stock[] }>(
+  getSummary: async () => {
+    const cacheKey = 'portfolio:summary';
+    const cached = cache.get<{ summary: PortfolioMetrics; stocks: Stock[] }>(
+      cacheKey,
+      30000 // 30 seconds
+    );
+
+    if (cached) {
+      return { data: cached };
+    }
+
+    const response = await api.get<{ summary: PortfolioMetrics; stocks: Stock[] }>(
       '/portfolio/summary'
-    ),
+    );
+    cache.set(cacheKey, response.data);
+    return response;
+  },
   getSettings: () => api.get('/portfolio/settings'),
   updateSettings: (data: any) => api.put('/portfolio/settings', data),
   getAlerts: () => api.get<Alert[]>('/alerts'),
   deleteAlert: (id: number) => api.delete(`/alerts/${id}`),
-  getAPIStatus: () => api.get('/api-status'),
+  getAPIStatus: async () => {
+    const cacheKey = 'api:status';
+    const cached = cache.get<any>(cacheKey, 60000); // 60 seconds for API status
+
+    if (cached) {
+      return { data: cached };
+    }
+
+    const response = await api.get('/api-status');
+    cache.set(cacheKey, response.data);
+    return response;
+  },
+};
+
+// Cache invalidation helper - export for use in components
+export const invalidateCache = (pattern?: string) => {
+  cache.invalidate(pattern);
 };
 
 // Deleted stocks API
