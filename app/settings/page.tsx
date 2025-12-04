@@ -6,6 +6,7 @@ import { isAuthenticated } from '@/lib/auth';
 import { authAPI, portfolioAPI } from '@/lib/api';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import ColumnSettings, { ColumnConfig, DEFAULT_COLUMNS } from '@/components/ColumnSettings';
+import { useColumnSettings } from '@/hooks/useColumnSettings';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -35,7 +36,12 @@ export default function SettingsPage() {
   const [settingsSuccess, setSettingsSuccess] = useState('');
 
   // Column settings
-  const [columnSettings, setColumnSettings] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+  const { 
+    columnSettings: hookColumnSettings, 
+    saveSettings: hookSaveSettings,
+    isLoading: columnsLoading
+  } = useColumnSettings();
+  
   const [columnError, setColumnError] = useState('');
   const [columnSuccess, setColumnSuccess] = useState('');
 
@@ -46,7 +52,6 @@ export default function SettingsPage() {
     }
     fetchCurrentUser();
     fetchPortfolioSettings();
-    loadColumnSettings();
   }, [router]);
 
   const fetchCurrentUser = async () => {
@@ -72,40 +77,12 @@ export default function SettingsPage() {
     }
   };
 
-  const loadColumnSettings = () => {
-    try {
-      const saved = localStorage.getItem('stock-table-columns');
-      if (saved) {
-        const parsedColumns = JSON.parse(saved);
-        // Merge with defaults to handle any new columns added
-        const mergedColumns = DEFAULT_COLUMNS.map(defaultCol => {
-          const savedCol = parsedColumns.find((col: ColumnConfig) => col.id === defaultCol.id);
-          return savedCol ? { ...defaultCol, ...savedCol } : defaultCol;
-        });
-        setColumnSettings(mergedColumns);
-      }
-    } catch (err) {
-      console.error('Failed to load column settings:', err);
-      setColumnSettings(DEFAULT_COLUMNS);
-    }
-  };
-
-  const saveColumnSettings = (columns: ColumnConfig[]) => {
-    try {
-      localStorage.setItem('stock-table-columns', JSON.stringify(columns));
-      setColumnSuccess('Column settings saved successfully!');
-      setColumnError('');
-      // Clear success message after 3 seconds
-      setTimeout(() => setColumnSuccess(''), 3000);
-    } catch (err) {
-      console.error('Failed to save column settings:', err);
-      setColumnError('Failed to save column settings');
-    }
-  };
-
   const handleColumnSettingsChange = (columns: ColumnConfig[]) => {
-    setColumnSettings(columns);
-    saveColumnSettings(columns);
+    hookSaveSettings(columns);
+    setColumnSuccess('Column settings saved successfully!');
+    setColumnError('');
+    // Clear success message after 3 seconds
+    setTimeout(() => setColumnSuccess(''), 3000);
   };
 
   const handleUsernameSubmit = async (e: FormEvent) => {
@@ -494,10 +471,17 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <ColumnSettings
-              onSettingsChange={handleColumnSettingsChange}
-              initialColumns={columnSettings}
-            />
+            {columnsLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-4"></div>
+                <p className="text-gray-400">Loading settings...</p>
+              </div>
+            ) : (
+              <ColumnSettings
+                onSettingsChange={handleColumnSettingsChange}
+                initialColumns={hookColumnSettings}
+              />
+            )}
           </div>
         )}
       </main>

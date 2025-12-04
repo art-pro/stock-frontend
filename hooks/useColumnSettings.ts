@@ -1,31 +1,94 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ColumnConfig, DEFAULT_COLUMNS } from '@/components/ColumnSettings';
+import { settingsAPI } from '@/lib/api';
+import { isAuthenticated } from '@/lib/auth';
 
 export function useColumnSettings() {
   const [columnSettings, setColumnSettings] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+  const [isLoading, setLoading] = useState(true);
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadColumnSettings();
   }, []);
 
-  const loadColumnSettings = () => {
+  const loadColumnSettings = async () => {
+    if (!isAuthenticated()) {
+        // Fallback to local storage if not authenticated
+        loadFromLocalStorage();
+        setLoading(false);
+        return;
+    }
+
     try {
-      const saved = localStorage.getItem('stock-table-columns');
-      if (saved) {
-        const parsedColumns = JSON.parse(saved);
+      const response = await settingsAPI.getColumnSettings();
+      if (response.data.settings) {
+        const parsedColumns = JSON.parse(response.data.settings);
+        mergeAndSetSettings(parsedColumns);
+        // Also update local storage to keep it in sync
+        localStorage.setItem('stock-table-columns', response.data.settings);
+      } else {
+        // If no settings on server, try local storage
+        loadFromLocalStorage();
+      }
+    } catch (err) {
+      console.error('Failed to load column settings from API:', err);
+      loadFromLocalStorage();
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const loadFromLocalStorage = () => {
+      try {
+        const saved = localStorage.getItem('stock-table-columns');
+        if (saved) {
+            const parsedColumns = JSON.parse(saved);
+            mergeAndSetSettings(parsedColumns);
+        } else {
+            setColumnSettings(DEFAULT_COLUMNS);
+        }
+      } catch (err) {
+          console.error('Failed to load from local storage:', err);
+          setColumnSettings(DEFAULT_COLUMNS);
+      }
+  }
+
+  const mergeAndSetSettings = (parsedColumns: any[]) => {
         // Merge with defaults to handle any new columns added
         const mergedColumns = DEFAULT_COLUMNS.map(defaultCol => {
           const savedCol = parsedColumns.find((col: ColumnConfig) => col.id === defaultCol.id);
           return savedCol ? { ...defaultCol, ...savedCol } : defaultCol;
         });
         setColumnSettings(mergedColumns);
+  }
+
+  const saveColumnSettings = async (newSettings: ColumnConfig[]) => {
+      setColumnSettings(newSettings);
+      const settingsJson = JSON.stringify(newSettings);
+      
+      // Save to local storage immediately
+      try {
+        localStorage.setItem('stock-table-columns', settingsJson);
+      } catch (e) {
+        console.error("Failed to save to local storage", e);
       }
-    } catch (err) {
-      console.error('Failed to load column settings:', err);
-      setColumnSettings(DEFAULT_COLUMNS);
-    }
+
+      if (isAuthenticated()) {
+          if (saveTimerRef.current) {
+            clearTimeout(saveTimerRef.current);
+          }
+
+          saveTimerRef.current = setTimeout(async () => {
+            try {
+                await settingsAPI.saveColumnSettings(settingsJson);
+            } catch (err) {
+                console.error('Failed to save column settings to API:', err);
+            }
+          }, 1000);
+      }
   };
 
   const getVisibleColumns = (isWatchlist: boolean = false) => {
@@ -55,6 +118,8 @@ export function useColumnSettings() {
     columnSettings,
     getVisibleColumns,
     isColumnVisible,
-    refreshSettings: loadColumnSettings
+    refreshSettings: loadColumnSettings,
+    saveSettings: saveColumnSettings,
+    isLoading
   };
 }

@@ -326,5 +326,12 @@ export const assessmentAPI = {
     api.get<AssessmentResponse>(`/assessment/${id}`),
 };
 
+// User Settings API
+export const settingsAPI = {
+  getColumnSettings: () => api.get<{ settings: string }>('/settings/columns'),
+  saveColumnSettings: (settings: string) => 
+    api.post('/settings/columns', { settings }),
+};
+
 export default api;
 
