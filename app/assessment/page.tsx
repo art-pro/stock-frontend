@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { stockAPI, assessmentAPI } from '@/lib/api';
+import { stockAPI, assessmentAPI, exchangeRateAPI } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -22,6 +22,9 @@ import {
 interface AssessmentRequest {
   ticker: string;
   source: 'grok' | 'deepseek';
+  company_name?: string;
+  current_price?: number;
+  currency?: string;
 }
 
 interface AssessmentResponse {
@@ -38,6 +41,10 @@ export default function AssessmentPage() {
   
   // Single Assessment State
   const [ticker, setTicker] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [currentPrice, setCurrentPrice] = useState('');
+  const [currency, setCurrency] = useState('USD');
+  const [currencies, setCurrencies] = useState<string[]>(['USD', 'EUR', 'GBP']);
   const [source, setSource] = useState<'grok'>('grok');
   const [loading, setLoading] = useState(false);
   const [assessment, setAssessment] = useState<string>('');
@@ -60,7 +67,18 @@ export default function AssessmentPage() {
       return;
     }
     fetchRecentAssessments();
+    fetchCurrencies();
   }, [router]);
+
+  const fetchCurrencies = async () => {
+    try {
+      const response = await exchangeRateAPI.getAll();
+      const currencyCodes = response.data.map((rate: any) => rate.currency_code);
+      setCurrencies(['USD', 'EUR', ...currencyCodes.filter((c: string) => c !== 'USD' && c !== 'EUR')]);
+    } catch (err) {
+      console.warn('Failed to fetch currencies, using defaults:', err);
+    }
+  };
 
   const fetchRecentAssessments = async () => {
     try {
@@ -84,10 +102,21 @@ export default function AssessmentPage() {
     setAssessment('');
 
     try {
-      const response = await assessmentAPI.request({
+      const requestData: any = {
         ticker: ticker.toUpperCase().trim(),
         source,
-      });
+      };
+      
+      if (companyName.trim()) {
+        requestData.company_name = companyName.trim();
+      }
+      
+      if (currentPrice && parseFloat(currentPrice) > 0) {
+        requestData.current_price = parseFloat(currentPrice);
+        requestData.currency = currency;
+      }
+
+      const response = await assessmentAPI.request(requestData);
 
       setAssessment(response.data.assessment);
       await fetchRecentAssessments();
@@ -312,10 +341,10 @@ export default function AssessmentPage() {
               <h2 className="text-xl font-bold text-white mb-4">Request Stock Assessment</h2>
               
               <form onSubmit={handleAssessment} className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
                     <label htmlFor="ticker" className="block text-sm font-medium text-gray-400 mb-2">
-                      Stock Ticker
+                      Stock Ticker *
                     </label>
                     <input
                       type="text"
@@ -325,10 +354,57 @@ export default function AssessmentPage() {
                       placeholder="e.g., AAPL, NVDA, TSLA"
                       className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
                       disabled={loading}
+                      required
                     />
                   </div>
+
+                  <div>
+                    <label htmlFor="companyName" className="block text-sm font-medium text-gray-400 mb-2">
+                      Company Name
+                    </label>
+                    <input
+                      type="text"
+                      id="companyName"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder="e.g., Apple Inc."
+                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="currentPrice" className="block text-sm font-medium text-gray-400 mb-2">
+                      Current Price
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        id="currentPrice"
+                        value={currentPrice}
+                        onChange={(e) => setCurrentPrice(e.target.value)}
+                        placeholder="e.g., 150.50"
+                        step="0.01"
+                        min="0"
+                        className="flex-1 bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                        disabled={loading}
+                      />
+                      <select
+                        value={currency}
+                        onChange={(e) => setCurrency(e.target.value)}
+                        className="w-24 bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                        disabled={loading}
+                      >
+                        {currencies.map((curr) => (
+                          <option key={curr} value={curr}>{curr}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   
-                  <div className="w-48">
+                  <div>
                     <label htmlFor="source" className="block text-sm font-medium text-gray-400 mb-2">
                       AI Source
                     </label>
