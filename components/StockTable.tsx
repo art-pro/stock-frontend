@@ -51,7 +51,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       id: 'checkbox',
       label: 'Select',
       align: 'center',
-      portfolioOnly: true,
+      portfolioOnly: false, // Changed: checkboxes should be available in both portfolio and watchlist
       required: true,
       className: 'checkbox-column',
       render: (stock, props) => (
@@ -607,8 +607,8 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-800">
             <tr>
-              {/* Render header for checkbox column if it's the first visible column and it's a portfolio */}
-              {!isWatchlist && visibleColumns[0]?.id === 'checkbox' && onSelectAll && (
+              {/* Render header for checkbox column if it's the first visible column */}
+              {visibleColumns[0]?.id === 'checkbox' && onSelectAll && (
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap checkbox-column">
                   <input
                     type="checkbox"
@@ -651,8 +651,8 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
 
               return (
                 <tr key={stock.id} className={`${getRowClass(stock.assessment)} ${isAnyUpdating ? 'opacity-60' : ''}`}>
-                  {/* Render checkbox column if it's the first visible column and it's a portfolio */}
-                  {!isWatchlist && visibleColumns[0]?.id === 'checkbox' && (
+                  {/* Render checkbox column if it's the first visible column */}
+                  {visibleColumns[0]?.id === 'checkbox' && (
                     <td className="px-3 py-4 whitespace-nowrap text-sm text-center checkbox-column">
                       {onSelectStock && (
                         <input

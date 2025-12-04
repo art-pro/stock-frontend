@@ -20,7 +20,7 @@ export interface ColumnSettingsProps {
 
 // Default column configuration based on StockTable structure
 export const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { id: 'checkbox', label: 'Select', visible: true, order: 0, required: true, portfolioOnly: true },
+  { id: 'checkbox', label: 'Select', visible: true, order: 0, required: true, portfolioOnly: false },
   { id: 'ticker', label: 'Ticker', visible: true, order: 1, required: true },
   { id: 'company_name', label: 'Company', visible: true, order: 2 },
   { id: 'sector', label: 'Sector', visible: true, order: 3 },
