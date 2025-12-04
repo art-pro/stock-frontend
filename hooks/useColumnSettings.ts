@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ColumnConfig, DEFAULT_COLUMNS } from '@/components/ColumnSettings';
 import { settingsAPI } from '@/lib/api';
 import { isAuthenticated } from '@/lib/auth';
@@ -67,7 +67,7 @@ export function useColumnSettings() {
         setColumnSettings(mergedColumns);
   }
 
-  const saveColumnSettings = async (newSettings: ColumnConfig[]) => {
+  const saveColumnSettings = useCallback(async (newSettings: ColumnConfig[]) => {
       setColumnSettings(newSettings);
       const settingsJson = JSON.stringify(newSettings);
       
@@ -103,7 +103,7 @@ export function useColumnSettings() {
           setSaveStatus('success');
           setTimeout(() => setSaveStatus('idle'), 3000);
       }
-  };
+  }, []);
 
   const getVisibleColumns = (isWatchlist: boolean = false) => {
     return columnSettings
