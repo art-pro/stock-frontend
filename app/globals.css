@@ -93,6 +93,81 @@ body {
   @apply px-3 py-4 whitespace-nowrap text-sm;
 }
 
+/* Sticky/Frozen Checkbox and Ticker Columns */
+.stock-table th.checkbox-column {
+  position: sticky;
+  left: 0;
+  z-index: 11;
+  background-color: #1f2937; /* bg-gray-800 */
+  border-right: 1px solid #374151; /* border-gray-700 */
+}
+
+.stock-table td.checkbox-column {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: inherit; /* Inherit row background for assessment colors */
+  border-right: 1px solid #374151; /* border-gray-700 */
+}
+
+.stock-table th.ticker-column {
+  position: sticky;
+  left: 60px; /* Width of checkbox column + padding */
+  z-index: 11;
+  background-color: #1f2937; /* bg-gray-800 */
+  border-right: 1px solid #374151; /* border-gray-700 */
+}
+
+.stock-table td.ticker-column {
+  position: sticky;
+  left: 60px; /* Width of checkbox column + padding */
+  z-index: 10;
+  background-color: inherit; /* Inherit row background for assessment colors */
+  border-right: 1px solid #374151; /* border-gray-700 */
+}
+
+/* Ensure sticky columns background matches assessment rows */
+.assessment-hold .checkbox-column,
+.assessment-hold .ticker-column {
+  background-color: transparent;
+}
+
+.assessment-add .checkbox-column,
+.assessment-add .ticker-column {
+  background-color: rgba(144, 238, 144, 0.1);
+}
+
+.assessment-trim .checkbox-column,
+.assessment-trim .ticker-column {
+  background-color: rgba(255, 213, 128, 0.1);
+}
+
+.assessment-sell .checkbox-column,
+.assessment-sell .ticker-column {
+  background-color: rgba(255, 140, 140, 0.1);
+}
+
+/* Hover effects for sticky columns */
+.assessment-add:hover .checkbox-column,
+.assessment-add:hover .ticker-column {
+  background-color: rgba(34, 197, 94, 0.2); /* Slightly stronger green on hover */
+}
+
+.assessment-trim:hover .checkbox-column,
+.assessment-trim:hover .ticker-column {
+  background-color: rgba(251, 146, 60, 0.2); /* Slightly stronger orange on hover */
+}
+
+.assessment-sell:hover .checkbox-column,
+.assessment-sell:hover .ticker-column {
+  background-color: rgba(239, 68, 68, 0.2); /* Slightly stronger red on hover */
+}
+
+.assessment-hold:hover .checkbox-column,
+.assessment-hold:hover .ticker-column {
+  background-color: #1f2937; /* bg-gray-800 on hover */
+}
+
 /* Assessment colors */
 .assessment-hold {
   background-color: transparent;

@@ -139,7 +139,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-800">
             <tr>
-              <th className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap">
+              <th className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap checkbox-column">
                 {onSelectAll && (
                   <input
                     type="checkbox"
@@ -151,7 +151,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                 )}
               </th>
               <th
-                className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                className="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-700 whitespace-nowrap ticker-column"
                 onClick={() => handleSort('ticker')}
               >
                 Ticker
@@ -291,7 +291,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               
               return (
                 <tr key={stock.id} className={`${getRowClass(stock.assessment)} ${isAnyUpdating ? 'opacity-60' : ''}`}>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-center checkbox-column">
                     {onSelectStock && (
                       <input
                         type="checkbox"
@@ -302,7 +302,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                       />
                     )}
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-primary-400">
+                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-primary-400 ticker-column">
                     <div className="flex items-center gap-2">
                       <span title={`Data Source: ${stock.data_source || 'N/A'}\nLast Updated: ${stock.last_updated ? new Date(stock.last_updated).toLocaleString() : 'Never'}`}>
                         {stock.ticker}
@@ -320,18 +320,18 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
                         <ArrowPathIcon className="h-4 w-4 animate-spin text-primary-400" />
                       )}
                       {stock.data_source && (
-                        <span 
+                        <span
                           className={`text-xs px-1.5 py-0.5 rounded ${
-                            stock.data_source.includes('Alpha Vantage') 
-                              ? 'bg-blue-900 text-blue-200 border border-blue-700' 
+                            stock.data_source.includes('Alpha Vantage')
+                              ? 'bg-blue-900 text-blue-200 border border-blue-700'
                               : stock.data_source.includes('Grok')
                               ? 'bg-purple-900 text-purple-200 border border-purple-700'
                               : 'bg-gray-700 text-gray-300 border border-gray-600'
                           }`}
                           title={`Data Source: ${stock.data_source}\nLast Updated: ${stock.last_updated ? new Date(stock.last_updated).toLocaleString() : 'Never'}`}
                         >
-                          {stock.data_source.includes('Alpha Vantage') ? '📊 AV' : 
-                           stock.data_source.includes('Grok') ? '🤖 Grok' : 
+                          {stock.data_source.includes('Alpha Vantage') ? '📊 AV' :
+                           stock.data_source.includes('Grok') ? '🤖 Grok' :
                            stock.data_source || 'N/A'}
                         </span>
                       )}
