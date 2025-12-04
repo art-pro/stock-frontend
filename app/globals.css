@@ -106,7 +106,7 @@ body {
   position: sticky;
   left: 0;
   z-index: 10;
-  background-color: inherit; /* Inherit row background for assessment colors */
+  background-color: #111827; /* Default solid background - will be overridden by assessment classes */
   border-right: 1px solid #374151; /* border-gray-700 */
 }
 
@@ -115,57 +115,59 @@ body {
   left: 60px; /* Width of checkbox column + padding */
   z-index: 11;
   background-color: #1f2937; /* bg-gray-800 */
-  border-right: 1px solid #374151; /* border-gray-700 */
+  border-right: 2px solid #4b5563 !important; /* Stronger border for visibility */
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for separation */
 }
 
 .stock-table td.ticker-column {
   position: sticky;
   left: 60px; /* Width of checkbox column + padding */
   z-index: 10;
-  background-color: inherit; /* Inherit row background for assessment colors */
-  border-right: 1px solid #374151; /* border-gray-700 */
+  background-color: #1f2937; /* Default background - matches header */
+  border-right: 2px solid #4b5563 !important; /* Stronger border for visibility */
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for separation */
 }
 
-/* Ensure sticky columns background matches assessment rows - SOLID COLORS for readability */
+/* Ensure sticky columns background matches assessment rows - IMPROVED COLORS for readability */
 .assessment-hold .checkbox-column,
 .assessment-hold .ticker-column {
-  background-color: #111827; /* bg-gray-900 - solid dark background */
+  background-color: #1f2937 !important; /* bg-gray-800 - lighter gray for better readability */
 }
 
 .assessment-add .checkbox-column,
 .assessment-add .ticker-column {
-  background-color: #064e3b; /* bg-emerald-900 - solid green background */
+  background-color: #065f46 !important; /* bg-emerald-800 - lighter green for better readability */
 }
 
 .assessment-trim .checkbox-column,
 .assessment-trim .ticker-column {
-  background-color: #7c2d12; /* bg-orange-900 - solid orange background */
+  background-color: #9a3412 !important; /* bg-orange-800 - lighter orange for better readability */
 }
 
 .assessment-sell .checkbox-column,
 .assessment-sell .ticker-column {
-  background-color: #7f1d1d; /* bg-red-900 - solid red background */
+  background-color: #991b1b !important; /* bg-red-800 - lighter red for better readability */
 }
 
-/* Hover effects for sticky columns - SOLID COLORS */
+/* Hover effects for sticky columns - LIGHTER COLORS for better contrast */
 .assessment-add:hover .checkbox-column,
 .assessment-add:hover .ticker-column {
-  background-color: #047857; /* bg-emerald-800 - slightly lighter green on hover */
+  background-color: #059669 !important; /* bg-emerald-700 - lighter green on hover */
 }
 
 .assessment-trim:hover .checkbox-column,
 .assessment-trim:hover .ticker-column {
-  background-color: #9a3412; /* bg-orange-800 - slightly lighter orange on hover */
+  background-color: #c2410c !important; /* bg-orange-700 - lighter orange on hover */
 }
 
 .assessment-sell:hover .checkbox-column,
 .assessment-sell:hover .ticker-column {
-  background-color: #991b1b; /* bg-red-800 - slightly lighter red on hover */
+  background-color: #b91c1c !important; /* bg-red-700 - lighter red on hover */
 }
 
 .assessment-hold:hover .checkbox-column,
 .assessment-hold:hover .ticker-column {
-  background-color: #1f2937; /* bg-gray-800 - slightly lighter gray on hover */
+  background-color: #374151 !important; /* bg-gray-700 - lighter gray on hover */
 }
 
 /* Assessment colors */
