@@ -13,6 +13,10 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
+  PhotoIcon,
+  DocumentTextIcon,
+  ArrowUpTrayIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 interface AssessmentRequest {
@@ -30,6 +34,9 @@ interface AssessmentResponse {
 
 export default function AssessmentPage() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'single' | 'extraction'>('single');
+  
+  // Single Assessment State
   const [ticker, setTicker] = useState('');
   const [source, setSource] = useState<'grok' | 'deepseek'>('grok');
   const [loading, setLoading] = useState(false);
@@ -38,6 +45,13 @@ export default function AssessmentPage() {
   const [recentAssessments, setRecentAssessments] = useState<AssessmentResponse[]>([]);
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentResponse | null>(null);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
+
+  // Extraction State
+  const [files, setFiles] = useState<File[]>([]);
+  const [extractionLoading, setExtractionLoading] = useState(false);
+  const [extractedJson, setExtractedJson] = useState<string>('');
+  const [extractionError, setExtractionError] = useState('');
+  const [jsonValidationErrors, setJsonValidationErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -83,7 +97,104 @@ export default function AssessmentPage() {
     }
   };
 
-  // Custom markdown components for proper styling
+  // File handling for extraction
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      if (files.length + newFiles.length > 3) {
+        setExtractionError("Maximum 3 images allowed");
+        return;
+      }
+      setFiles(prev => [...prev, ...newFiles]);
+      setExtractionError('');
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // Remove data:image/xyz;base64, prefix if needed by backend, 
+        // but usually it's better to keep it or strip it depending on backend expectation.
+        // Assuming backend expects full data URI or just base64. 
+        // Let's send full data URI for now as it's safer.
+        resolve(reader.result as string);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleExtraction = async () => {
+    if (files.length === 0) {
+      setExtractionError('Please select at least one image');
+      return;
+    }
+
+    setExtractionLoading(true);
+    setExtractionError('');
+    setExtractedJson('');
+
+    try {
+      const base64Images = await Promise.all(files.map(convertFileToBase64));
+      const response = await assessmentAPI.extractFromImages(base64Images);
+      
+      // Format JSON nicely
+      setExtractedJson(JSON.stringify(response.data, null, 2));
+    } catch (err: any) {
+      setExtractionError(err.response?.data?.error || 'Failed to extract data from images');
+    } finally {
+      setExtractionLoading(false);
+    }
+  };
+
+  const validateJson = (content: string) => {
+    setJsonValidationErrors([]);
+    try {
+      const data = JSON.parse(content);
+      if (!Array.isArray(data)) {
+        setJsonValidationErrors(['JSON must be an array of stock objects']);
+        return false;
+      }
+      // Basic validation
+      const errors: string[] = [];
+      data.forEach((stock, index) => {
+        if (!stock.ticker) errors.push(`Index ${index}: Missing ticker`);
+        if (!stock.company_name) errors.push(`Index ${index}: Missing company_name`);
+        // Add more checks if needed
+      });
+      if (errors.length > 0) {
+        setJsonValidationErrors(errors);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      setJsonValidationErrors(['Invalid JSON format']);
+      return false;
+    }
+  };
+
+  const handleApplyChanges = async () => {
+    if (!validateJson(extractedJson)) return;
+
+    setExtractionLoading(true);
+    try {
+      const data = JSON.parse(extractedJson);
+      await stockAPI.bulkUpdate(data);
+      alert('Stocks updated successfully!');
+      router.push('/dashboard');
+    } catch (err: any) {
+      setExtractionError(err.response?.data?.error || 'Failed to update stocks');
+    } finally {
+      setExtractionLoading(false);
+    }
+  };
+
+  // Custom markdown components (same as before)
   const markdownComponents = {
     h1: ({ children }: any) => <h1 className="text-2xl font-bold text-white mt-8 mb-4 border-b border-gray-600 pb-2">{children}</h1>,
     h2: ({ children }: any) => <h2 className="text-xl font-bold text-white mt-6 mb-3">{children}</h2>,
@@ -169,143 +280,272 @@ export default function AssessmentPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Assessment Form */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">Request Stock Assessment</h2>
-          
-          <form onSubmit={handleAssessment} className="space-y-4">
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label htmlFor="ticker" className="block text-sm font-medium text-gray-400 mb-2">
-                  Stock Ticker
-                </label>
-                <input
-                  type="text"
-                  id="ticker"
-                  value={ticker}
-                  onChange={(e) => setTicker(e.target.value)}
-                  placeholder="e.g., AAPL, NVDA, TSLA"
-                  className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
-                  disabled={loading}
-                />
-              </div>
+        {/* Tabs */}
+        <div className="flex space-x-4 mb-8 border-b border-gray-700">
+          <button
+            className={`pb-4 px-4 font-medium text-sm focus:outline-none ${
+              activeTab === 'single'
+                ? 'text-primary-500 border-b-2 border-primary-500'
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+            onClick={() => setActiveTab('single')}
+          >
+            Single Ticker Analysis
+          </button>
+          <button
+            className={`pb-4 px-4 font-medium text-sm focus:outline-none ${
+              activeTab === 'extraction'
+                ? 'text-primary-500 border-b-2 border-primary-500'
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+            onClick={() => setActiveTab('extraction')}
+          >
+            Extract from Screenshots
+          </button>
+        </div>
+
+        {activeTab === 'single' ? (
+          <>
+            {/* Assessment Form */}
+            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+              <h2 className="text-xl font-bold text-white mb-4">Request Stock Assessment</h2>
               
-              <div className="w-48">
-                <label htmlFor="source" className="block text-sm font-medium text-gray-400 mb-2">
-                  AI Source
-                </label>
-                <select
-                  id="source"
-                  value={source}
-                  onChange={(e) => setSource(e.target.value as 'grok' | 'deepseek')}
-                  className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
-                  disabled={loading}
-                >
-                  <option value="grok">Grok AI</option>
-                  <option value="deepseek">Deepseek</option>
-                </select>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || !ticker.trim()}
-              className="flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
-              {loading ? 'Generating Assessment...' : 'Generate Assessment'}
-            </button>
-          </form>
-        </div>
-
-        {error && (
-          <div className="mb-6 bg-red-900 bg-opacity-50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        {/* Strategy Description */}
-        <div className="bg-blue-900 bg-opacity-20 border border-blue-700 rounded-lg p-6 mb-8">
-          <h3 className="text-lg font-bold text-blue-300 mb-3">Assessment Strategy</h3>
-          <div className="text-sm text-blue-200 space-y-2">
-            <p><strong>Probabilistic Framework:</strong> Each assessment follows a 6-step process:</p>
-            <ol className="list-decimal list-inside space-y-1 ml-4">
-              <li>Data collection (price, fair value, fundamentals)</li>
-              <li>Expected Value calculation: EV = (p × upside) + ((1-p) × downside)</li>
-              <li>Kelly Criterion sizing: ½-Kelly position sizing (capped at 15%)</li>
-              <li>Assessment: Add (EV &gt;7%), Hold (EV &gt;0%), Trim (EV &lt;3%), Sell (EV &lt;0%)</li>
-              <li>Buy zone recommendations for optimal entry points</li>
-              <li>Sector allocation and risk management notes</li>
-            </ol>
-            <p className="mt-3"><strong>Philosophy:</strong> Conservative probability estimates, mathematical position sizing, and disciplined sector allocation targeting 11-13% portfolio volatility with 10-11% expected returns.</p>
-          </div>
-        </div>
-
-        {/* Assessment Result */}
-        {assessment && (
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">Assessment Result</h2>
-            <div className="prose prose-invert max-w-none">
-              <div className="bg-gray-900 rounded-lg p-6 overflow-auto">
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm]}
-                  components={markdownComponents}
-                >
-                  {assessment}
-                </ReactMarkdown>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Recent Assessments */}
-        {recentAssessments.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">Recent Assessments</h2>
-            <div className="space-y-3">
-              {recentAssessments.map((item, index) => (
-                <div 
-                  key={index} 
-                  onClick={() => item.status === 'completed' && handleOpenAssessment(item)}
-                  className={`flex items-center justify-between bg-gray-700 rounded-lg p-4 ${
-                    item.status === 'completed' ? 'cursor-pointer hover:bg-gray-600 transition-colors' : ''
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    {getStatusIcon(item.status)}
-                    <div>
-                      <span className="text-white font-medium">{item.ticker}</span>
-                      <span className="text-gray-400 ml-2">via {item.source}</span>
-                      {item.status === 'completed' && (
-                        <span className="text-xs text-blue-400 ml-2">(Click to view)</span>
-                      )}
-                    </div>
+              <form onSubmit={handleAssessment} className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label htmlFor="ticker" className="block text-sm font-medium text-gray-400 mb-2">
+                      Stock Ticker
+                    </label>
+                    <input
+                      type="text"
+                      id="ticker"
+                      value={ticker}
+                      onChange={(e) => setTicker(e.target.value)}
+                      placeholder="e.g., AAPL, NVDA, TSLA"
+                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                      disabled={loading}
+                    />
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-400">{formatDate(item.created_at)}</div>
-                    <div className={`text-xs px-2 py-1 rounded ${
-                      item.status === 'completed' ? 'bg-green-900 text-green-300' :
-                      item.status === 'failed' ? 'bg-red-900 text-red-300' :
-                      'bg-yellow-900 text-yellow-300'
-                    }`}>
-                      {item.status}
-                    </div>
+                  
+                  <div className="w-48">
+                    <label htmlFor="source" className="block text-sm font-medium text-gray-400 mb-2">
+                      AI Source
+                    </label>
+                    <select
+                      id="source"
+                      value={source}
+                      onChange={(e) => setSource(e.target.value as 'grok' | 'deepseek')}
+                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                      disabled={loading}
+                    >
+                      <option value="grok">Grok AI</option>
+                      <option value="deepseek">Deepseek</option>
+                    </select>
                   </div>
                 </div>
-              ))}
+
+                <button
+                  type="submit"
+                  disabled={loading || !ticker.trim()}
+                  className="flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
+                  {loading ? 'Generating Assessment...' : 'Generate Assessment'}
+                </button>
+              </form>
             </div>
-          </div>
+
+            {error && (
+              <div className="mb-6 bg-red-900 bg-opacity-50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            {/* Strategy Description */}
+            <div className="bg-blue-900 bg-opacity-20 border border-blue-700 rounded-lg p-6 mb-8">
+              <h3 className="text-lg font-bold text-blue-300 mb-3">Assessment Strategy</h3>
+              <div className="text-sm text-blue-200 space-y-2">
+                <p><strong>Probabilistic Framework:</strong> Each assessment follows a 6-step process:</p>
+                <ol className="list-decimal list-inside space-y-1 ml-4">
+                  <li>Data collection (price, fair value, fundamentals)</li>
+                  <li>Expected Value calculation: EV = (p × upside) + ((1-p) × downside)</li>
+                  <li>Kelly Criterion sizing: ½-Kelly position sizing (capped at 15%)</li>
+                  <li>Assessment: Add (EV &gt;7%), Hold (EV &gt;0%), Trim (EV &lt;3%), Sell (EV &lt;0%)</li>
+                  <li>Buy zone recommendations for optimal entry points</li>
+                  <li>Sector allocation and risk management notes</li>
+                </ol>
+                <p className="mt-3"><strong>Philosophy:</strong> Conservative probability estimates, mathematical position sizing, and disciplined sector allocation targeting 11-13% portfolio volatility with 10-11% expected returns.</p>
+              </div>
+            </div>
+
+            {/* Assessment Result */}
+            {assessment && (
+              <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+                <h2 className="text-xl font-bold text-white mb-4">Assessment Result</h2>
+                <div className="prose prose-invert max-w-none">
+                  <div className="bg-gray-900 rounded-lg p-6 overflow-auto">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={markdownComponents}
+                    >
+                      {assessment}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Recent Assessments */}
+            {recentAssessments.length > 0 && (
+              <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                <h2 className="text-xl font-bold text-white mb-4">Recent Assessments</h2>
+                <div className="space-y-3">
+                  {recentAssessments.map((item, index) => (
+                    <div 
+                      key={index} 
+                      onClick={() => item.status === 'completed' && handleOpenAssessment(item)}
+                      className={`flex items-center justify-between bg-gray-700 rounded-lg p-4 ${
+                        item.status === 'completed' ? 'cursor-pointer hover:bg-gray-600 transition-colors' : ''
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        {getStatusIcon(item.status)}
+                        <div>
+                          <span className="text-white font-medium">{item.ticker}</span>
+                          <span className="text-gray-400 ml-2">via {item.source}</span>
+                          {item.status === 'completed' && (
+                            <span className="text-xs text-blue-400 ml-2">(Click to view)</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-400">{formatDate(item.created_at)}</div>
+                        <div className={`text-xs px-2 py-1 rounded ${
+                          item.status === 'completed' ? 'bg-green-900 text-green-300' :
+                          item.status === 'failed' ? 'bg-red-900 text-red-300' :
+                          'bg-yellow-900 text-yellow-300'
+                        }`}>
+                          {item.status}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Extraction Interface */}
+            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+              <h2 className="text-xl font-bold text-white mb-4">Extract Data from Screenshots</h2>
+              
+              {/* File Upload */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Upload Screenshots (Max 3)
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-700 hover:bg-gray-600 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <PhotoIcon className="w-8 h-8 text-gray-400 mb-2" />
+                      <p className="text-xs text-gray-400">Add Image</p>
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*" 
+                      multiple 
+                      onChange={handleFileChange}
+                    />
+                  </label>
+
+                  {files.map((file, index) => (
+                    <div key={index} className="relative w-32 h-32 bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
+                      <img 
+                        src={URL.createObjectURL(file)} 
+                        alt={`Upload ${index + 1}`} 
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        onClick={() => removeFile(index)}
+                        className="absolute top-1 right-1 bg-red-500 rounded-full p-1 text-white hover:bg-red-600"
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {extractionError && (
+                <div className="mb-6 bg-red-900 bg-opacity-50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
+                  {extractionError}
+                </div>
+              )}
+
+              <button
+                onClick={handleExtraction}
+                disabled={extractionLoading || files.length === 0}
+                className="flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+              >
+                <DocumentTextIcon className="h-5 w-5 mr-2" />
+                {extractionLoading ? 'Extracting Data...' : 'Extract Data'}
+              </button>
+
+              {/* JSON Editor */}
+              {extractedJson && (
+                <div className="animate-in fade-in duration-300">
+                  <h3 className="text-lg font-bold text-white mb-2 flex items-center justify-between">
+                    <span>Extracted Data (Editable)</span>
+                    <span className="text-xs text-gray-400 font-normal">Edit JSON below to correct any errors</span>
+                  </h3>
+                  
+                  <textarea
+                    value={extractedJson}
+                    onChange={(e) => {
+                      setExtractedJson(e.target.value);
+                      validateJson(e.target.value);
+                    }}
+                    className="w-full h-96 p-4 bg-gray-900 text-green-400 font-mono text-sm rounded-lg border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                  />
+
+                  {jsonValidationErrors.length > 0 && (
+                    <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-600 rounded">
+                      <p className="text-yellow-300 mb-2">Validation Errors:</p>
+                      <ul className="list-disc list-inside text-yellow-300 text-sm">
+                        {jsonValidationErrors.map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      onClick={handleApplyChanges}
+                      disabled={extractionLoading || jsonValidationErrors.length > 0}
+                      className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
+                      Apply Changes to Dashboard
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Loading State */}
-        {loading && (
+        {(loading || extractionLoading) && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
               <div className="flex items-center space-x-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
                 <div>
-                  <p className="text-white font-medium">Generating Assessment</p>
-                  <p className="text-gray-400 text-sm">This may take 30-60 seconds...</p>
+                  <p className="text-white font-medium">Processing...</p>
+                  <p className="text-gray-400 text-sm">Please wait while we handle your request.</p>
                 </div>
               </div>
             </div>

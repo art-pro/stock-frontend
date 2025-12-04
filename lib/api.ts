@@ -185,6 +185,7 @@ export const stockAPI = {
   delete: (id: number, reason?: string) =>
     api.delete(`/stocks/${id}`, { params: { reason } }),
   updateAll: () => api.post('/stocks/update-all'),
+  bulkUpdate: (stocks: Partial<Stock>[]) => api.post('/stocks/bulk-update', { stocks }),
   updateSingle: (id: number, source?: 'grok' | 'alphavantage') => 
     api.post(`/stocks/${id}/update`, {}, { params: source ? { source } : {} }),
   updatePrice: (id: number, newPrice: number) => api.patch(`/stocks/${id}/price`, { current_price: newPrice }),
@@ -314,6 +315,8 @@ export interface AssessmentResponse {
 export const assessmentAPI = {
   request: (data: AssessmentRequest) => 
     api.post<{ assessment: string }>('/assessment/request', data),
+  extractFromImages: (images: string[]) =>
+    api.post<any>('/assessment/extract-from-images', { images }),
   getRecent: () => 
     api.get<AssessmentResponse[]>('/assessment/recent'),
   getById: (id: number) => 
