@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { authAPI, portfolioAPI } from '@/lib/api';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import ColumnSettings, { ColumnConfig, DEFAULT_COLUMNS } from '@/components/ColumnSettings';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'username' | 'password' | 'portfolio'>('username');
+  const [activeTab, setActiveTab] = useState<'username' | 'password' | 'portfolio' | 'columns'>('username');
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
   
   // Username form
@@ -33,6 +34,11 @@ export default function SettingsPage() {
   const [settingsError, setSettingsError] = useState('');
   const [settingsSuccess, setSettingsSuccess] = useState('');
 
+  // Column settings
+  const [columnSettings, setColumnSettings] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+  const [columnError, setColumnError] = useState('');
+  const [columnSuccess, setColumnSuccess] = useState('');
+
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login');
@@ -40,6 +46,7 @@ export default function SettingsPage() {
     }
     fetchCurrentUser();
     fetchPortfolioSettings();
+    loadColumnSettings();
   }, [router]);
 
   const fetchCurrentUser = async () => {
@@ -63,6 +70,42 @@ export default function SettingsPage() {
     } catch (err) {
       console.error('Failed to fetch settings:', err);
     }
+  };
+
+  const loadColumnSettings = () => {
+    try {
+      const saved = localStorage.getItem('stock-table-columns');
+      if (saved) {
+        const parsedColumns = JSON.parse(saved);
+        // Merge with defaults to handle any new columns added
+        const mergedColumns = DEFAULT_COLUMNS.map(defaultCol => {
+          const savedCol = parsedColumns.find((col: ColumnConfig) => col.id === defaultCol.id);
+          return savedCol ? { ...defaultCol, ...savedCol } : defaultCol;
+        });
+        setColumnSettings(mergedColumns);
+      }
+    } catch (err) {
+      console.error('Failed to load column settings:', err);
+      setColumnSettings(DEFAULT_COLUMNS);
+    }
+  };
+
+  const saveColumnSettings = (columns: ColumnConfig[]) => {
+    try {
+      localStorage.setItem('stock-table-columns', JSON.stringify(columns));
+      setColumnSuccess('Column settings saved successfully!');
+      setColumnError('');
+      // Clear success message after 3 seconds
+      setTimeout(() => setColumnSuccess(''), 3000);
+    } catch (err) {
+      console.error('Failed to save column settings:', err);
+      setColumnError('Failed to save column settings');
+    }
+  };
+
+  const handleColumnSettingsChange = (columns: ColumnConfig[]) => {
+    setColumnSettings(columns);
+    saveColumnSettings(columns);
   };
 
   const handleUsernameSubmit = async (e: FormEvent) => {
@@ -184,6 +227,16 @@ export default function SettingsPage() {
             }`}
           >
             Portfolio Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('columns')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'columns'
+                ? 'text-primary-400 border-b-2 border-primary-400'
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Column Settings
           </button>
         </div>
 
@@ -424,6 +477,27 @@ export default function SettingsPage() {
                 Save Settings
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Column Settings Tab */}
+        {activeTab === 'columns' && (
+          <div>
+            {columnError && (
+              <div className="bg-red-900 bg-opacity-50 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-4">
+                {columnError}
+              </div>
+            )}
+            {columnSuccess && (
+              <div className="bg-green-900 bg-opacity-50 border border-green-700 text-green-200 px-4 py-3 rounded-lg mb-4">
+                {columnSuccess}
+              </div>
+            )}
+
+            <ColumnSettings
+              onSettingsChange={handleColumnSettingsChange}
+              initialColumns={columnSettings}
+            />
           </div>
         )}
       </main>

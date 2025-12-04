@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Stock } from '@/lib/api';
 import { TrashIcon, ArrowPathIcon, PencilIcon } from '@heroicons/react/24/outline';
 import EditTickerModal from './EditTickerModal';
+import { useColumnSettings } from '@/hooks/useColumnSettings';
 
 interface StockTableProps {
   stocks: Stock[];
@@ -27,6 +28,9 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
   const [editingField, setEditingField] = useState<{ stockId: number; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [editingTicker, setEditingTicker] = useState<Stock | null>(null);
+
+  // Column settings
+  const { getVisibleColumns, isColumnVisible } = useColumnSettings();
 
   const handleSort = (field: keyof Stock) => {
     if (sortField === field) {
