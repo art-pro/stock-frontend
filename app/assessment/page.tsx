@@ -127,20 +127,78 @@ export default function AssessmentPage() {
     }
   };
 
-  // File handling for extraction
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Utility: Check magic numbers for allowed image types (JPEG, PNG, GIF, BMP, WebP)
+  const isValidImageFileContent = (file: File): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const bytes = new Uint8Array(event.target?.result as ArrayBuffer);
+        // Check for JPEG: 0xFF 0xD8 0xFF
+        if (bytes.length >= 3 && bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+          resolve(true);
+          return;
+        }
+        // Check for PNG: 0x89 0x50 0x4E 0x47 0x0D 0x0A 0x1A 0x0A
+        if (bytes.length >= 8 &&
+          bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E &&
+          bytes[3] === 0x47 && bytes[4] === 0x0D && bytes[5] === 0x0A &&
+          bytes[6] === 0x1A && bytes[7] === 0x0A) {
+          resolve(true);
+          return;
+        }
+        // Check for GIF ('GIF87a' or 'GIF89a')
+        if (bytes.length >= 6 &&
+          bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 &&
+          ((bytes[3] === 0x38 && bytes[4] === 0x37 && bytes[5] === 0x61) ||
+           (bytes[3] === 0x38 && bytes[4] === 0x39 && bytes[5] === 0x61))) {
+          resolve(true);
+          return;
+        }
+        // Check for BMP: 0x42 0x4D
+        if (bytes.length >= 2 &&
+          bytes[0] === 0x42 && bytes[1] === 0x4D) {
+          resolve(true);
+          return;
+        }
+        // Check for WebP: RIFF....WEBP (starts with 0x52 0x49 0x46 0x46 [RIFF], 'WEBP' at offset 8)
+        if (bytes.length >= 12 &&
+          bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+          bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
+          resolve(true);
+          return;
+        }
+        resolve(false);
+      };
+      reader.onerror = (error) => {
+        resolve(false);
+      };
+      reader.readAsArrayBuffer(file.slice(0, 16));
+    });
+  };
+
+  // File handling for extraction (now async for magic number verification)
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
 
       // Validate file types to prevent XSS
-      const validFiles = newFiles.filter(file => {
+      const filteredByTypeExt = newFiles.filter(file => {
         const isValidType = file.type.startsWith('image/');
         const hasValidExtension = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file.name);
         return isValidType && hasValidExtension;
       });
 
-      if (validFiles.length !== newFiles.length) {
+      if (filteredByTypeExt.length !== newFiles.length) {
         setExtractionError("Only image files (JPG, PNG, GIF, BMP, WebP) are allowed");
+        return;
+      }
+
+      // Filter by magic number content
+      const validityList = await Promise.all(filteredByTypeExt.map(file => isValidImageFileContent(file)));
+      const validFiles = filteredByTypeExt.filter((file, idx) => validityList[idx]);
+
+      if (validFiles.length !== filteredByTypeExt.length) {
+        setExtractionError("One or more files are not valid images");
         return;
       }
 
