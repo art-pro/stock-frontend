@@ -131,11 +131,25 @@ export default function AssessmentPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
-      if (files.length + newFiles.length > 3) {
+
+      // Validate file types to prevent XSS
+      const validFiles = newFiles.filter(file => {
+        const isValidType = file.type.startsWith('image/');
+        const hasValidExtension = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file.name);
+        return isValidType && hasValidExtension;
+      });
+
+      if (validFiles.length !== newFiles.length) {
+        setExtractionError("Only image files (JPG, PNG, GIF, BMP, WebP) are allowed");
+        return;
+      }
+
+      if (files.length + validFiles.length > 3) {
         setExtractionError("Maximum 3 images allowed");
         return;
       }
-      setFiles(prev => [...prev, ...newFiles]);
+
+      setFiles(prev => [...prev, ...validFiles]);
       setExtractionError('');
     }
   };
@@ -143,6 +157,33 @@ export default function AssessmentPage() {
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
+
+  // Safe URL creation with cleanup
+  const createSafeImageURL = (file: File): string | null => {
+    try {
+      // Additional validation
+      if (!file.type.startsWith('image/')) {
+        return null;
+      }
+      return URL.createObjectURL(file);
+    } catch (error) {
+      console.error('Failed to create object URL:', error);
+      return null;
+    }
+  };
+
+  // Cleanup URLs on component unmount
+  useEffect(() => {
+    return () => {
+      files.forEach(file => {
+        try {
+          URL.revokeObjectURL(URL.createObjectURL(file));
+        } catch (error) {
+          // Ignore cleanup errors
+        }
+      });
+    };
+  }, [files]);
 
   const convertFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -553,21 +594,33 @@ export default function AssessmentPage() {
                     />
                   </label>
 
-                  {files.map((file, index) => (
-                    <div key={index} className="relative w-32 h-32 bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
-                      <img 
-                        src={URL.createObjectURL(file)} 
-                        alt={`Upload ${index + 1}`} 
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="absolute top-1 right-1 bg-red-500 rounded-full p-1 text-white hover:bg-red-600"
-                      >
-                        <XMarkIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                  {files.map((file, index) => {
+                    const imageURL = createSafeImageURL(file);
+                    return (
+                      <div key={index} className="relative w-32 h-32 bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
+                        {imageURL ? (
+                          <img
+                            src={imageURL}
+                            alt={`Upload ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={() => {
+                              console.error('Failed to load image:', file.name);
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-red-400">
+                            <ExclamationTriangleIcon className="w-8 h-8" />
+                          </div>
+                        )}
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="absolute top-1 right-1 bg-red-500 rounded-full p-1 text-white hover:bg-red-600"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
