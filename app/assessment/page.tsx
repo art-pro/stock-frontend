@@ -55,6 +55,8 @@ export default function AssessmentPage() {
 
   // Extraction State
   const [files, setFiles] = useState<File[]>([]);
+  // This state holds sanitized representations (DataURLs) of each file for preview
+  const [sanitizedPreviews, setSanitizedPreviews] = useState<string[]>([]);
   const [extractionSource, setExtractionSource] = useState<'grok'>('grok');
   const [extractionLoading, setExtractionLoading] = useState(false);
   const [extractedJson, setExtractedJson] = useState<string>('');
@@ -177,6 +179,44 @@ export default function AssessmentPage() {
   };
 
   // File handling for extraction (now async for magic number verification)
+  // Returns Promise<string> (dataURL) or null if file cannot be safely sanitized
+  const fileToSanitizedDataUrl = (file: File): Promise<string | null> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new window.Image();
+        img.onload = function () {
+          try {
+            // Draw on canvas as PNG, discarding any non-image/polyglot portions.
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return resolve(null);
+            ctx.drawImage(img, 0, 0);
+            // Returning PNG always is safe
+            const dataUrl = canvas.toDataURL('image/png');
+            resolve(dataUrl);
+          } catch (err) {
+            resolve(null);
+          }
+        };
+        img.onerror = function () {
+          resolve(null);
+        };
+        if (typeof e.target?.result === "string") {
+          img.src = e.target.result;
+        } else {
+          resolve(null);
+        }
+      };
+      reader.onerror = function () {
+        resolve(null);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
@@ -207,13 +247,27 @@ export default function AssessmentPage() {
         return;
       }
 
-      setFiles(prev => [...prev, ...validFiles]);
+      // Sanitize new files for previews
+      const sanitizedList = await Promise.all(
+        validFiles.map(file => fileToSanitizedDataUrl(file))
+      );
+      // Only keep successfully sanitized files
+      const validSanitizedPairs = validFiles
+        .map((file, idx) => ({ file, preview: sanitizedList[idx] }))
+        .filter(item => item.preview !== null) as { file: File, preview: string }[];
+      if (validSanitizedPairs.length !== validFiles.length) {
+        setExtractionError("One or more images could not be previewed.");
+        return;
+      }
+      setFiles(prev => [...prev, ...validSanitizedPairs.map(item => item.file)]);
+      setSanitizedPreviews(prev => [...prev, ...validSanitizedPairs.map(item => item.preview)]);
       setExtractionError('');
     }
   };
 
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
+    setSanitizedPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   // Safe URL creation with cleanup
@@ -653,12 +707,13 @@ export default function AssessmentPage() {
                   </label>
 
                   {files.map((file, index) => {
-                    const imageURL = createSafeImageURL(file);
+                    const previewUrl = sanitizedPreviews[index];
+                    // No call to createSafeImageURL, use pre-sanitized DataURL instead
                     return (
                       <div key={index} className="relative w-32 h-32 bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
-                        {imageURL ? (
+                        {previewUrl ? (
                           <img
-                            src={imageURL}
+                            src={previewUrl}
                             alt={`Upload ${index + 1}`}
                             className="w-full h-full object-cover"
                             onError={() => {
