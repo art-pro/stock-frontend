@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@config "../tailwind.config.js";
+@import "tailwindcss";
 
 /* Force LTR text direction globally */
 * {
@@ -199,4 +198,3 @@ body {
 .tooltip:hover .tooltiptext {
   @apply visible opacity-100;
 }
-
