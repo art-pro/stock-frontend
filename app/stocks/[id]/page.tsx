@@ -86,19 +86,12 @@ export default function StockDetailPage() {
     
     try {
       setSaving(true);
-      
-      let payload: any = { field };
-      
-      if (isStringField) {
-        payload.string_value = editValue;
-        payload.value = editValue;
-      } else {
+      if (!isStringField) {
         const numValue = parseFloat(editValue);
         if (isNaN(numValue)) {
           alert('Invalid number');
           return;
         }
-        payload.value = numValue;
       }
       
       const response = await stockAPI.updateField(id, field, isStringField ? editValue : parseFloat(editValue));

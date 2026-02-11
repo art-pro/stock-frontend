@@ -270,33 +270,6 @@ export default function AssessmentPage() {
     setSanitizedPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Safe URL creation with cleanup
-  const createSafeImageURL = (file: File): string | null => {
-    try {
-      // Additional validation
-      if (!file.type.startsWith('image/')) {
-        return null;
-      }
-      return URL.createObjectURL(file);
-    } catch (error) {
-      console.error('Failed to create object URL:', error);
-      return null;
-    }
-  };
-
-  // Cleanup URLs on component unmount
-  useEffect(() => {
-    return () => {
-      files.forEach(file => {
-        try {
-          URL.revokeObjectURL(URL.createObjectURL(file));
-        } catch (error) {
-          // Ignore cleanup errors
-        }
-      });
-    };
-  }, [files]);
-
   const convertFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -708,7 +681,6 @@ export default function AssessmentPage() {
 
                   {files.map((file, index) => {
                     const previewUrl = sanitizedPreviews[index];
-                    // No call to createSafeImageURL, use pre-sanitized DataURL instead
                     return (
                       <div key={index} className="relative w-32 h-32 bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
                         {previewUrl ? (
