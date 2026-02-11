@@ -903,11 +903,11 @@ export default function StockDetailPage() {
             
             <div>
               <p className="text-sm text-gray-400 mb-1 flex items-center">
-                Current Value (EUR)
-                <TooltipIcon text="The total current market value of your position in Euros (shares owned × current price × exchange rate)." />
+                Current Value (USD)
+                <TooltipIcon text="The total current market value of your position in US Dollars (shares owned × current price converted through EUR base rates)." />
               </p>
               <p className="text-lg font-semibold text-white">
-                €{stock.current_value_usd.toFixed(2)}
+                ${stock.current_value_usd.toFixed(2)}
               </p>
               <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>

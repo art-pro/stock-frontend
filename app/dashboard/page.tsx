@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated, removeToken } from '@/lib/auth';
-import { stockAPI, portfolioAPI, versionAPI, invalidateCache, Stock, PortfolioMetrics } from '@/lib/api';
+import { stockAPI, portfolioAPI, versionAPI, invalidateCache, Stock, PortfolioMetrics, PortfolioUnits } from '@/lib/api';
 import { FRONTEND_VERSION } from '@/lib/version';
 import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null);
+  const [units, setUnits] = useState<PortfolioUnits | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -83,6 +84,7 @@ export default function DashboardPage() {
       const stocksData = response.data.stocks || [];
       setStocks(stocksData);
       setMetrics(response.data.summary || null);
+      setUnits(response.data.units || null);
       setError('');
     } catch (err: any) {
       setError('Failed to load portfolio data');
@@ -196,11 +198,11 @@ export default function DashboardPage() {
 
   const handleSelectAllPortfolio = (selected: boolean) => {
     if (selected) {
-      const portfolioIds = stocks.filter(s => s.shares_owned > 0).map(s => s.id);
-      setSelectedStockIds(prev => [...new Set([...prev, ...portfolioIds])]);
+      const stockIds = stocks.filter(s => s.shares_owned > 0).map(s => s.id);
+      setSelectedStockIds(prev => [...new Set([...prev, ...stockIds])]);
     } else {
-      const portfolioIds = stocks.filter(s => s.shares_owned > 0).map(s => s.id);
-      setSelectedStockIds(prev => prev.filter(id => !portfolioIds.includes(id)));
+      const stockIds = stocks.filter(s => s.shares_owned > 0).map(s => s.id);
+      setSelectedStockIds(prev => prev.filter(id => !stockIds.includes(id)));
     }
   };
 
@@ -351,7 +353,7 @@ export default function DashboardPage() {
         )}
 
         {/* Portfolio Summary */}
-        {metrics && <PortfolioSummary metrics={metrics} />}
+        {metrics && <PortfolioSummary metrics={metrics} units={units} />}
 
         {/* Compact Status Bar */}
         <div className="mb-4 flex items-center justify-between text-xs px-1">
@@ -508,6 +510,7 @@ export default function DashboardPage() {
             onSelectStock={handleSelectStock}
             onSelectAll={handleSelectAllPortfolio}
             onTickerUpdate={fetchData}
+            units={units}
           />
         </div>
 
@@ -539,6 +542,7 @@ export default function DashboardPage() {
             onSelectAll={handleSelectAllWatchlist}
             isWatchlist={true}
             onTickerUpdate={fetchData}
+            units={units}
           />
         </div>
 
@@ -583,6 +587,7 @@ export default function DashboardPage() {
           onSuccess={async () => {
             console.log('Stock added successfully, refreshing data...');
             setShowAddModal(false);
+            invalidateCache('portfolio');
             // Add a small delay to ensure backend has processed the stock
             await new Promise(resolve => setTimeout(resolve, 500));
             await fetchData();
@@ -596,6 +601,7 @@ export default function DashboardPage() {
         onClose={() => setShowJsonUploadModal(false)}
         onSuccess={async () => {
           setShowJsonUploadModal(false);
+          invalidateCache('portfolio');
           await fetchData();
         }}
       />

@@ -85,6 +85,7 @@ api.interceptors.response.use(
 
 export interface Stock {
   id: number;
+  portfolio_id?: number;
   ticker: string;
   isin: string;
   company_name: string;
@@ -133,6 +134,22 @@ export interface PortfolioMetrics {
   sector_weights: { [key: string]: number };
 }
 
+export interface PortfolioUnits {
+  summary_total_value?: string;
+  summary_ev?: string;
+  summary_volatility?: string;
+  stock_current_value?: string;
+  stock_weight?: string;
+  exchange_rate_base?: string;
+  exchange_rate_semantic?: string;
+}
+
+export interface PortfolioSummaryResponse {
+  summary: PortfolioMetrics;
+  stocks: Stock[];
+  units?: PortfolioUnits;
+}
+
 export interface Alert {
   id: number;
   stock_id: number;
@@ -177,17 +194,17 @@ export const authAPI = {
 
 // Stock API
 export const stockAPI = {
-  getAll: () => api.get<Stock[]>('/stocks'),
-  getById: (id: number) => api.get<Stock>(`/stocks/${id}`),
+  getAll: (portfolioId?: number) => api.get<Stock[]>('/stocks', { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  getById: (id: number, portfolioId?: number) => api.get<Stock>(`/stocks/${id}`, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
   create: (data: Partial<Stock>) => api.post<Stock>('/stocks', data),
   update: (id: number, data: Partial<Stock>) =>
     api.put<Stock>(`/stocks/${id}`, data),
-  delete: (id: number, reason?: string) =>
-    api.delete(`/stocks/${id}`, { params: { reason } }),
-  updateAll: () => api.post('/stocks/update-all'),
-  bulkUpdate: (stocks: Partial<Stock>[]) => api.post('/stocks/bulk-update', { stocks }),
-  updateSingle: (id: number, source?: 'grok' | 'alphavantage') => 
-    api.post(`/stocks/${id}/update`, {}, { params: source ? { source } : {} }),
+  delete: (id: number, reason?: string, portfolioId?: number) =>
+    api.delete(`/stocks/${id}`, { params: { reason, ...(portfolioId ? { portfolio_id: portfolioId } : {}) } }),
+  updateAll: (portfolioId?: number) => api.post('/stocks/update-all', {}, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  bulkUpdate: (stocks: Partial<Stock>[], portfolioId?: number) => api.post('/stocks/bulk-update', { stocks }, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  updateSingle: (id: number, source?: 'grok' | 'alphavantage', portfolioId?: number) =>
+    api.post(`/stocks/${id}/update`, {}, { params: { ...(source ? { source } : {}), ...(portfolioId ? { portfolio_id: portfolioId } : {}) } }),
   updatePrice: (id: number, newPrice: number) => api.patch(`/stocks/${id}/price`, { current_price: newPrice }),
   updateField: (id: number, field: string, value: number | string) => {
     const payload: any = { field };
@@ -199,15 +216,15 @@ export const stockAPI = {
     }
     return api.patch(`/stocks/${id}/field`, payload);
   },
-  getHistory: (id: number) => api.get<StockHistory[]>(`/stocks/${id}/history`),
-  exportJSON: () => api.get('/export/json', { responseType: 'blob' }),
+  getHistory: (id: number, portfolioId?: number) => api.get<StockHistory[]>(`/stocks/${id}/history`, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  exportJSON: (portfolioId?: number) => api.get('/export/json', { responseType: 'blob', params: portfolioId ? { portfolio_id: portfolioId } : {} }),
 };
 
 // Portfolio API with caching
 export const portfolioAPI = {
-  getSummary: async () => {
-    const cacheKey = 'portfolio:summary';
-    const cached = cache.get<{ summary: PortfolioMetrics; stocks: Stock[] }>(
+  getSummary: async (portfolioId?: number) => {
+    const cacheKey = `portfolio:summary:${portfolioId ?? 'default'}`;
+    const cached = cache.get<PortfolioSummaryResponse>(
       cacheKey,
       30000 // 30 seconds
     );
@@ -216,16 +233,17 @@ export const portfolioAPI = {
       return { data: cached };
     }
 
-    const response = await api.get<{ summary: PortfolioMetrics; stocks: Stock[] }>(
-      '/portfolio/summary'
+    const response = await api.get<PortfolioSummaryResponse>(
+      '/portfolio/summary',
+      { params: portfolioId ? { portfolio_id: portfolioId } : {} }
     );
     cache.set(cacheKey, response.data);
     return response;
   },
   getSettings: () => api.get('/portfolio/settings'),
   updateSettings: (data: any) => api.put('/portfolio/settings', data),
-  getAlerts: () => api.get<Alert[]>('/alerts'),
-  deleteAlert: (id: number) => api.delete(`/alerts/${id}`),
+  getAlerts: (portfolioId?: number) => api.get<Alert[]>('/alerts', { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  deleteAlert: (id: number, portfolioId?: number) => api.delete(`/alerts/${id}`, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
   getAPIStatus: async () => {
     const cacheKey = 'api:status';
     const cached = cache.get<any>(cacheKey, 60000); // 60 seconds for API status
@@ -278,7 +296,7 @@ export interface CashHolding {
 }
 
 export const exchangeRateAPI = {
-  getAll: () => api.get('/exchange-rates'),
+  getAll: () => api.get<ExchangeRate[]>('/exchange-rates'),
   refresh: () => api.post('/exchange-rates/refresh'),
   add: (data: { currency_code: string; rate: number; is_manual: boolean }) => 
     api.post('/exchange-rates', data),
@@ -289,13 +307,13 @@ export const exchangeRateAPI = {
 
 // Cash Holdings API
 export const cashAPI = {
-  getAll: () => api.get<CashHolding[]>('/cash'),
+  getAll: (portfolioId?: number) => api.get<CashHolding[]>('/cash', { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
   create: (data: { currency_code: string; amount: number; description?: string }) => 
     api.post<CashHolding>('/cash', data),
   update: (id: number, data: { amount: number; description?: string }) => 
     api.put<CashHolding>(`/cash/${id}`, data),
   delete: (id: number) => api.delete(`/cash/${id}`),
-  refreshUSD: () => api.post('/cash/refresh'),
+  refreshUSD: (portfolioId?: number) => api.post('/cash/refresh', {}, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
 };
 
 // Assessment API

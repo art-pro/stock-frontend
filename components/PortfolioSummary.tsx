@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PortfolioMetrics, CashHolding, cashAPI } from '@/lib/api';
+import { PortfolioMetrics, CashHolding, PortfolioUnits, cashAPI, exchangeRateAPI } from '@/lib/api';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 
@@ -9,9 +9,10 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface PortfolioSummaryProps {
   metrics: PortfolioMetrics;
+  units?: PortfolioUnits | null;
 }
 
-export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
+export default function PortfolioSummary({ metrics, units }: PortfolioSummaryProps) {
   const [cashHoldings, setCashHoldings] = useState<CashHolding[]>([]);
   const [totalCashValue, setTotalCashValue] = useState(0);
 
@@ -19,14 +20,18 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
     const fetchCashData = async () => {
       try {
         const response = await cashAPI.getAll();
+        const ratesResponse = await exchangeRateAPI.getAll();
         setCashHoldings(response.data);
+        const usdRate = ratesResponse.data.find((rate) => rate.currency_code === 'USD')?.rate || 0;
         const totalCash = response.data.reduce((total, cash) => {
-          // For EUR (base currency), use the original amount instead of converted usd_value
           if (cash.currency_code === 'EUR') {
             return total + cash.amount;
           }
-          // For other currencies, use the converted value
-          return total + cash.usd_value;
+          // usd_value is in USD; convert to EUR using EUR->USD rate.
+          if (usdRate <= 0) {
+            return total;
+          }
+          return total + (cash.usd_value / usdRate);
         }, 0);
         setTotalCashValue(totalCash);
       } catch (err) {
@@ -44,7 +49,7 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
     }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'EUR',
+      currency: units?.summary_total_value === 'USD' ? 'USD' : 'EUR',
     }).format(num);
   };
 
@@ -153,7 +158,7 @@ export default function PortfolioSummary({ metrics }: PortfolioSummaryProps) {
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 className="text-sm font-medium text-gray-400 mb-2 tooltip">
           Sharpe Ratio
-          <span className="tooltiptext">Risk-adjusted return: EV / Volatility</span>
+          <span className="tooltiptext">Risk-adjusted return: (Portfolio Return - Risk-free Rate) / Volatility</span>
         </h3>
         <p className="text-2xl font-bold text-white">
           {metrics.sharpe_ratio.toFixed(2)}

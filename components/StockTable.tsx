@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Stock } from '@/lib/api';
+import { PortfolioUnits, Stock } from '@/lib/api';
 import { TrashIcon, ArrowPathIcon, PencilIcon } from '@heroicons/react/24/outline';
 import EditTickerModal from './EditTickerModal';
 import { useColumnSettings } from '@/hooks/useColumnSettings';
@@ -32,9 +32,10 @@ interface StockTableProps {
   onSelectAll?: (selected: boolean) => void;
   isWatchlist?: boolean;
   onTickerUpdate?: () => void;
+  units?: PortfolioUnits | null;
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false, onTickerUpdate }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false, onTickerUpdate, units }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
@@ -392,7 +393,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
     },
     {
       id: 'unrealized_pnl',
-      label: 'P&L',
+      label: `P&L (${(units?.stock_current_value || 'USD')})`,
       sortKey: 'unrealized_pnl',
       align: 'right',
       portfolioOnly: true,
@@ -527,11 +528,15 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
     return num?.toFixed(decimals) || 'N/A';
   };
 
-  const formatCurrency = (num: number) => {
+  const formatCurrency = (num: number, currency: string = (units?.stock_current_value || 'USD')) => {
     if (num === 0 || num === null || num === undefined) {
       return 'N/A';
     }
-    return `${formatNumber(num, 2)}`;
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(num);
+    } catch {
+      return `${formatNumber(num, 2)} ${currency}`;
+    }
   };
 
   const formatPercentage = (num: number, decimals: number = 1) => {
