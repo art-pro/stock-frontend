@@ -178,7 +178,7 @@ export default function StockDetailPage() {
         textareaRef.current.style.direction = 'ltr';
         textareaRef.current.setAttribute('dir', 'ltr');
         textareaRef.current.style.textAlign = 'left';
-        textareaRef.current.style.unicodeBidi = 'embed';
+        textareaRef.current.style.unicodeBidi = 'normal';
       }
     }, [isEditing, multiline]);
     
@@ -200,7 +200,7 @@ export default function StockDetailPage() {
                 style={{
                   direction: 'ltr',
                   textAlign: 'left',
-                  unicodeBidi: 'plaintext'
+                  unicodeBidi: 'normal'
                 }}
                 autoComplete="off"
                 autoCorrect="off"
