@@ -74,12 +74,12 @@ export default function DashboardPage() {
     setTimeout(() => setCheckingAPI(false), 1000);
   };
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh: boolean = false) => {
     try {
       setLoading(true);
 
       // Fetch portfolio summary (includes stocks and metrics)
-      const response = await portfolioAPI.getSummary();
+      const response = await portfolioAPI.getSummary(undefined, { forceRefresh });
 
       const stocksData = response.data.stocks || [];
       setStocks(stocksData);
@@ -120,7 +120,7 @@ export default function DashboardPage() {
           // Small delay to ensure backend has processed
           await new Promise(resolve => setTimeout(resolve, 500));
           // Refresh data after each update to show progress
-          await fetchData();
+          await fetchData(true);
         } catch (err) {
           console.error(`Failed to update ${stock.ticker}:`, err);
         }
@@ -152,7 +152,7 @@ export default function DashboardPage() {
       // Small delay to ensure backend has processed
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log(`📊 Fetching fresh data...`);
-      await fetchData();
+      await fetchData(true);
       console.log(`✅ Data refresh complete`);
     } catch (err: any) {
       console.error(`❌ Update failed:`, err);
@@ -172,7 +172,7 @@ export default function DashboardPage() {
     try {
       await stockAPI.updatePrice(id, newPrice);
       invalidateCache('portfolio'); // Invalidate cache
-      await fetchData();
+      await fetchData(true);
     } catch (err: any) {
       alert('Failed to update price: ' + (err.response?.data?.error || err.message));
     }
@@ -182,7 +182,7 @@ export default function DashboardPage() {
     try {
       await stockAPI.updateField(id, field, value);
       invalidateCache('portfolio'); // Invalidate cache
-      await fetchData();
+      await fetchData(true);
     } catch (err: any) {
       alert('Failed to update field: ' + (err.response?.data?.error || err.message));
     }
@@ -223,12 +223,12 @@ export default function DashboardPage() {
     try {
       await stockAPI.delete(id, reason);
       invalidateCache('portfolio'); // Invalidate cache
-      await fetchData();
+      await fetchData(true);
       alert('Stock deleted successfully!');
     } catch (err: any) {
       if (err.response?.status === 404) {
         alert('Stock not found. It may have been already deleted. Refreshing the page...');
-        await fetchData();
+      await fetchData(true);
       } else {
         alert('Failed to delete stock: ' + (err.response?.data?.error || err.message));
       }
@@ -453,7 +453,7 @@ export default function DashboardPage() {
               Add Position
             </button>
             <button
-              onClick={fetchData}
+              onClick={() => fetchData(true)}
               disabled={loading}
               className="p-2 bg-gray-700/50 text-gray-300 rounded-lg hover:bg-gray-600 hover:text-white transition-all disabled:opacity-50"
               title="Refresh data"
@@ -633,7 +633,7 @@ export default function DashboardPage() {
             invalidateCache('portfolio');
             // Add a small delay to ensure backend has processed the stock
             await new Promise(resolve => setTimeout(resolve, 500));
-            await fetchData();
+            await fetchData(true);
           }}
         />
       )}
@@ -645,7 +645,7 @@ export default function DashboardPage() {
         onSuccess={async () => {
           setShowJsonUploadModal(false);
           invalidateCache('portfolio');
-          await fetchData();
+          await fetchData(true);
         }}
       />
     </div>

@@ -229,15 +229,19 @@ export const stockAPI = {
 
 // Portfolio API with caching
 export const portfolioAPI = {
-  getSummary: async (portfolioId?: number) => {
+  getSummary: async (portfolioId?: number, options?: { forceRefresh?: boolean }) => {
     const cacheKey = `portfolio:summary:${portfolioId ?? 'default'}`;
-    const cached = cache.get<PortfolioSummaryResponse>(
-      cacheKey,
-      30000 // 30 seconds
-    );
+    const forceRefresh = options?.forceRefresh === true;
 
-    if (cached) {
-      return { data: cached };
+    if (!forceRefresh) {
+      const cached = cache.get<PortfolioSummaryResponse>(
+        cacheKey,
+        30000 // 30 seconds
+      );
+
+      if (cached) {
+        return { data: cached };
+      }
     }
 
     const response = await api.get<PortfolioSummaryResponse>(

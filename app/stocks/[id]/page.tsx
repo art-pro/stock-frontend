@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { stockAPI, Stock, StockHistory } from '@/lib/api';
+import { invalidateCache, stockAPI, Stock, StockHistory } from '@/lib/api';
 import DataSourceModal from '@/components/DataSourceModal';
 import TooltipIcon from '@/components/Tooltip';
 import { Line } from 'react-chartjs-2';
@@ -96,6 +96,7 @@ export default function StockDetailPage() {
       
       const response = await stockAPI.updateField(id, field, isStringField ? editValue : parseFloat(editValue));
       setStock(response.data);
+      invalidateCache('portfolio');
       setEditingField(null);
       setEditValue('');
     } catch (err: any) {
@@ -128,6 +129,7 @@ export default function StockDetailPage() {
       
       const response = await stockAPI.updateSingle(stock.id, source);
       setStock(response.data);
+      invalidateCache('portfolio');
       
       // Show success message
       const sourceName = source === 'alphavantage' ? 'Alpha Vantage' : 'Grok AI';
