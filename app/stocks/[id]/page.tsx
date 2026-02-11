@@ -258,8 +258,8 @@ export default function StockDetailPage() {
           </div>
         ) : (
           <div className="flex items-center justify-between group">
-            <p className="text-lg font-semibold text-white">
-              {isString ? value : (typeof value === 'number' ? value.toFixed(2) : 'N/A')} {suffix}
+            <p className={`text-white ${multiline ? 'text-sm break-words whitespace-pre-wrap flex-1 min-w-0' : 'text-lg font-semibold'}`}>
+              {isString ? ((value ?? '') || (multiline ? 'Not specified' : '')) : (typeof value === 'number' ? value.toFixed(2) : 'N/A')} {!multiline ? suffix : ''}
             </p>
             <button
               onClick={() => handleEditField(field, value)}
@@ -659,6 +659,18 @@ export default function StockDetailPage() {
           </div>
         </div>
 
+        {/* Fair Value Source */}
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+          <EditableField 
+            field="fair_value_source" 
+            label="Fair Value Source" 
+            value={stock.fair_value_source || ''} 
+            isString={true}
+            multiline={true}
+            tooltip="Source of the fair value estimate (e.g., analyst consensus, DCF model, URL)."
+          />
+        </div>
+
         {/* Data Source Information */}
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-bold text-white mb-4">Data Sources</h2>
@@ -742,10 +754,6 @@ export default function StockDetailPage() {
               <div>
                 <span className="text-gray-400">Primary Source:</span>
                 <span className="ml-2 text-white">{stock.data_source || 'Not specified'}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">Fair Value Source:</span>
-                <span className="ml-2 text-white">{stock.fair_value_source || 'Not specified'}</span>
               </div>
             </div>
           </div>
