@@ -6,18 +6,18 @@
   direction: ltr !important;
 }
 
-/* Specific fix for textareas and inputs */
-textarea, input {
+/* Keep standard inputs LTR for numeric/price editing. */
+input {
   direction: ltr !important;
   text-align: left !important;
   unicode-bidi: normal !important;
 }
 
-/* Extra strong LTR enforcement for the comment textarea */
-.ltr-textarea {
-  direction: ltr !important;
-  text-align: left !important;
-  unicode-bidi: normal !important;
+/* Notes/comments textarea should follow typed language direction automatically. */
+.notes-textarea {
+  direction: auto !important;
+  text-align: start !important;
+  unicode-bidi: plaintext !important;
   writing-mode: horizontal-tb !important;
 }
 
