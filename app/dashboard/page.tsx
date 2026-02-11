@@ -236,15 +236,56 @@ export default function DashboardPage() {
   };
 
   const handleExportJSON = async () => {
+    if (selectedStockIds.length === 0) {
+      alert('Please select at least one stock to export.');
+      return;
+    }
+
     try {
-      const response = await stockAPI.exportJSON();
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const response = await stockAPI.getBatch(selectedStockIds);
+      const selectedStocks = response.data || [];
+
+      const exportData = selectedStocks.map((stock) => ({
+        ticker: stock.ticker,
+        company_name: stock.company_name,
+        isin: stock.isin,
+        sector: stock.sector,
+        current_price: stock.current_price,
+        currency: stock.currency,
+        fair_value: stock.fair_value,
+        upside_potential: stock.upside_potential,
+        downside_risk: stock.downside_risk,
+        probability_positive: stock.probability_positive,
+        expected_value: stock.expected_value,
+        beta: stock.beta,
+        volatility: stock.volatility,
+        pe_ratio: stock.pe_ratio,
+        eps_growth_rate: stock.eps_growth_rate,
+        debt_to_ebitda: stock.debt_to_ebitda,
+        dividend_yield: stock.dividend_yield,
+        b_ratio: stock.b_ratio,
+        kelly_fraction: stock.kelly_fraction,
+        half_kelly_suggested: stock.half_kelly_suggested,
+        shares_owned: stock.shares_owned,
+        avg_price_local: stock.avg_price_local,
+        buy_zone_min: stock.buy_zone_min,
+        buy_zone_max: stock.buy_zone_max,
+        assessment: stock.assessment,
+        update_frequency: stock.update_frequency,
+        data_source: 'Manual',
+        fair_value_source: '',
+        comment: stock.comment,
+      }));
+
+      const fileContents = JSON.stringify(exportData, null, 2);
+      const url = window.URL.createObjectURL(new Blob([fileContents], { type: 'application/json' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `portfolio-${new Date().toISOString().split('T')[0]}.json`);
+      link.setAttribute('download', `portfolio-selected-${new Date().toISOString().split('T')[0]}.json`);
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err: any) {
       alert('Failed to export JSON: ' + (err.response?.data?.error || err.message));
     }
@@ -460,10 +501,12 @@ export default function DashboardPage() {
             <button
               onClick={handleExportJSON}
               className="flex items-center px-3 py-2 bg-teal-600/90 text-white rounded-lg hover:bg-teal-600 transition-all shadow-sm"
-              title="Export portfolio"
+              title={selectedStockIds.length > 0 ? `Export ${selectedStockIds.length} selected stock(s)` : 'Select stocks to export'}
             >
               <ArrowDownTrayIcon className="h-4 w-4 mr-1.5" />
-              <span className="text-sm font-medium">Export</span>
+              <span className="text-sm font-medium">
+                {selectedStockIds.length > 0 ? `Export (${selectedStockIds.length})` : 'Export'}
+              </span>
             </button>
           </div>
         </div>

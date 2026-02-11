@@ -195,6 +195,13 @@ export const authAPI = {
 // Stock API
 export const stockAPI = {
   getAll: (portfolioId?: number) => api.get<Stock[]>('/stocks', { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  getBatch: (ids: number[], portfolioId?: number) =>
+    api.get<Stock[]>('/stocks/batch', {
+      params: {
+        ids: ids.join(','),
+        ...(portfolioId ? { portfolio_id: portfolioId } : {}),
+      },
+    }),
   getById: (id: number, portfolioId?: number) => api.get<Stock>(`/stocks/${id}`, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
   create: (data: Partial<Stock>) => api.post<Stock>('/stocks', data),
   update: (id: number, data: Partial<Stock>) =>
