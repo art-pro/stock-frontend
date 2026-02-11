@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { stockAPI, Stock, StockHistory } from '@/lib/api';
@@ -170,17 +170,6 @@ export default function StockDetailPage() {
     tooltip?: string;
   }) => {
     const isEditing = editingField === field;
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    
-    useEffect(() => {
-      // Force LTR on mount when editing multiline
-      if (isEditing && multiline && textareaRef.current) {
-        textareaRef.current.style.direction = 'ltr';
-        textareaRef.current.setAttribute('dir', 'ltr');
-        textareaRef.current.style.textAlign = 'left';
-        textareaRef.current.style.unicodeBidi = 'normal';
-      }
-    }, [isEditing, multiline]);
     
     return (
       <div dir="ltr" style={{ direction: 'ltr' }}>
@@ -192,19 +181,8 @@ export default function StockDetailPage() {
           <div className="flex items-center gap-2" dir="ltr">
             {multiline ? (
               <textarea
-                ref={textareaRef}
                 value={editValue}
-                onChange={(e) => {
-                  const nextValue = e.target.value;
-                  setEditValue(nextValue);
-                  // Keep caret at the logical end to avoid reverse/prepend typing behavior.
-                  requestAnimationFrame(() => {
-                    if (textareaRef.current) {
-                      const end = textareaRef.current.value.length;
-                      textareaRef.current.setSelectionRange(end, end);
-                    }
-                  });
-                }}
+                onChange={(e) => setEditValue(e.target.value)}
                 className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm min-h-[60px] resize-y ltr-textarea"
                 dir="ltr"
                 style={{
@@ -216,12 +194,6 @@ export default function StockDetailPage() {
                 autoCorrect="off"
                 autoCapitalize="off"
                 autoFocus
-                onFocus={() => {
-                  if (textareaRef.current) {
-                    const end = textareaRef.current.value.length;
-                    textareaRef.current.setSelectionRange(end, end);
-                  }
-                }}
                 onKeyDown={(e) => {
                   // Allow Ctrl/Cmd+Enter to save
                   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
