@@ -194,7 +194,17 @@ export default function StockDetailPage() {
               <textarea
                 ref={textareaRef}
                 value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setEditValue(nextValue);
+                  // Keep caret at the logical end to avoid reverse/prepend typing behavior.
+                  requestAnimationFrame(() => {
+                    if (textareaRef.current) {
+                      const end = textareaRef.current.value.length;
+                      textareaRef.current.setSelectionRange(end, end);
+                    }
+                  });
+                }}
                 className="flex-1 bg-gray-700 text-white rounded px-2 py-1 text-sm min-h-[60px] resize-y ltr-textarea"
                 dir="ltr"
                 style={{
@@ -206,6 +216,12 @@ export default function StockDetailPage() {
                 autoCorrect="off"
                 autoCapitalize="off"
                 autoFocus
+                onFocus={() => {
+                  if (textareaRef.current) {
+                    const end = textareaRef.current.value.length;
+                    textareaRef.current.setSelectionRange(end, end);
+                  }
+                }}
                 onKeyDown={(e) => {
                   // Allow Ctrl/Cmd+Enter to save
                   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
