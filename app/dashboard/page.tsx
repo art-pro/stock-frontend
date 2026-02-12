@@ -255,7 +255,9 @@ export default function DashboardPage() {
       const updated = data.updated ?? 0;
       const trustedEntries = data.trusted_entries_saved ?? 0;
       const errors = data.errors ?? 0;
-      alert(`Fair value collection completed. Updated: ${updated}. Trusted entries saved: ${trustedEntries}. Errors: ${errors}.`);
+      const details = Array.isArray(data.error_details) ? data.error_details : [];
+      const detailText = details.length > 0 ? `\nDetails:\n- ${details.slice(0, 3).join('\n- ')}` : '';
+      alert(`Fair value collection completed. Updated: ${updated}. Trusted entries saved: ${trustedEntries}. Errors: ${errors}.${detailText}`);
     } catch (err: any) {
       alert('Failed to collect fair values: ' + (err.response?.data?.error || err.message));
     } finally {
