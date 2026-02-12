@@ -253,11 +253,11 @@ export default function DashboardPage() {
 
       const data = response.data || {};
       const updated = data.updated ?? 0;
-      const trustedEntries = data.trusted_entries_saved ?? 0;
+      const entriesSaved = data.entries_saved ?? data.trusted_entries_saved ?? 0;
       const errors = data.errors ?? 0;
       const details = Array.isArray(data.error_details) ? data.error_details : [];
       const detailText = details.length > 0 ? `\nDetails:\n- ${details.slice(0, 3).join('\n- ')}` : '';
-      alert(`Fair value collection completed. Updated: ${updated}. Trusted entries saved: ${trustedEntries}. Errors: ${errors}.${detailText}`);
+      alert(`Fair value collection completed. Updated: ${updated}. Entries saved: ${entriesSaved}. Errors: ${errors}.${detailText}`);
     } catch (err: any) {
       alert('Failed to collect fair values: ' + (err.response?.data?.error || err.message));
     } finally {
