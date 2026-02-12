@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [updateProgress, setUpdateProgress] = useState({ current: 0, total: 0 });
   const [backendVersion, setBackendVersion] = useState<string>('...');
   const [selectedStockIds, setSelectedStockIds] = useState<number[]>([]);
+  const [collectingFairValues, setCollectingFairValues] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -232,6 +233,33 @@ export default function DashboardPage() {
       } else {
         alert('Failed to delete stock: ' + (err.response?.data?.error || err.message));
       }
+    }
+  };
+
+  const handleCollectFairValuesForActive = async () => {
+    const activeIds = new Set(stocks.filter((s) => s.shares_owned > 0).map((s) => s.id));
+    const selectedActiveIds = selectedStockIds.filter((id) => activeIds.has(id));
+
+    if (selectedActiveIds.length === 0) {
+      alert('Select at least one stock in Active Positions to collect fair values.');
+      return;
+    }
+
+    try {
+      setCollectingFairValues(true);
+      const response = await stockAPI.collectFairValues(selectedActiveIds);
+      invalidateCache('portfolio');
+      await fetchData(true);
+
+      const data = response.data || {};
+      const updated = data.updated ?? 0;
+      const trustedEntries = data.trusted_entries_saved ?? 0;
+      const errors = data.errors ?? 0;
+      alert(`Fair value collection completed. Updated: ${updated}. Trusted entries saved: ${trustedEntries}. Errors: ${errors}.`);
+    } catch (err: any) {
+      alert('Failed to collect fair values: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setCollectingFairValues(false);
     }
   };
 
@@ -538,9 +566,19 @@ export default function DashboardPage() {
               <span className="text-emerald-500 mr-2">●</span>
               Active Positions
             </h2>
-            <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">
-              {stocks.filter(s => s.shares_owned > 0).length}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCollectFairValuesForActive}
+                disabled={collectingFairValues}
+                className="flex items-center px-3 py-1.5 bg-amber-600/90 text-white rounded-lg hover:bg-amber-600 transition-all disabled:opacity-50 shadow-sm text-xs font-medium"
+                title="Collect trusted fair values via Grok and Deepseek for selected active positions"
+              >
+                {collectingFairValues ? 'Collecting...' : `Fair Value Sync (${selectedStockIds.filter(id => stocks.some(s => s.id === id && s.shares_owned > 0)).length})`}
+              </button>
+              <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">
+                {stocks.filter(s => s.shares_owned > 0).length}
+              </span>
+            </div>
           </div>
           <StockTable
             stocks={stocks.filter(s => s.shares_owned > 0)}

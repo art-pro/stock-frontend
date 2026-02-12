@@ -136,11 +136,13 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 1. **Dashboard operations**
    - View active positions + watchlist
    - select subset and update from Alpha Vantage or Grok
+   - run trusted fair-value sync for selected active positions (Grok + Deepseek backend collection)
    - inline edits for core numeric inputs
    - import/export JSON
 2. **Stock detail editing**
    - granular edits with calculated-vs-editable separation
    - source transparency modal for raw provider payloads
+   - view source-level fair value history table (`Date`, `Fair value`, `Source`)
    - notes/comments editing
 3. **Cash and FX management**
    - maintain cash by currency
@@ -170,6 +172,24 @@ Implemented optimizations:
 - simple in-memory cache with explicit invalidation
 
 Reference: `OPTIMIZATION.md`
+
+## Trusted Fair Value Sync (New in v2.6.0)
+
+Frontend integration points:
+- Dashboard active positions section has a `Fair Value Sync (N)` action for selected rows.
+- The action calls backend collection endpoint via `stockAPI.collectFairValues(ids)`.
+- After completion, frontend invalidates portfolio cache and force-refreshes summary data.
+
+Stock detail page:
+- Fetches source-level records via `stockAPI.getFairValueHistory(id)`.
+- Renders audit table with required columns:
+  - `Date`
+  - `Fair value`
+  - `Source`
+
+API methods added in `lib/api.ts`:
+- `collectFairValues(ids: number[])` -> `POST /stocks/fair-value/collect`
+- `getFairValueHistory(id: number)` -> `GET /stocks/:id/fair-value-history`
 
 ## Known Consistency Risks / Caveats
 

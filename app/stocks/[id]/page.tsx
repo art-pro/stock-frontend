@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { invalidateCache, stockAPI, Stock, StockHistory } from '@/lib/api';
+import { invalidateCache, stockAPI, Stock, StockHistory, FairValueHistoryEntry } from '@/lib/api';
 import DataSourceModal from '@/components/DataSourceModal';
 import TooltipIcon from '@/components/Tooltip';
 import { Line } from 'react-chartjs-2';
@@ -36,6 +36,7 @@ export default function StockDetailPage() {
 
   const [stock, setStock] = useState<Stock | null>(null);
   const [history, setHistory] = useState<StockHistory[]>([]);
+  const [fairValueHistory, setFairValueHistory] = useState<FairValueHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -59,12 +60,14 @@ export default function StockDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [stockRes, historyRes] = await Promise.all([
+        const [stockRes, historyRes, fairValueHistoryRes] = await Promise.all([
           stockAPI.getById(id),
           stockAPI.getHistory(id),
+          stockAPI.getFairValueHistory(id),
         ]);
         setStock(stockRes.data);
         setHistory(historyRes.data);
+        setFairValueHistory(fairValueHistoryRes.data);
       } catch (err) {
         console.error(err);
         alert('Failed to load stock details');
@@ -669,6 +672,35 @@ export default function StockDetailPage() {
             multiline={true}
             tooltip="Source of the fair value estimate (e.g., analyst consensus, DCF model, URL)."
           />
+        </div>
+
+        {/* Fair Value Source History */}
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+          <h2 className="text-xl font-bold text-white mb-4">Fair Value History</h2>
+          {fairValueHistory.length === 0 ? (
+            <p className="text-sm text-gray-400">No source-level fair value data collected yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left border-b border-gray-700">
+                    <th className="py-2 pr-4 text-gray-400 font-medium">Date</th>
+                    <th className="py-2 pr-4 text-gray-400 font-medium">Fair Value</th>
+                    <th className="py-2 text-gray-400 font-medium">Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fairValueHistory.map((entry) => (
+                    <tr key={entry.id} className="border-b border-gray-800">
+                      <td className="py-2 pr-4 text-gray-300">{new Date(entry.recorded_at).toLocaleDateString()}</td>
+                      <td className="py-2 pr-4 text-white">{entry.fair_value.toFixed(2)} {stock.currency}</td>
+                      <td className="py-2 text-gray-300 break-words">{entry.source}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Data Source Information */}

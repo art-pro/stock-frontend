@@ -174,6 +174,16 @@ export interface StockHistory {
   recorded_at: string;
 }
 
+export interface FairValueHistoryEntry {
+  id: number;
+  stock_id: number;
+  portfolio_id: number;
+  ticker: string;
+  fair_value: number;
+  source: string;
+  recorded_at: string;
+}
+
 // Auth API
 export const authAPI = {
   login: (username: string, password: string) =>
@@ -224,6 +234,10 @@ export const stockAPI = {
     return api.patch(`/stocks/${id}/field`, payload);
   },
   getHistory: (id: number, portfolioId?: number) => api.get<StockHistory[]>(`/stocks/${id}/history`, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  getFairValueHistory: (id: number, portfolioId?: number) =>
+    api.get<FairValueHistoryEntry[]>(`/stocks/${id}/fair-value-history`, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  collectFairValues: (ids: number[], portfolioId?: number) =>
+    api.post('/stocks/fair-value/collect', { ids }, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
   exportJSON: (portfolioId?: number) => api.get('/export/json', { responseType: 'blob', params: portfolioId ? { portfolio_id: portfolioId } : {} }),
 };
 
