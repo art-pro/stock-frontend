@@ -39,6 +39,12 @@ export default function DashboardPage() {
   const [backendVersion, setBackendVersion] = useState<string>('...');
   const [selectedStockIds, setSelectedStockIds] = useState<number[]>([]);
   const [collectingFairValues, setCollectingFairValues] = useState(false);
+  const [collectNotice, setCollectNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+
+  const showCollectNotice = (type: 'success' | 'error' | 'info', message: string) => {
+    setCollectNotice({ type, message });
+    setTimeout(() => setCollectNotice(null), 6000);
+  };
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -241,7 +247,7 @@ export default function DashboardPage() {
     const selectedActiveIds = selectedStockIds.filter((id) => activeIds.has(id));
 
     if (selectedActiveIds.length === 0) {
-      alert('Select at least one stock in Active Positions to collect fair values.');
+      showCollectNotice('info', 'Select at least one stock in Active Positions to collect fair values.');
       return;
     }
 
@@ -256,10 +262,13 @@ export default function DashboardPage() {
       const entriesSaved = data.entries_saved ?? data.trusted_entries_saved ?? 0;
       const errors = data.errors ?? 0;
       const details = Array.isArray(data.error_details) ? data.error_details : [];
-      const detailText = details.length > 0 ? `\nDetails:\n- ${details.slice(0, 3).join('\n- ')}` : '';
-      alert(`Fair value collection completed. Updated: ${updated}. Entries saved: ${entriesSaved}. Errors: ${errors}.${detailText}`);
+      const detailText = details.length > 0 ? ` ${details.slice(0, 2).join(' | ')}` : '';
+      showCollectNotice(
+        errors > 0 ? 'error' : 'success',
+        `Fair value sync complete. Updated: ${updated}. Entries saved: ${entriesSaved}. Errors: ${errors}.${detailText}`
+      );
     } catch (err: any) {
-      alert('Failed to collect fair values: ' + (err.response?.data?.error || err.message));
+      showCollectNotice('error', 'Failed to collect fair values: ' + (err.response?.data?.error || err.message));
     } finally {
       setCollectingFairValues(false);
     }
@@ -582,6 +591,19 @@ export default function DashboardPage() {
               </span>
             </div>
           </div>
+          {collectNotice && (
+            <div
+              className={`mb-3 rounded-lg px-3 py-2 text-sm border ${
+                collectNotice.type === 'success'
+                  ? 'bg-emerald-900/30 border-emerald-700 text-emerald-200'
+                  : collectNotice.type === 'error'
+                    ? 'bg-red-900/30 border-red-700 text-red-200'
+                    : 'bg-blue-900/30 border-blue-700 text-blue-200'
+              }`}
+            >
+              {collectNotice.message}
+            </div>
+          )}
           <StockTable
             stocks={stocks.filter(s => s.shares_owned > 0)}
             onDelete={handleDelete}

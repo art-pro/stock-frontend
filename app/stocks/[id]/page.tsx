@@ -389,6 +389,12 @@ export default function StockDetailPage() {
     },
   };
 
+  const now = new Date();
+  const currentMonthFairValueHistory = fairValueHistory.filter((entry) => {
+    const d = new Date(entry.recorded_at);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  });
+
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Data Source Modal */}
@@ -677,8 +683,8 @@ export default function StockDetailPage() {
         {/* Fair Value Source History */}
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-bold text-white mb-4">Fair Value History</h2>
-          {fairValueHistory.length === 0 ? (
-            <p className="text-sm text-gray-400">No source-level fair value data collected yet.</p>
+          {currentMonthFairValueHistory.length === 0 ? (
+            <p className="text-sm text-gray-400">No current data for this month.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -690,7 +696,7 @@ export default function StockDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {fairValueHistory.map((entry) => (
+                  {currentMonthFairValueHistory.map((entry) => (
                     <tr key={entry.id} className="border-b border-gray-800">
                       <td className="py-2 pr-4 text-gray-300">{new Date(entry.recorded_at).toLocaleDateString()}</td>
                       <td className="py-2 pr-4 text-white">{entry.fair_value.toFixed(2)} {stock.currency}</td>
