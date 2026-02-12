@@ -40,10 +40,10 @@ export default function DashboardPage() {
   const [selectedStockIds, setSelectedStockIds] = useState<number[]>([]);
   const [collectingFairValues, setCollectingFairValues] = useState(false);
   const [collectNotice, setCollectNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+  const [collectAbortController, setCollectAbortController] = useState<AbortController | null>(null);
 
   const showCollectNotice = (type: 'success' | 'error' | 'info', message: string) => {
     setCollectNotice({ type, message });
-    setTimeout(() => setCollectNotice(null), 6000);
   };
 
   useEffect(() => {
@@ -253,7 +253,10 @@ export default function DashboardPage() {
 
     try {
       setCollectingFairValues(true);
-      const response = await stockAPI.collectFairValues(selectedActiveIds);
+      const controller = new AbortController();
+      setCollectAbortController(controller);
+
+      const response = await stockAPI.collectFairValues(selectedActiveIds, undefined, controller.signal);
       invalidateCache('portfolio');
       await fetchData(true);
 
@@ -268,9 +271,20 @@ export default function DashboardPage() {
         `Fair value sync complete. Updated: ${updated}. Entries saved: ${entriesSaved}. Errors: ${errors}.${detailText}`
       );
     } catch (err: any) {
-      showCollectNotice('error', 'Failed to collect fair values: ' + (err.response?.data?.error || err.message));
+      if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') {
+        showCollectNotice('info', 'Fair value sync cancelled.');
+      } else {
+        showCollectNotice('error', 'Failed to collect fair values: ' + (err.response?.data?.error || err.message));
+      }
     } finally {
       setCollectingFairValues(false);
+      setCollectAbortController(null);
+    }
+  };
+
+  const handleCancelFairValueSync = () => {
+    if (collectAbortController) {
+      collectAbortController.abort();
     }
   };
 
@@ -586,6 +600,15 @@ export default function DashboardPage() {
               >
                 {collectingFairValues ? 'Collecting...' : `Fair Value Sync (${selectedStockIds.filter(id => stocks.some(s => s.id === id && s.shares_owned > 0)).length})`}
               </button>
+              {collectingFairValues && (
+                <button
+                  onClick={handleCancelFairValueSync}
+                  className="flex items-center px-3 py-1.5 bg-red-700/90 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm text-xs font-medium"
+                  title="Cancel current fair value sync request"
+                >
+                  Cancel
+                </button>
+              )}
               <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">
                 {stocks.filter(s => s.shares_owned > 0).length}
               </span>
@@ -601,7 +624,16 @@ export default function DashboardPage() {
                     : 'bg-blue-900/30 border-blue-700 text-blue-200'
               }`}
             >
-              {collectNotice.message}
+              <div className="flex items-start justify-between gap-3">
+                <span className="whitespace-pre-wrap">{collectNotice.message}</span>
+                <button
+                  onClick={() => setCollectNotice(null)}
+                  className="text-lg leading-none opacity-80 hover:opacity-100"
+                  title="Close notification"
+                >
+                  x
+                </button>
+              </div>
             </div>
           )}
           <StockTable
