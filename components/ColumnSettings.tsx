@@ -18,6 +18,12 @@ export interface ColumnSettingsProps {
   initialColumns?: ColumnConfig[];
 }
 
+const normalizeColumnOrder = (cols: ColumnConfig[]): ColumnConfig[] => {
+  return [...cols]
+    .sort((a, b) => a.order - b.order)
+    .map((col, index) => ({ ...col, order: index }));
+};
+
 // Default column configuration based on StockTable structure
 export const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'checkbox', label: 'Select', visible: true, order: 0, required: true, portfolioOnly: false },
@@ -48,11 +54,15 @@ export const DEFAULT_COLUMNS: ColumnConfig[] = [
 ];
 
 export default function ColumnSettings({ onSettingsChange, initialColumns = DEFAULT_COLUMNS }: ColumnSettingsProps) {
-  const [columns, setColumns] = useState<ColumnConfig[]>(initialColumns);
+  const [columns, setColumns] = useState<ColumnConfig[]>(normalizeColumnOrder(initialColumns));
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
   // Sort columns by order for display
   const sortedColumns = [...columns].sort((a, b) => a.order - b.order);
+
+  useEffect(() => {
+    setColumns(normalizeColumnOrder(initialColumns));
+  }, [initialColumns]);
 
   useEffect(() => {
     onSettingsChange(columns);
@@ -65,32 +75,39 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
   };
 
   const moveColumn = (columnId: string, direction: 'up' | 'down') => {
-    const sortedCols = [...columns].sort((a, b) => a.order - b.order);
+    const sortedCols = normalizeColumnOrder(columns);
     const currentIndex = sortedCols.findIndex(col => col.id === columnId);
+    if (currentIndex === -1) return;
 
-    if (direction === 'up' && currentIndex > 0) {
-      const newOrder = sortedCols[currentIndex - 1].order;
-      const targetOrder = sortedCols[currentIndex].order;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sortedCols.length) return;
 
-      setColumns(prev => prev.map(col => {
-        if (col.id === columnId) return { ...col, order: newOrder };
-        if (col.id === sortedCols[currentIndex - 1].id) return { ...col, order: targetOrder };
-        return col;
-      }));
-    } else if (direction === 'down' && currentIndex < sortedCols.length - 1) {
-      const newOrder = sortedCols[currentIndex + 1].order;
-      const targetOrder = sortedCols[currentIndex].order;
+    const reordered = [...sortedCols];
+    const [moved] = reordered.splice(currentIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+    setColumns(normalizeColumnOrder(reordered));
+  };
 
-      setColumns(prev => prev.map(col => {
-        if (col.id === columnId) return { ...col, order: newOrder };
-        if (col.id === sortedCols[currentIndex + 1].id) return { ...col, order: targetOrder };
-        return col;
-      }));
+  const handleDrop = (targetColumnId: string) => {
+    if (!draggedItem || draggedItem === targetColumnId) return;
+
+    const sortedCols = normalizeColumnOrder(columns);
+    const fromIndex = sortedCols.findIndex(col => col.id === draggedItem);
+    const toIndex = sortedCols.findIndex(col => col.id === targetColumnId);
+    if (fromIndex === -1 || toIndex === -1) {
+      setDraggedItem(null);
+      return;
     }
+
+    const reordered = [...sortedCols];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    setColumns(normalizeColumnOrder(reordered));
+    setDraggedItem(null);
   };
 
   const resetToDefaults = () => {
-    setColumns(DEFAULT_COLUMNS);
+    setColumns(normalizeColumnOrder(DEFAULT_COLUMNS));
   };
 
   const showAllColumns = () => {
@@ -150,6 +167,15 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
             draggable={!column.required}
             onDragStart={() => setDraggedItem(column.id)}
             onDragEnd={() => setDraggedItem(null)}
+            onDragOver={(e) => {
+              if (draggedItem && draggedItem !== column.id) {
+                e.preventDefault();
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleDrop(column.id);
+            }}
           >
             <div className="flex items-center space-x-3">
               {/* Drag Handle */}

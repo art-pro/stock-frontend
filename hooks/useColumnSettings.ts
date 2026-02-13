@@ -5,6 +5,12 @@ import { ColumnConfig, DEFAULT_COLUMNS } from '@/components/ColumnSettings';
 import { settingsAPI } from '@/lib/api';
 import { isAuthenticated } from '@/lib/auth';
 
+const normalizeColumnOrder = (cols: ColumnConfig[]): ColumnConfig[] => {
+  return [...cols]
+    .sort((a, b) => a.order - b.order)
+    .map((col, index) => ({ ...col, order: index }));
+};
+
 export function useColumnSettings() {
   const [columnSettings, setColumnSettings] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
   const [isLoading, setLoading] = useState(true);
@@ -64,12 +70,13 @@ export function useColumnSettings() {
           const savedCol = parsedColumns.find((col: ColumnConfig) => col.id === defaultCol.id);
           return savedCol ? { ...defaultCol, ...savedCol } : defaultCol;
         });
-        setColumnSettings(mergedColumns);
+        setColumnSettings(normalizeColumnOrder(mergedColumns));
   }
 
   const saveColumnSettings = useCallback(async (newSettings: ColumnConfig[]) => {
-      setColumnSettings(newSettings);
-      const settingsJson = JSON.stringify(newSettings);
+      const normalizedSettings = normalizeColumnOrder(newSettings);
+      setColumnSettings(normalizedSettings);
+      const settingsJson = JSON.stringify(normalizedSettings);
       
       // Save to local storage immediately
       try {
