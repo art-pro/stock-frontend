@@ -18,10 +18,16 @@ export interface ColumnSettingsProps {
   initialColumns?: ColumnConfig[];
 }
 
-const normalizeColumnOrder = (cols: ColumnConfig[]): ColumnConfig[] => {
-  return [...cols]
-    .sort((a, b) => a.order - b.order)
-    .map((col, index) => ({ ...col, order: index }));
+const sortByOrder = (cols: ColumnConfig[]): ColumnConfig[] => {
+  return [...cols].sort((a, b) => a.order - b.order);
+};
+
+const normalizeFromOrderField = (cols: ColumnConfig[]): ColumnConfig[] => {
+  return sortByOrder(cols).map((col, index) => ({ ...col, order: index }));
+};
+
+const reindexInCurrentOrder = (cols: ColumnConfig[]): ColumnConfig[] => {
+  return cols.map((col, index) => ({ ...col, order: index }));
 };
 
 // Default column configuration based on StockTable structure
@@ -55,18 +61,18 @@ export const DEFAULT_COLUMNS: ColumnConfig[] = [
 ];
 
 export default function ColumnSettings({ onSettingsChange, initialColumns = DEFAULT_COLUMNS }: ColumnSettingsProps) {
-  const [columns, setColumns] = useState<ColumnConfig[]>(normalizeColumnOrder(initialColumns));
+  const [columns, setColumns] = useState<ColumnConfig[]>(normalizeFromOrderField(initialColumns));
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
   // Sort columns by order for display
-  const sortedColumns = [...columns].sort((a, b) => a.order - b.order);
+  const sortedColumns = sortByOrder(columns);
 
   useEffect(() => {
-    setColumns(normalizeColumnOrder(initialColumns));
+    setColumns(normalizeFromOrderField(initialColumns));
   }, [initialColumns]);
 
   const applyColumns = (nextColumns: ColumnConfig[]) => {
-    const normalized = normalizeColumnOrder(nextColumns);
+    const normalized = reindexInCurrentOrder(nextColumns);
     setColumns(normalized);
     onSettingsChange(normalized);
   };
@@ -80,7 +86,7 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
   };
 
   const moveColumn = (columnId: string, direction: 'up' | 'down') => {
-    const sortedCols = normalizeColumnOrder(columns);
+    const sortedCols = sortByOrder(columns);
     const currentIndex = sortedCols.findIndex(col => col.id === columnId);
     if (currentIndex === -1) return;
 
@@ -97,7 +103,7 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
     const sourceId = sourceColumnId || draggedItem;
     if (!sourceId || sourceId === targetColumnId) return;
 
-    const sortedCols = normalizeColumnOrder(columns);
+    const sortedCols = sortByOrder(columns);
     const fromIndex = sortedCols.findIndex(col => col.id === sourceId);
     const toIndex = sortedCols.findIndex(col => col.id === targetColumnId);
     if (fromIndex === -1 || toIndex === -1) {
