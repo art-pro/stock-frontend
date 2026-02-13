@@ -299,6 +299,50 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       )
     },
     {
+      id: 'sell_zone_lower_bound',
+      label: 'Sell Zone Min',
+      sortKey: 'sell_zone_lower_bound',
+      align: 'right',
+      title: 'Trim zone start (EV = 3%)',
+      render: (stock, props) => (
+        <span>
+          {(stock.sell_zone_lower_bound || 0) > 0 ? `${props.formatNumber(stock.sell_zone_lower_bound || 0)} ${stock.currency}` : 'N/A'}
+        </span>
+      )
+    },
+    {
+      id: 'sell_zone_upper_bound',
+      label: 'Sell Zone Max',
+      sortKey: 'sell_zone_upper_bound',
+      align: 'right',
+      title: 'Sell zone start (EV = 0%)',
+      render: (stock, props) => (
+        <span>
+          {(stock.sell_zone_upper_bound || 0) > 0 ? `${props.formatNumber(stock.sell_zone_upper_bound || 0)} ${stock.currency}` : 'N/A'}
+        </span>
+      )
+    },
+    {
+      id: 'sell_zone_status',
+      label: 'Sell Zone Status',
+      sortKey: 'sell_zone_status',
+      align: 'center',
+      title: 'Status based on current EV versus sell-zone thresholds',
+      render: (stock) => {
+        const status = stock.sell_zone_status || 'N/A';
+        const cls =
+          status === 'In sell zone' ? 'bg-red-900 text-red-200' :
+          status === 'In trim zone' ? 'bg-orange-900 text-orange-200' :
+          status === 'Below sell zone' ? 'bg-emerald-900 text-emerald-200' :
+          'bg-gray-700 text-gray-300';
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
+            {status}
+          </span>
+        );
+      }
+    },
+    {
       id: 'upside_potential',
       label: 'Upside %',
       sortKey: 'upside_potential',

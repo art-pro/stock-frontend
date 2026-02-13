@@ -984,6 +984,45 @@ export default function StockDetailPage() {
               </p>
               <p className="text-xs text-gray-600 mt-1">Calculated</p>
             </div>
+
+            <div>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Sell Zone (Min)
+                <TooltipIcon text="Trim zone start price where EV approaches 3%. Consider reducing exposure above this level." />
+              </p>
+              <p className="text-lg font-semibold text-white">
+                {(stock.sell_zone_lower_bound || 0).toFixed(2)} {stock.currency}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Sell Zone (Max)
+                <TooltipIcon text="Sell zone start price where EV reaches 0%. Above this level, probabilistic edge is no longer favorable." />
+              </p>
+              <p className="text-lg font-semibold text-white">
+                {(stock.sell_zone_upper_bound || 0).toFixed(2)} {stock.currency}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Sell Zone Status
+                <TooltipIcon text="Status derived from current EV versus sell-zone thresholds: Below sell zone, In trim zone, or In sell zone." />
+              </p>
+              <p className={`text-lg font-semibold ${
+                (stock.sell_zone_status || '') === 'In sell zone'
+                  ? 'text-red-400'
+                  : (stock.sell_zone_status || '') === 'In trim zone'
+                    ? 'text-orange-400'
+                    : 'text-emerald-400'
+              }`}>
+                {stock.sell_zone_status || 'N/A'}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
+            </div>
             
             <div>
               <p className="text-sm text-gray-400 mb-1">Last Updated</p>

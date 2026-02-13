@@ -113,6 +113,9 @@ export interface Stock {
   unrealized_pnl: number;
   buy_zone_min: number;
   buy_zone_max: number;
+  sell_zone_lower_bound?: number;
+  sell_zone_upper_bound?: number;
+  sell_zone_status?: string;
   assessment: string;
   update_frequency: string;
   data_source: string;
