@@ -275,6 +275,30 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       )
     },
     {
+      id: 'buy_zone_min',
+      label: 'Buy Zone Min',
+      sortKey: 'buy_zone_min',
+      align: 'right',
+      title: 'Lower buy-zone bound (EV target 15%)',
+      render: (stock, props) => (
+        <span>
+          {stock.buy_zone_min > 0 ? `${props.formatNumber(stock.buy_zone_min)} ${stock.currency}` : 'N/A'}
+        </span>
+      )
+    },
+    {
+      id: 'buy_zone_max',
+      label: 'Buy Zone Max',
+      sortKey: 'buy_zone_max',
+      align: 'right',
+      title: 'Upper buy-zone bound (EV target 7%)',
+      render: (stock, props) => (
+        <span>
+          {stock.buy_zone_max > 0 ? `${props.formatNumber(stock.buy_zone_max)} ${stock.currency}` : 'N/A'}
+        </span>
+      )
+    },
+    {
       id: 'upside_potential',
       label: 'Upside %',
       sortKey: 'upside_potential',
