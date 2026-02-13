@@ -142,18 +142,21 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2 mb-4">
           <button
+            type="button"
             onClick={showAllColumns}
             className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
           >
             Show All
           </button>
           <button
+            type="button"
             onClick={hideOptionalColumns}
             className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 transition-colors"
           >
             Essential Only
           </button>
           <button
+            type="button"
             onClick={resetToDefaults}
             className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors"
           >
@@ -172,13 +175,6 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
                 ? 'bg-gray-700 border-gray-600'
                 : 'bg-gray-800 border-gray-700 opacity-60'
             } ${draggedItem === column.id ? 'scale-105 shadow-lg' : ''} transition-all`}
-            draggable={!column.required}
-            onDragStart={(e) => {
-              setDraggedItem(column.id);
-              e.dataTransfer.effectAllowed = 'move';
-              e.dataTransfer.setData('text/plain', column.id);
-            }}
-            onDragEnd={() => setDraggedItem(null)}
             onDragOver={(e) => {
               if (draggedItem && draggedItem !== column.id) {
                 e.preventDefault();
@@ -192,7 +188,18 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
           >
             <div className="flex items-center space-x-3">
               {/* Drag Handle */}
-              <div className="cursor-move text-gray-400">
+              <div
+                className={`text-gray-400 ${column.required ? 'cursor-not-allowed opacity-40' : 'cursor-move'}`}
+                draggable={!column.required}
+                onDragStart={(e) => {
+                  if (column.required) return;
+                  setDraggedItem(column.id);
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', column.id);
+                }}
+                onDragEnd={() => setDraggedItem(null)}
+                title={column.required ? 'Required columns cannot be moved' : 'Drag to reorder'}
+              >
                 <Bars3Icon className="h-4 w-4" />
               </div>
 
@@ -221,6 +228,7 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
             <div className="flex items-center space-x-2">
               {/* Move buttons */}
               <button
+                type="button"
                 onClick={() => moveColumn(column.id, 'up')}
                 disabled={index === 0}
                 className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
@@ -229,6 +237,7 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
                 <ArrowUpIcon className="h-4 w-4" />
               </button>
               <button
+                type="button"
                 onClick={() => moveColumn(column.id, 'down')}
                 disabled={index === sortedColumns.length - 1}
                 className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
@@ -239,6 +248,7 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
 
               {/* Visibility toggle */}
               <button
+                type="button"
                 onClick={() => toggleVisibility(column.id)}
                 disabled={column.required}
                 className={`p-1 ${
