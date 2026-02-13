@@ -104,6 +104,7 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 ### Where frontend reflects decisions
 - `components/StockTable.tsx`
   - EV color coding and action badge rendering
+  - Buy zone limit columns (`Buy Zone Min`, `Buy Zone Max`) with currency-aware display and sorting
   - tooltips for metric meaning
 - `components/PortfolioSummary.tsx`
   - overall EV, Sharpe, volatility, Kelly utilization displays
@@ -137,6 +138,7 @@ The frontend should align with backend formulas and action bands from `pkg/servi
    - View active positions + watchlist
    - select subset and update from Alpha Vantage or Grok
    - run trusted fair-value sync for selected active positions (Grok + Deepseek backend collection)
+   - review buy zone limits directly in table columns (`Buy Zone Min`, `Buy Zone Max`)
    - inline edits for core numeric inputs
    - import/export JSON
 2. **Stock detail editing**
@@ -152,7 +154,7 @@ The frontend should align with backend formulas and action bands from `pkg/servi
    - parse and edit extracted JSON from screenshot pipeline
 5. **Settings**
    - auth settings and portfolio settings
-   - persistent customizable table columns
+   - persistent customizable table columns (includes buy zone min/max column visibility and order)
 
 ## Security and Input Handling
 
