@@ -65,14 +65,18 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
     setColumns(normalizeColumnOrder(initialColumns));
   }, [initialColumns]);
 
-  useEffect(() => {
-    onSettingsChange(columns);
-  }, [columns, onSettingsChange]);
+  const applyColumns = (nextColumns: ColumnConfig[]) => {
+    const normalized = normalizeColumnOrder(nextColumns);
+    setColumns(normalized);
+    onSettingsChange(normalized);
+  };
 
   const toggleVisibility = (columnId: string) => {
-    setColumns(prev => prev.map(col =>
-      col.id === columnId ? { ...col, visible: !col.visible } : col
-    ));
+    applyColumns(
+      columns.map(col =>
+        col.id === columnId ? { ...col, visible: !col.visible } : col
+      )
+    );
   };
 
   const moveColumn = (columnId: string, direction: 'up' | 'down') => {
@@ -86,14 +90,15 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
     const reordered = [...sortedCols];
     const [moved] = reordered.splice(currentIndex, 1);
     reordered.splice(targetIndex, 0, moved);
-    setColumns(normalizeColumnOrder(reordered));
+    applyColumns(reordered);
   };
 
-  const handleDrop = (targetColumnId: string) => {
-    if (!draggedItem || draggedItem === targetColumnId) return;
+  const handleDrop = (targetColumnId: string, sourceColumnId?: string) => {
+    const sourceId = sourceColumnId || draggedItem;
+    if (!sourceId || sourceId === targetColumnId) return;
 
     const sortedCols = normalizeColumnOrder(columns);
-    const fromIndex = sortedCols.findIndex(col => col.id === draggedItem);
+    const fromIndex = sortedCols.findIndex(col => col.id === sourceId);
     const toIndex = sortedCols.findIndex(col => col.id === targetColumnId);
     if (fromIndex === -1 || toIndex === -1) {
       setDraggedItem(null);
@@ -103,23 +108,25 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
     const reordered = [...sortedCols];
     const [moved] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, moved);
-    setColumns(normalizeColumnOrder(reordered));
+    applyColumns(reordered);
     setDraggedItem(null);
   };
 
   const resetToDefaults = () => {
-    setColumns(normalizeColumnOrder(DEFAULT_COLUMNS));
+    applyColumns(DEFAULT_COLUMNS);
   };
 
   const showAllColumns = () => {
-    setColumns(prev => prev.map(col => ({ ...col, visible: true })));
+    applyColumns(columns.map(col => ({ ...col, visible: true })));
   };
 
   const hideOptionalColumns = () => {
-    setColumns(prev => prev.map(col => ({
-      ...col,
-      visible: col.required || ['ticker', 'company_name', 'current_price', 'assessment'].includes(col.id)
-    })));
+    applyColumns(
+      columns.map(col => ({
+        ...col,
+        visible: col.required || ['ticker', 'company_name', 'current_price', 'assessment'].includes(col.id)
+      }))
+    );
   };
 
   return (
@@ -166,7 +173,11 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
                 : 'bg-gray-800 border-gray-700 opacity-60'
             } ${draggedItem === column.id ? 'scale-105 shadow-lg' : ''} transition-all`}
             draggable={!column.required}
-            onDragStart={() => setDraggedItem(column.id)}
+            onDragStart={(e) => {
+              setDraggedItem(column.id);
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', column.id);
+            }}
             onDragEnd={() => setDraggedItem(null)}
             onDragOver={(e) => {
               if (draggedItem && draggedItem !== column.id) {
@@ -175,7 +186,8 @@ export default function ColumnSettings({ onSettingsChange, initialColumns = DEFA
             }}
             onDrop={(e) => {
               e.preventDefault();
-              handleDrop(column.id);
+              const droppedId = e.dataTransfer.getData('text/plain');
+              handleDrop(column.id, droppedId || undefined);
             }}
           >
             <div className="flex items-center space-x-3">
