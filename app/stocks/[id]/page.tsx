@@ -987,6 +987,25 @@ export default function StockDetailPage() {
 
             <div>
               <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Buy Zone Status
+                <TooltipIcon text="Status derived from current price versus buy-zone thresholds: EV >> 15%, within buy zone, outside buy zone, or no buy zone available." />
+              </p>
+              <p className={`text-lg font-semibold ${
+                (stock.buy_zone_status || '') === 'EV >> 15%'
+                  ? 'text-emerald-400'
+                  : (stock.buy_zone_status || '') === 'within buy zone'
+                    ? 'text-green-400'
+                    : (stock.buy_zone_status || '') === 'outside buy zone'
+                      ? 'text-gray-300'
+                      : 'text-gray-400'
+              }`}>
+                {stock.buy_zone_status || 'N/A'}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">Calculated</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
                 Sell Zone (Min)
                 <TooltipIcon text="Trim zone start price where EV approaches 3%. Consider reducing exposure above this level." />
               </p>

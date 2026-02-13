@@ -299,6 +299,26 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       )
     },
     {
+      id: 'buy_zone_status',
+      label: 'Buy Zone Status',
+      sortKey: 'buy_zone_status',
+      align: 'center',
+      title: 'Status based on current price versus buy-zone thresholds',
+      render: (stock) => {
+        const status = stock.buy_zone_status || 'N/A';
+        const cls =
+          status === 'EV >> 15%' ? 'bg-emerald-900 text-emerald-200' :
+          status === 'within buy zone' ? 'bg-green-900 text-green-200' :
+          status === 'outside buy zone' ? 'bg-gray-700 text-gray-300' :
+          'bg-gray-700 text-gray-300';
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
+            {status}
+          </span>
+        );
+      }
+    },
+    {
       id: 'sell_zone_lower_bound',
       label: 'Sell Zone Min',
       sortKey: 'sell_zone_lower_bound',
