@@ -105,11 +105,13 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 - `components/StockTable.tsx`
   - EV color coding and action badge rendering
   - Buy zone limit columns (`Buy Zone Min`, `Buy Zone Max`) with currency-aware display and sorting
+  - Sell zone columns (`Sell Zone Min`, `Sell Zone Max`, `Sell Zone Status`) for trim/sell discipline
   - tooltips for metric meaning
 - `components/PortfolioSummary.tsx`
   - overall EV, Sharpe, volatility, Kelly utilization displays
 - `app/stocks/[id]/page.tsx`
   - per-stock metrics and action interpretation text/tooltips
+  - dedicated sell-zone cards (min/max/status) aligned to backend EV thresholds
 - `app/assessment/page.tsx`
   - user-facing strategy description
 
@@ -139,6 +141,7 @@ The frontend should align with backend formulas and action bands from `pkg/servi
    - select subset and update from Alpha Vantage or Grok
    - run trusted fair-value sync for selected active positions (Grok + Deepseek backend collection)
    - review buy zone limits directly in table columns (`Buy Zone Min`, `Buy Zone Max`)
+   - review sell-zone thresholds directly in table columns (`Sell Zone Min`, `Sell Zone Max`, `Sell Zone Status`)
    - inline edits for core numeric inputs
    - import/export JSON
 2. **Stock detail editing**
@@ -154,7 +157,22 @@ The frontend should align with backend formulas and action bands from `pkg/servi
    - parse and edit extracted JSON from screenshot pipeline
 5. **Settings**
    - auth settings and portfolio settings
-   - persistent customizable table columns (includes buy zone min/max column visibility and order)
+   - persistent customizable table columns (includes buy zone and sell zone column visibility/order)
+
+## Sell Zone Discipline (New)
+
+Frontend must present sell-zone outputs exactly as computed by backend from EV thresholds:
+- `Sell Zone Min` = trim threshold price where EV reaches 3%.
+- `Sell Zone Max` = sell threshold price where EV reaches 0%.
+- `Sell Zone Status` is derived from current EV:
+  - `Below sell zone`
+  - `In trim zone`
+  - `In sell zone`
+  - `no sell zone` (invalid/unsolved thresholds)
+
+Display principle:
+- Frontend shows thresholds and status, but does not re-implement threshold math.
+- All labels and tooltip wording should stay synchronized with backend status semantics.
 
 ## Security and Input Handling
 
