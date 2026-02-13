@@ -41,6 +41,9 @@ export default function DashboardPage() {
   const [collectingFairValues, setCollectingFairValues] = useState(false);
   const [collectNotice, setCollectNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [collectAbortController, setCollectAbortController] = useState<AbortController | null>(null);
+  const [calculatorTicker, setCalculatorTicker] = useState('');
+  const [calculatorCurrentPrice, setCalculatorCurrentPrice] = useState('');
+  const [calculatorTargetPercent, setCalculatorTargetPercent] = useState('');
 
   const showCollectNotice = (type: 'success' | 'error' | 'info', message: string) => {
     setCollectNotice({ type, message });
@@ -349,6 +352,19 @@ export default function DashboardPage() {
     router.push('/login');
   };
 
+  const parseNumericInput = (value: string): number => {
+    const normalized = value.replace(',', '.').trim();
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const formatNumber = (value: number, decimals: number = 2): string => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(value);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -359,6 +375,15 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const portfolioTotalEur = metrics?.total_value || 0;
+  const currentPriceValue = parseNumericInput(calculatorCurrentPrice);
+  const targetPercentValue = parseNumericInput(calculatorTargetPercent);
+  const calculatorReady = portfolioTotalEur > 0 && currentPriceValue > 0 && targetPercentValue > 0;
+  const targetSpendEur = calculatorReady ? (portfolioTotalEur * targetPercentValue) / 100 : 0;
+  const sharesToBuy = calculatorReady ? Math.floor(targetSpendEur / currentPriceValue) : 0;
+  const estimatedSpendForWholeShares = calculatorReady ? sharesToBuy * currentPriceValue : 0;
+  const unallocatedRemainder = calculatorReady ? Math.max(0, targetSpendEur - estimatedSpendForWholeShares) : 0;
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -562,6 +587,67 @@ export default function DashboardPage() {
               </span>
             </button>
           </div>
+        </div>
+
+        {/* Position Size Calculator */}
+        <div className="mb-6 bg-gray-800 rounded-lg border border-gray-700 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-white">Position Size Calculator</h3>
+            <span className="text-xs text-gray-400">
+              Portfolio Total: {portfolioTotalEur > 0 ? `${formatNumber(portfolioTotalEur)} EUR` : 'N/A'}
+            </span>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">
+            Enter stock name, current price, and target portfolio %. The calculator shows the EUR amount to allocate and how many shares you can buy.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <input
+              type="text"
+              value={calculatorTicker}
+              onChange={(e) => setCalculatorTicker(e.target.value)}
+              placeholder="Stock name or ticker (e.g., MSFT)"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              value={calculatorCurrentPrice}
+              onChange={(e) => setCalculatorCurrentPrice(e.target.value)}
+              placeholder="Current price (local currency)"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              value={calculatorTargetPercent}
+              onChange={(e) => setCalculatorTargetPercent(e.target.value)}
+              placeholder="Target weight % (e.g., 5)"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          {calculatorReady ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="bg-gray-700/60 rounded-lg p-3 border border-gray-600">
+                <div className="text-gray-400 mb-1">Target spend (EUR)</div>
+                <div className="text-emerald-300 font-semibold">{formatNumber(targetSpendEur)} EUR</div>
+              </div>
+              <div className="bg-gray-700/60 rounded-lg p-3 border border-gray-600">
+                <div className="text-gray-400 mb-1">Shares you can buy</div>
+                <div className="text-white font-semibold">{sharesToBuy}</div>
+                <div className="text-xs text-gray-500 mt-1">Based on whole shares only</div>
+              </div>
+              <div className="bg-gray-700/60 rounded-lg p-3 border border-gray-600">
+                <div className="text-gray-400 mb-1">Estimated spend / remainder</div>
+                <div className="text-white font-semibold">{formatNumber(estimatedSpendForWholeShares)} / {formatNumber(unallocatedRemainder)} EUR</div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded-lg px-3 py-2">
+              Enter valid current price and target % (greater than 0), and ensure portfolio total is loaded.
+            </div>
+          )}
         </div>
 
         {/* Update Progress Bar */}
