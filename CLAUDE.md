@@ -203,6 +203,15 @@ Targets are derived from core philosophy. Cash buffer 8–12% is separate (not a
 
 Implemented in `lib/sectorTargets.ts`. Targets are **persistent per user**: `contexts/SectorTargetsContext.tsx` and `hooks/useSectorTargets.ts` load from `GET /settings/sector-targets` and optionally save via `POST /settings/sector-targets`. Dashboard, RebalanceHint, SuggestedActions, and StockTable receive `targetPctBySector` from context so rebalance logic and sector headers use saved targets when present; otherwise defaults from `lib/sectorTargets.ts` are used. Numeric ranges appear in sector headers (Active Positions and Watchlist) and in Settings → Sector Targets table.
 
+### Sector Allocation Targets (Settings tab) — functionality
+
+- **Location:** Settings → Sector Targets tab. Table columns: Sector, Target Range (min–max %), Key Rationale; for admin, an Actions column (delete per row).
+- **RBAC:** Admin can add, edit, delete rows and save; non-admin users see the table as read-only. Admin is determined by: `currentUser.username === (process.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin')`. Set admin in `.env.local` (gitignored), e.g. `NEXT_PUBLIC_ADMIN_USERNAME=YourUsername`. Restart dev server after changing env.
+- **CRUD (admin only):** **Add sector** — append a row (any sector name, custom min/max/rationale). **Edit** — inline inputs for sector name, min %, max %, rationale. **Delete** — trash icon per row; at least one row must remain. **Save** — validates then `POST /settings/sector-targets` with full `rows` array; success refetches and updates context so Dashboard uses new targets immediately. **Reset to defaults** — replaces draft with built-in table from `lib/sectorTargets.ts` and saves.
+- **Import / Export:** **Export** (all users): **Copy JSON** copies current table as `{ "rows": [ { "sector", "min", "max", "rationale" }, ... ] }` to clipboard; **Download file** saves the same JSON as `sector-targets.json`. **Import** (admin only): paste JSON into the text area and click **Load from text**, or use **Load from file** to pick a `.json` file; parsed rows are validated (same rules as Save) and loaded into the table as draft — click **Save** to persist. Accepted format: `{ "rows": [ ... ] }` or a top-level array of row objects.
+- **Validation before save:** Sector name required (non-empty); min and max in 0–100; min ≤ max. Invalid rows produce an amber message and block save.
+- **Persistence:** Backend stores JSON per user under key `sector_targets`. Dashboard rebalance hint, suggested actions, and sector headers in StockTable all read `targetPctBySector` from `SectorTargetsContext`, so saved targets apply site-wide without further wiring.
+
 ## Phase 1: Math/Logic and Data (Core Enhancements)
 
 Additive display-only features to support EV optimization, sector targets, and risk visibility. No new backend logic.
@@ -256,6 +265,7 @@ Display principle:
   - magic number validation
   - canvas-based image sanitization for preview path
 - JSON extraction supports validation before bulk update apply.
+- **RBAC (Sector Targets):** Admin is the user whose username equals `NEXT_PUBLIC_ADMIN_USERNAME` (or `'admin'` if unset). Configure in `.env.local`, e.g. `NEXT_PUBLIC_ADMIN_USERNAME=YourUsername`; only that user can edit Sector Allocation Targets in Settings.
 
 ## Performance Characteristics
 

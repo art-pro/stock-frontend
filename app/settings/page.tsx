@@ -1,14 +1,36 @@
 'use client';
 
-import { useState, useEffect, FormEvent, useCallback } from 'react';
+import { useState, useEffect, FormEvent, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { authAPI, portfolioAPI } from '@/lib/api';
-import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PlusIcon, TrashIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import ColumnSettings, { ColumnConfig, DEFAULT_COLUMNS } from '@/components/ColumnSettings';
 import { useColumnSettings } from '@/hooks/useColumnSettings';
 import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
 import { SECTOR_TARGET_TABLE, CASH_TARGET_ROW, type SectorTargetTableRow } from '@/lib/sectorTargets';
+
+const SECTOR_TARGETS_EXPORT_FILENAME = 'sector-targets.json';
+
+function sectorTargetsToJson(rows: SectorTargetTableRow[]): string {
+  return JSON.stringify({ rows }, null, 2);
+}
+
+function parseSectorTargetsJson(json: string): SectorTargetTableRow[] | null {
+  try {
+    const data = JSON.parse(json);
+    const rows = Array.isArray(data) ? data : data?.rows;
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    return rows.map((r: Record<string, unknown>) => ({
+      sector: String(r.sector ?? '').trim(),
+      min: Number(r.min),
+      max: Number(r.max),
+      rationale: String(r.rationale ?? '').trim(),
+    }));
+  } catch {
+    return null;
+  }
+}
 
 function validateRow(row: SectorTargetTableRow): string | null {
   if (!row.sector || !String(row.sector).trim()) return 'Sector name is required';
@@ -33,6 +55,10 @@ function SectorTargetsTabContent({ canEditSectorTargets }: { canEditSectorTarget
     tableRows.length > 0 ? tableRows.map((r) => ({ ...r })) : []
   );
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [importText, setImportText] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  const [exportCopied, setExportCopied] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isLoading && tableRows.length > 0) {
@@ -84,6 +110,71 @@ function SectorTargetsTabContent({ canEditSectorTargets }: { canEditSectorTarget
     }));
     setValidationError(null);
     save(normalized);
+  };
+
+  const rowsForExport = canEditSectorTargets ? draftRows : tableRows;
+  const handleCopyJson = async () => {
+    const json = sectorTargetsToJson(rowsForExport);
+    try {
+      await navigator.clipboard.writeText(json);
+      setExportCopied(true);
+      setTimeout(() => setExportCopied(false), 2000);
+    } catch {
+      setImportError('Failed to copy to clipboard');
+    }
+  };
+  const handleDownloadJson = () => {
+    const json = sectorTargetsToJson(rowsForExport);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = SECTOR_TARGETS_EXPORT_FILENAME;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const applyImportedRows = (rows: SectorTargetTableRow[]): boolean => {
+    const errors: string[] = [];
+    rows.forEach((row, i) => {
+      const err = validateRow(row);
+      if (err) errors.push(`Row ${i + 1} (${row.sector || '?'}): ${err}`);
+    });
+    if (errors.length) {
+      setImportError(errors.join('. '));
+      return false;
+    }
+    setDraftRows(rows);
+    setImportError(null);
+    setImportText('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    return true;
+  };
+  const handleImportFromText = () => {
+    setImportError(null);
+    const rows = parseSectorTargetsJson(importText);
+    if (!rows) {
+      setImportError('Invalid JSON: expected { "rows": [ ... ] } or an array of { sector, min, max, rationale }');
+      return;
+    }
+    applyImportedRows(rows);
+  };
+  const handleImportFromFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImportError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : '';
+      const rows = parseSectorTargetsJson(text);
+      if (!rows) {
+        setImportError('Invalid JSON in file: expected { "rows": [ ... ] } or an array of objects with sector, min, max, rationale');
+        return;
+      }
+      applyImportedRows(rows);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   if (isLoading) {
@@ -150,6 +241,74 @@ function SectorTargetsTabContent({ canEditSectorTargets }: { canEditSectorTarget
           {validationError}
         </div>
       )}
+
+      {/* Import / Export */}
+      <div className="mb-4 p-4 rounded-lg border border-gray-600 bg-gray-800/80">
+        <h3 className="text-sm font-semibold text-gray-300 mb-3">Import / Export sector ratios</h3>
+        <div className="flex flex-wrap gap-4 items-start">
+          <div className="flex flex-col gap-2">
+            <span className="text-xs text-gray-500">Export (current table)</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleCopyJson}
+                className="text-sm px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 flex items-center gap-1"
+              >
+                <DocumentDuplicateIcon className="w-4 h-4" />
+                {exportCopied ? 'Copied' : 'Copy JSON'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadJson}
+                className="text-sm px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 flex items-center gap-1"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                Download file
+              </button>
+            </div>
+          </div>
+          {canEditSectorTargets && (
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <span className="text-xs text-gray-500">Import (load into table; then Save to persist)</span>
+              <div className="flex flex-wrap gap-2 items-end">
+                <div className="flex-1 min-w-[200px]">
+                  <textarea
+                    value={importText}
+                    onChange={(e) => { setImportText(e.target.value); setImportError(null); }}
+                    placeholder='Paste JSON: { "rows": [ { "sector": "...", "min": 10, "max": 15, "rationale": "..." } ] }'
+                    rows={2}
+                    className="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 text-sm font-mono placeholder:text-gray-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleImportFromText}
+                  disabled={!importText.trim()}
+                  className="text-sm px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50 flex items-center gap-1"
+                >
+                  <ArrowUpTrayIcon className="w-4 h-4" />
+                  Load from text
+                </button>
+                <label className="text-sm px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 cursor-pointer flex items-center gap-1">
+                  <ArrowUpTrayIcon className="w-4 h-4" />
+                  Load from file
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleImportFromFile}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+        {importError && (
+          <p className="mt-2 text-sm text-amber-200">{importError}</p>
+        )}
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
