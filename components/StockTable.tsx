@@ -526,7 +526,6 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       )
     },
     {
-    {
       id: 'comment',
       label: 'Notes',
       sortKey: 'comment',
@@ -539,7 +538,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
           <div ref={isExpanded ? props.commentPopoverRef : undefined} className="relative inline-block">
             <button
               type="button"
-              onClick={() => props.setExpandedCommentStockId((id) => (id === stock.id ? null : stock.id))}
+              onClick={() => props.setExpandedCommentStockId((prev: number | null) => (prev === stock.id ? null : stock.id))}
               className={`p-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                 hasComment ? 'text-primary-400 hover:text-primary-300' : 'text-gray-500 hover:text-gray-400'
               }`}
