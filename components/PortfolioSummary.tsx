@@ -77,57 +77,98 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
     return `${num?.toFixed(decimals) || 'N/A'}%`;
   };
 
-  // Prepare chart data including cash. Use fractions (0–1) for all segments so the pie proportions are correct.
+  // Stock-level pie: one slice per stock (and Cash), each sector in shades of one color.
   const totalPortfolioValue = metrics.total_value + totalCashValue;
   const cashFraction = totalPortfolioValue > 0 ? totalCashValue / totalPortfolioValue : 0;
 
-  // Sector weights from backend are 0–1 (fraction of equity). Scale to fraction of (stocks + cash).
-  const adjustedSectorWeights = Object.fromEntries(
-    Object.entries(metrics.sector_weights).map(([sector, weight]) => [
-      sector,
-      totalPortfolioValue > 0 ? (weight * metrics.total_value) / totalPortfolioValue : weight,
-    ])
-  );
+  // Sector base colors (RGB) – same sector = same hue, stocks = shades
+  const SECTOR_BASE_RGB: Record<string, [number, number, number]> = {
+    Healthcare: [16, 185, 129],
+    Technology: [59, 130, 246],
+    'Financial Services': [245, 158, 11],
+    Financials: [245, 158, 11],
+    Industrials: [20, 184, 166],
+    Energy: [239, 68, 68],
+    'Consumer Defensive': [34, 197, 94],
+    'Consumer Cyclical': [236, 72, 153],
+    'Communication Services': [139, 92, 246],
+    'Basic Materials': [107, 114, 128],
+    Insurance: [6, 182, 212],
+    Crypto: [251, 191, 36],
+  };
+  const fallbackRGB: [number, number, number][] = [[59, 130, 246], [16, 185, 129], [245, 158, 11], [239, 68, 68], [139, 92, 246]];
+  const getSectorRGB = (sector: string): [number, number, number] => {
+    const key = Object.keys(SECTOR_BASE_RGB).find((k) => k.toLowerCase() === sector.trim().toLowerCase());
+    if (key) return SECTOR_BASE_RGB[key];
+    const hash = sector.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    return fallbackRGB[hash % fallbackRGB.length];
+  };
+  const rgbToRgba = (r: number, g: number, b: number, a: number) => `rgba(${r},${g},${b},${a})`;
+  const getShades = (r: number, g: number, b: number, count: number): string[] => {
+    if (count <= 0) return [];
+    const out: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const t = (i + 1) / (count + 1);
+      const a = 0.5 + 0.5 * t;
+      out.push(rgbToRgba(r, g, b, a));
+    }
+    return out;
+  };
 
-  const chartLabels = [...Object.keys(adjustedSectorWeights)];
-  const chartValues = [...Object.values(adjustedSectorWeights)] as number[];
+  // Active stocks sorted by sector then by weight desc; each slice = stock share of total portfolio
+  const weightToFraction = (w: number) => (w <= 1 && w > 0 ? w : w / 100);
+  const sortedStocks = [...stocks]
+    .filter((s) => s.shares_owned > 0 && weightToFraction(s.weight) > 0)
+    .sort((a, b) => {
+      const sa = (a.sector || '').toLowerCase();
+      const sb = (b.sector || '').toLowerCase();
+      if (sa !== sb) return sa.localeCompare(sb);
+      return weightToFraction(b.weight) - weightToFraction(a.weight);
+    });
 
+  const chartLabels: string[] = [];
+  const chartValues: number[] = [];
+  const sectorByIndex: (string | null)[] = [];
+  const chartBackgroundColors: string[] = [];
+
+  sortedStocks.forEach((stock) => {
+    const sector = stock.sector?.trim() || 'Other';
+    const fraction = totalPortfolioValue > 0
+      ? (weightToFraction(stock.weight) * metrics.total_value) / totalPortfolioValue
+      : 0;
+    chartLabels.push(stock.ticker);
+    chartValues.push(fraction);
+    sectorByIndex.push(sector);
+    const [r, g, b] = getSectorRGB(sector);
+    const sectorStocks = sortedStocks.filter((s) => (s.sector || '').trim().toLowerCase() === sector.toLowerCase());
+    const shades = getShades(r, g, b, sectorStocks.length);
+    const shadeIndex = sectorStocks.findIndex((s) => s.id === stock.id);
+    chartBackgroundColors.push(shades[shadeIndex] ?? rgbToRgba(r, g, b, 0.8));
+  });
   if (cashFraction > 0) {
     chartLabels.push('Cash');
     chartValues.push(cashFraction);
+    sectorByIndex.push('Cash');
+    chartBackgroundColors.push('rgba(107, 114, 128, 0.8)');
   }
 
-  const baseColors = [
-    'rgba(59, 130, 246, 0.8)',   // blue
-    'rgba(16, 185, 129, 0.8)',   // green
-    'rgba(245, 158, 11, 0.8)',   // amber
-    'rgba(239, 68, 68, 0.8)',    // red
-    'rgba(139, 92, 246, 0.8)',   // purple
-    'rgba(236, 72, 153, 0.8)',   // pink
-    'rgba(20, 184, 166, 0.8)',   // teal
-    'rgba(107, 114, 128, 0.8)',  // gray for cash
-  ];
-  const highlightColors = [
-    'rgba(59, 130, 246, 1)',
-    'rgba(16, 185, 129, 1)',
-    'rgba(245, 158, 11, 1)',
-    'rgba(239, 68, 68, 1)',
-    'rgba(139, 92, 246, 1)',
-    'rgba(236, 72, 153, 1)',
-    'rgba(20, 184, 166, 1)',
-    'rgba(107, 114, 128, 1)',
-  ];
-  const chartBackgroundColors = chartLabels.map((label, i) =>
-    label === selectedSector ? highlightColors[i % highlightColors.length] : baseColors[i % baseColors.length]
-  );
-  const chartBorderWidths = chartLabels.map((label) => (label === selectedSector ? 4 : 2));
+  const highlight = (sector: string | null) => sector != null;
+  const chartBorderWidths = sectorByIndex.map((s) => (highlight(selectedSector) && s === selectedSector ? 4 : 2));
+  const chartHighlightColors = sectorByIndex.map((s, i) => {
+    if (!selectedSector || s !== selectedSector) return chartBackgroundColors[i];
+    const c = chartBackgroundColors[i];
+    const match = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) return `rgba(${match[1]},${match[2]},${match[3]},1)`;
+    return c;
+  });
+  const finalColors = selectedSector ? chartHighlightColors : chartBackgroundColors;
 
   const chartData = {
     labels: chartLabels,
     datasets: [
       {
         data: chartValues,
-        backgroundColor: chartBackgroundColors,
+        backgroundColor: finalColors,
         borderColor: 'rgba(31, 41, 55, 1)',
         borderWidth: chartBorderWidths,
         hoverBorderWidth: 3,
@@ -139,21 +180,25 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
     onClick: (event: unknown, elements: { index: number }[]) => {
       if (elements.length === 0) return;
       const index = elements[0].index;
-      const label = chartLabels[index];
-      setSelectedSector((prev) => (prev === label ? null : label));
+      const sector = sectorByIndex[index] ?? null;
+      setSelectedSector((prev) => (prev === sector ? null : sector));
     },
     plugins: {
       legend: {
         position: 'bottom' as const,
         labels: {
           color: 'rgb(209, 213, 219)',
-          padding: 15,
+          padding: 8,
+          boxWidth: 12,
+          font: { size: 11 },
         },
       },
       tooltip: {
         callbacks: {
-          label: function(context: { label: string; parsed: number }) {
+          label: function(context: { label: string; parsed: number; dataIndex: number }) {
             const pct = (context.parsed * 100).toFixed(1);
+            const sector = sectorByIndex[context.dataIndex];
+            if (sector && sector !== 'Cash') return `${context.label} (${sector}): ${pct}%`;
             return `${context.label}: ${pct}%`;
           }
         }
