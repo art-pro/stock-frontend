@@ -658,12 +658,12 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
     return pct;
   };
 
-  const groupBySector = Boolean(sectorWeights && !isWatchlist);
+  const groupBySector = Boolean(sectorWeights) || isWatchlist;
   const visibleColumnsForTable = groupBySector
     ? visibleColumns.filter((c) => c.id !== 'sector')
     : visibleColumns;
 
-  // When grouped: group stocks by sector, then order sectors by weight desc, then name
+  // When grouped: group stocks by sector; order by weight desc (when available) then name
   const stocksBySector = groupBySector
     ? (() => {
         const map = new Map<string, Stock[]>();
@@ -677,8 +677,8 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
     : null;
   const sectorsOrdered: string[] = stocksBySector
     ? Array.from(stocksBySector.keys()).sort((a, b) => {
-        const wa = sectorWeights![a] ?? -1;
-        const wb = sectorWeights![b] ?? -1;
+        const wa = sectorWeights?.[a] ?? -1;
+        const wb = sectorWeights?.[b] ?? -1;
         if (wb !== wa) return wb - wa;
         return (a || '').localeCompare(b || '');
       })
@@ -844,17 +844,17 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
           <div className="divide-y divide-gray-700">
             {sectorsOrdered.map((sectorName) => {
               const sectorStocks = sortStocks(stocksBySector.get(sectorName) || []);
-              const rawWeight = sectorWeights![sectorName];
+              const rawWeight = sectorWeights?.[sectorName];
               const pct = sectorDisplayPct(rawWeight);
-              const pctLabel =
-                pct != null && !Number.isNaN(pct) ? `${formatNumber(pct, 1)}%` : '—';
+              const showPct = sectorWeights && rawWeight != null && pct != null && !Number.isNaN(pct);
+              const pctLabel = showPct ? ` (${formatNumber(pct, 1)}%)` : '';
               return (
                 <div key={sectorName || 'Other'} className="bg-gray-800/50">
                   <div
                     className="px-3 py-2.5 text-sm font-semibold text-gray-200 border-b border-gray-700"
-                    title="Share of active portfolio (excluding cash) in this sector"
+                    title={sectorWeights ? 'Share of active portfolio (excluding cash) in this sector' : undefined}
                   >
-                    {sectorName} ({pctLabel})
+                    {sectorName}{pctLabel}
                   </div>
                   <table className="min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-800">
