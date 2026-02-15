@@ -558,7 +558,7 @@ export default function DashboardPage() {
         )}
 
         {/* Portfolio Summary */}
-        {metrics && <PortfolioSummary metrics={metrics} units={units} />}
+        {metrics && <PortfolioSummary metrics={metrics} units={units} stocks={stocks.filter((s) => s.shares_owned > 0)} />}
 
         {/* Phase 1: Rebalance hint + Risk (concentration) */}
         {metrics && (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { PortfolioMetrics, PortfolioUnits, cashAPI, exchangeRateAPI } from '@/lib/api';
+import { PortfolioMetrics, PortfolioUnits, Stock, cashAPI, exchangeRateAPI } from '@/lib/api';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 
@@ -10,10 +10,13 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 interface PortfolioSummaryProps {
   metrics: PortfolioMetrics;
   units?: PortfolioUnits | null;
+  /** Active positions (shares_owned > 0) for sector drill-down: show stocks and % when a sector is selected */
+  stocks?: Stock[];
 }
 
-export default function PortfolioSummary({ metrics, units }: PortfolioSummaryProps) {
+export default function PortfolioSummary({ metrics, units, stocks = [] }: PortfolioSummaryProps) {
   const [totalCashValue, setTotalCashValue] = useState(0);
+  const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -93,29 +96,52 @@ export default function PortfolioSummary({ metrics, units }: PortfolioSummaryPro
     chartLabels.push('Cash');
     chartValues.push(cashFraction);
   }
-  
+
+  const baseColors = [
+    'rgba(59, 130, 246, 0.8)',   // blue
+    'rgba(16, 185, 129, 0.8)',   // green
+    'rgba(245, 158, 11, 0.8)',   // amber
+    'rgba(239, 68, 68, 0.8)',    // red
+    'rgba(139, 92, 246, 0.8)',   // purple
+    'rgba(236, 72, 153, 0.8)',   // pink
+    'rgba(20, 184, 166, 0.8)',   // teal
+    'rgba(107, 114, 128, 0.8)',  // gray for cash
+  ];
+  const highlightColors = [
+    'rgba(59, 130, 246, 1)',
+    'rgba(16, 185, 129, 1)',
+    'rgba(245, 158, 11, 1)',
+    'rgba(239, 68, 68, 1)',
+    'rgba(139, 92, 246, 1)',
+    'rgba(236, 72, 153, 1)',
+    'rgba(20, 184, 166, 1)',
+    'rgba(107, 114, 128, 1)',
+  ];
+  const chartBackgroundColors = chartLabels.map((label, i) =>
+    label === selectedSector ? highlightColors[i % highlightColors.length] : baseColors[i % baseColors.length]
+  );
+  const chartBorderWidths = chartLabels.map((label) => (label === selectedSector ? 4 : 2));
+
   const chartData = {
     labels: chartLabels,
     datasets: [
       {
         data: chartValues,
-        backgroundColor: [
-          'rgba(59, 130, 246, 0.8)', // blue
-          'rgba(16, 185, 129, 0.8)', // green
-          'rgba(245, 158, 11, 0.8)', // amber
-          'rgba(239, 68, 68, 0.8)',  // red
-          'rgba(139, 92, 246, 0.8)', // purple
-          'rgba(236, 72, 153, 0.8)', // pink
-          'rgba(20, 184, 166, 0.8)', // teal
-          'rgba(107, 114, 128, 0.8)', // gray for cash
-        ],
+        backgroundColor: chartBackgroundColors,
         borderColor: 'rgba(31, 41, 55, 1)',
-        borderWidth: 2,
+        borderWidth: chartBorderWidths,
+        hoverBorderWidth: 3,
       },
     ],
   };
 
   const chartOptions = {
+    onClick: (event: unknown, elements: { index: number }[]) => {
+      if (elements.length === 0) return;
+      const index = elements[0].index;
+      const label = chartLabels[index];
+      setSelectedSector((prev) => (prev === label ? null : label));
+    },
     plugins: {
       legend: {
         position: 'bottom' as const,
@@ -126,8 +152,7 @@ export default function PortfolioSummary({ metrics, units }: PortfolioSummaryPro
       },
       tooltip: {
         callbacks: {
-          label: function(context: any) {
-            // Chart values are fractions 0–1; show as percentage
+          label: function(context: { label: string; parsed: number }) {
             const pct = (context.parsed * 100).toFixed(1);
             return `${context.label}: ${pct}%`;
           }
@@ -136,6 +161,12 @@ export default function PortfolioSummary({ metrics, units }: PortfolioSummaryPro
     },
     maintainAspectRatio: false,
   };
+
+  // Weight as percentage: backend may send 0–1 or 0–100
+  const weightToPct = (w: number) => (w <= 1 && w > 0 ? w * 100 : w);
+  const stocksInSector = selectedSector && selectedSector !== 'Cash'
+    ? stocks.filter((s) => s.sector && s.sector.trim().toLowerCase() === selectedSector.trim().toLowerCase())
+    : [];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -210,11 +241,39 @@ export default function PortfolioSummary({ metrics, units }: PortfolioSummaryPro
       {/* Sector Allocation Chart */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 col-span-1 md:col-span-2 lg:col-span-3">
         <h3 className="text-sm font-medium text-gray-400 mb-4">
-          Sector Allocation
+          Sector Allocation {selectedSector && <span className="text-primary-400">— click a sector to see stocks</span>}
         </h3>
         <div className="h-64">
           <Pie data={chartData} options={chartOptions} />
         </div>
+        {selectedSector && (
+          <div className="mt-4 pt-4 border-t border-gray-700">
+            {selectedSector === 'Cash' ? (
+              <p className="text-gray-400 text-sm">Cash is not broken down by holding here. Use Cash Management below for details.</p>
+            ) : stocksInSector.length > 0 ? (
+              <>
+                <p className="text-gray-400 text-sm font-medium mb-2">
+                  {selectedSector} — {stocksInSector.length} position{stocksInSector.length !== 1 ? 's' : ''}
+                </p>
+                <ul className="space-y-1 text-sm">
+                  {stocksInSector
+                    .slice()
+                    .sort((a, b) => weightToPct(b.weight) - weightToPct(a.weight))
+                    .map((s) => (
+                      <li key={s.id} className="flex justify-between text-gray-300">
+                        <span>{s.ticker}</span>
+                        <span>{weightToPct(s.weight).toFixed(1)}%</span>
+                      </li>
+                    ))}
+                </ul>
+              </>
+            ) : (
+              <p className="text-gray-400 text-sm">
+                No positions in {selectedSector}. {stocks.length === 0 ? 'Stock list not available.' : ''}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
