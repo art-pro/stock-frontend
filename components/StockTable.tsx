@@ -894,7 +894,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               const rawWeight = sectorWeights?.[sectorName];
               const pct = sectorDisplayPct(rawWeight);
               const showPct = sectorWeights && rawWeight != null && pct != null && !Number.isNaN(pct);
-              const targetLabel = sectorWeights ? formatSectorTarget(sectorName) : null;
+              const targetLabel = formatSectorTarget(sectorName);
               const pctLabel = showPct
                 ? ` (${formatNumber(pct, 1)}%${targetLabel ? `, ${targetLabel}` : ''})`
                 : targetLabel

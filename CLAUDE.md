@@ -168,7 +168,7 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 
 - **Active Positions** and **Watchlist** tables are grouped by sector: each sector is a subtable with a header row and then the stock rows. The Sector column is hidden when grouped.
 - **Active Positions** sector headers show: sector name, current percentage of equity portfolio (from backend `summary.sector_weights`), and desired exposure when defined (e.g. `Healthcare (46.8%, target 30–35%)`). Targets come from `lib/sectorTargets.ts` (core philosophy). Lookup is case-insensitive.
-- **Watchlist** sector headers show only the sector name (no percentages; no targets).
+- **Watchlist** sector headers show the sector name and, when defined, the desired exposure limit (e.g. `Technology (target 15%)`). No current percentage is shown (watchlist has no portfolio weights).
 
 ### Sector exposure targets and rationale (EV/Vol/Risk fit)
 
