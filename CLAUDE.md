@@ -178,6 +178,18 @@ Display principle:
 
 - JWT cookie token added in axios request interceptor.
 - Response interceptor handles `401` by removing token and redirecting to `/login`.
+- **Cookie Security** (`lib/auth.ts`):
+  - `secure` flag enabled in production (HTTPS only)
+  - `sameSite: 'strict'` to prevent CSRF attacks
+  - Centralized cookie name constant for consistency
+  - Server-side rendering safety checks
+- **Input Validation** (`lib/validation.ts`):
+  - Ticker symbol validation and sanitization
+  - Numeric input parsing with comma/dot decimal support
+  - Currency code validation (ISO 4217 format)
+  - ISIN validation
+  - Percentage and price validation utilities
+  - Text input sanitization to prevent XSS
 - Assessment image workflow includes:
   - file extension + MIME checks
   - magic number validation
@@ -190,6 +202,18 @@ Implemented optimizations:
 - disabled stock-link prefetch to reduce noisy RSC traffic
 - consolidated dashboard source of truth around summary endpoint
 - simple in-memory cache with explicit invalidation
+
+**API Layer Improvements** (`lib/api.ts`):
+- Request timeout of 30 seconds (prevents hanging requests)
+- Cache size limit of 100 entries (prevents memory leaks)
+- Automatic cache cleanup every 5 minutes
+- Standardized error extraction with `getErrorMessage()` utility
+- Network error and timeout handling in response interceptor
+
+**Component Stability**:
+- `ErrorBoundary` component (`components/ErrorBoundary.tsx`) for graceful error handling
+- `isMountedRef` pattern in `PortfolioSummary` and `useColumnSettings` to prevent state updates after unmount
+- Proper timer cleanup in `useColumnSettings` hook
 
 Reference: `OPTIMIZATION.md`
 
@@ -231,6 +255,10 @@ API methods added in `lib/api.ts`:
 4. Invalidate cache after any mutation that impacts summary/stocks.
 5. Prefer explicit `portfolio_id` plumbing end-to-end as multi-portfolio matures.
 6. Preserve safe input behavior in Notes/comments and extraction flows.
+7. Use `isMountedRef` pattern in components with async operations to prevent state updates after unmount.
+8. Wrap critical UI sections with `ErrorBoundary` to prevent full-page crashes.
+9. Use validation utilities from `lib/validation.ts` for user input validation.
+10. Use `getErrorMessage()` from `lib/api.ts` for consistent error handling.
 
 ## Quick Runbook
 
@@ -241,4 +269,4 @@ API methods added in `lib/api.ts`:
 
 ---
 
-Last updated: 2026-02-11
+Last updated: 2026-02-15

@@ -1,17 +1,24 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
-// Simple cache implementation
+// Default timeout for API requests (30 seconds)
+const DEFAULT_TIMEOUT = 30000;
+
+// Maximum cache size to prevent memory leaks
+const MAX_CACHE_SIZE = 100;
+
+// Simple cache implementation with size limits
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
 }
 
 class SimpleCache {
-  private cache = new Map<string, CacheEntry<any>>();
+  private cache = new Map<string, CacheEntry<unknown>>();
   private defaultTTL = 30000; // 30 seconds default
+  private maxSize = MAX_CACHE_SIZE;
 
   get<T>(key: string, ttl: number = this.defaultTTL): T | null {
     const entry = this.cache.get(key);
@@ -27,6 +34,14 @@ class SimpleCache {
   }
 
   set<T>(key: string, data: T): void {
+    // Enforce cache size limit by removing oldest entries
+    if (this.cache.size >= this.maxSize) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
+    }
+
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -46,20 +61,55 @@ class SimpleCache {
       }
     });
   }
+
+  // Clean up expired entries periodically
+  cleanup(): void {
+    const now = Date.now();
+    const keys = Array.from(this.cache.keys());
+    keys.forEach((key) => {
+      const entry = this.cache.get(key);
+      if (entry && now - entry.timestamp > this.defaultTTL * 2) {
+        this.cache.delete(key);
+      }
+    });
+  }
 }
 
 const cache = new SimpleCache();
 
+// Periodic cache cleanup (every 5 minutes)
+if (typeof window !== 'undefined') {
+  setInterval(() => cache.cleanup(), 5 * 60 * 1000);
+}
+
 const api = axios.create({
   baseURL: API_URL,
+  timeout: DEFAULT_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+// Type guard for Axios errors
+function isAxiosError(error: unknown): error is AxiosError {
+  return error !== null && typeof error === 'object' && 'isAxiosError' in error;
+}
+
+// Standardized error extraction
+export function getErrorMessage(error: unknown): string {
+  if (isAxiosError(error)) {
+    const data = error.response?.data as { error?: string; message?: string } | undefined;
+    return data?.error || data?.message || error.message || 'An unexpected error occurred';
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'An unexpected error occurred';
+}
+
 // Add token to requests
 api.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = Cookies.get('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -71,14 +121,26 @@ api.interceptors.request.use(
   }
 );
 
-// Handle authentication errors
+// Handle authentication errors and network issues
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: AxiosError) => {
+    // Handle authentication errors
     if (error.response?.status === 401) {
       Cookies.remove('token');
-      window.location.href = '/login';
+      // Only redirect if in browser context
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
+
+    // Handle network errors
+    if (error.code === 'ECONNABORTED') {
+      console.error('Request timeout');
+    } else if (!error.response) {
+      console.error('Network error - no response received');
+    }
+
     return Promise.reject(error);
   }
 );

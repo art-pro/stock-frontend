@@ -17,9 +17,19 @@ export function useColumnSettings() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadColumnSettings();
+
+    // Cleanup function to clear timers and prevent state updates after unmount
+    return () => {
+      isMountedRef.current = false;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
   }, []);
 
   const loadColumnSettings = async () => {
@@ -77,7 +87,7 @@ export function useColumnSettings() {
       const normalizedSettings = normalizeColumnOrder(newSettings);
       setColumnSettings(normalizedSettings);
       const settingsJson = JSON.stringify(normalizedSettings);
-      
+
       // Save to local storage immediately
       try {
         localStorage.setItem('stock-table-columns', settingsJson);
@@ -94,21 +104,36 @@ export function useColumnSettings() {
           }
 
           saveTimerRef.current = setTimeout(async () => {
+            // Check if component is still mounted
+            if (!isMountedRef.current) return;
+
             try {
                 await settingsAPI.saveColumnSettings(settingsJson);
-                setSaveStatus('success');
-                // Reset to idle after a delay to clear message
-                setTimeout(() => setSaveStatus('idle'), 3000);
+                if (isMountedRef.current) {
+                  setSaveStatus('success');
+                  // Reset to idle after a delay to clear message
+                  setTimeout(() => {
+                    if (isMountedRef.current) {
+                      setSaveStatus('idle');
+                    }
+                  }, 3000);
+                }
             } catch (err: any) {
                 console.error('Failed to save column settings to API:', err);
-                setSaveStatus('error');
-                setSaveError(err.response?.data?.error || 'Failed to save settings');
+                if (isMountedRef.current) {
+                  setSaveStatus('error');
+                  setSaveError(err.response?.data?.error || 'Failed to save settings');
+                }
             }
           }, 1000);
       } else {
           // If not authenticated, treat local storage save as success
           setSaveStatus('success');
-          setTimeout(() => setSaveStatus('idle'), 3000);
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              setSaveStatus('idle');
+            }
+          }, 3000);
       }
   }, []);
 

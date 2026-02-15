@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { PortfolioMetrics, CashHolding, PortfolioUnits, cashAPI, exchangeRateAPI } from '@/lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { PortfolioMetrics, PortfolioUnits, cashAPI, exchangeRateAPI } from '@/lib/api';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 
@@ -13,15 +13,22 @@ interface PortfolioSummaryProps {
 }
 
 export default function PortfolioSummary({ metrics, units }: PortfolioSummaryProps) {
-  const [cashHoldings, setCashHoldings] = useState<CashHolding[]>([]);
   const [totalCashValue, setTotalCashValue] = useState(0);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     const fetchCashData = async () => {
       try {
-        const response = await cashAPI.getAll();
-        const ratesResponse = await exchangeRateAPI.getAll();
-        setCashHoldings(response.data);
+        const [response, ratesResponse] = await Promise.all([
+          cashAPI.getAll(),
+          exchangeRateAPI.getAll(),
+        ]);
+
+        // Check if component is still mounted before updating state
+        if (!isMountedRef.current) return;
+
         const usdRate = ratesResponse.data.find((rate) => rate.currency_code === 'USD')?.rate || 0;
         const totalCash = response.data.reduce((total, cash) => {
           if (cash.currency_code === 'EUR') {
@@ -36,12 +43,19 @@ export default function PortfolioSummary({ metrics, units }: PortfolioSummaryPro
         setTotalCashValue(totalCash);
       } catch (err) {
         // If cash API fails, set to 0 (cash management might not be enabled)
-        setTotalCashValue(0);
+        if (isMountedRef.current) {
+          setTotalCashValue(0);
+        }
         console.warn('Failed to fetch cash holdings:', err);
       }
     };
 
     fetchCashData();
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
   const formatCurrency = (num: number) => {
     if (num === 0 || num === null || num === undefined) {
