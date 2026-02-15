@@ -33,7 +33,9 @@ Scripts (`package.json`):
 - `components/PortfolioSummary.tsx`  
   Portfolio-level KPIs + sector pie chart; merges stock summary with cash.
 - `components/StockTable.tsx`  
-  Configurable table for portfolio and watchlist modes; sorting, filtering, inline edits, actions.
+  Configurable table for portfolio and watchlist modes; sorting, filtering, inline edits, actions. Active Positions and Watchlist are grouped by sector (subtables with sector header). Active Positions show current sector % and desired exposure (target range) in each sector header. Notes column shows a (?) icon; hover or click reveals the stock’s Notes & Comments (`stock.comment`).
+- `lib/sectorTargets.ts`  
+  Desired sector exposure (target min–max %) from core philosophy; used in Active Positions sector headers. Case-insensitive lookup by sector name.
 - `app/stocks/[id]/page.tsx`  
   Deep-dive stock details, editable fields, data-source transparency, historical chart, notes/comments.
 - `components/CashManagementTable.tsx`  
@@ -106,6 +108,8 @@ The frontend should align with backend formulas and action bands from `pkg/servi
   - EV color coding and action badge rendering
   - Buy zone limit columns (`Buy Zone Min`, `Buy Zone Max`) with currency-aware display and sorting
   - Sell zone columns (`Sell Zone Min`, `Sell Zone Max`, `Sell Zone Status`) for trim/sell discipline
+  - Sector grouping (subtables) and, in Active Positions, sector current % and target range in header (from `lib/sectorTargets.ts`)
+  - Notes column: (?) icon to show `stock.comment` (Notes & Comments) on hover or click
   - tooltips for metric meaning
 - `components/PortfolioSummary.tsx`
   - overall EV, Sharpe, volatility, Kelly utilization displays
@@ -137,11 +141,12 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 ## Key User Workflows
 
 1. **Dashboard operations**
-   - View active positions + watchlist
+   - View active positions + watchlist, each grouped by sector (subtables; sector name in header; Active Positions also show current % and target range per sector)
    - select subset and update from Alpha Vantage or Grok
    - run trusted fair-value sync for selected active positions (Grok + Deepseek backend collection)
    - review buy zone limits directly in table columns (`Buy Zone Min`, `Buy Zone Max`)
    - review sell-zone thresholds directly in table columns (`Sell Zone Min`, `Sell Zone Max`, `Sell Zone Status`)
+   - view Notes & Comments per stock via the Notes column (?) icon (hover or click)
    - inline edits for core numeric inputs
    - import/export JSON
 2. **Stock detail editing**
@@ -157,9 +162,16 @@ The frontend should align with backend formulas and action bands from `pkg/servi
    - parse and edit extracted JSON from screenshot pipeline
 5. **Settings**
    - auth settings and portfolio settings
-   - persistent customizable table columns (includes buy zone and sell zone column visibility/order)
+   - persistent customizable table columns (includes buy zone, sell zone, and Notes column visibility/order)
 
-## Sell Zone Discipline (New)
+## Sector Grouping and Desired Exposure (v2.7.0)
+
+- **Active Positions** and **Watchlist** tables are grouped by sector: each sector is a subtable with a header row and then the stock rows. The Sector column is hidden when grouped.
+- **Active Positions** sector headers show: sector name, current percentage of equity portfolio (from backend `summary.sector_weights`), and desired exposure when defined (e.g. `Healthcare (46.8%, target 30–35%)`). Targets come from `lib/sectorTargets.ts` (core philosophy).
+- **Target ranges** (equity only; cash buffer 8–12% is separate): Healthcare 30–35%, Technology 15%, Communication Services 10–15%, Financials 10–15%, Industrials 10–15%, Energy 5–10%. Lookup is case-insensitive.
+- **Watchlist** sector headers show only the sector name (no percentages; no targets).
+
+## Sell Zone Discipline
 
 Frontend must present sell-zone outputs exactly as computed by backend from EV thresholds:
 - `Sell Zone Min` = trim threshold price where EV reaches 3%.
@@ -217,7 +229,7 @@ Implemented optimizations:
 
 Reference: `OPTIMIZATION.md`
 
-## Trusted Fair Value Sync (New in v2.6.0)
+## Trusted Fair Value Sync (v2.6.0)
 
 Frontend integration points:
 - Dashboard active positions section has a `Fair Value Sync (N)` action for selected rows.
@@ -266,6 +278,11 @@ API methods added in `lib/api.ts`:
 - Dev: `npm run dev`
 - Build: `npm run build`
 - Lint: `npm run lint`
+
+## Versioning
+
+- **Frontend version** is set in `lib/version.ts` (`FRONTEND_VERSION`) and `package.json` (`version`). Bump both for releases.
+- **Backend version** is reported by the API (`versionAPI.getBackendVersion()`); bump the backend version in the backend repository when releasing the backend.
 
 ---
 
