@@ -328,7 +328,7 @@ API methods added in `lib/api.ts`:
 
 ## Suggested improvements (additive only)
 
-See **`INVESTMENT_IMPROVEMENTS.md`** for the full list. **Phase 1 (math/logic and data)** is implemented: rebalance hint, distance to buy/sell zone, Kelly hint, concentration/Risk card, fair value source/date in table, decision snapshot export (JSON/CSV). Remaining ideas: LLMs (batch assessment, explain assessment, Grok vs Deepseek comparison, sector summary); alerts and “suggested next actions”; price/buy-zone alerts if backend supports them.
+See **`INVESTMENT_IMPROVEMENTS.md`** for the full list. **Phase 1 (math/logic and data)** is implemented: rebalance hint, distance to buy/sell zone, Kelly hint, concentration/Risk card, fair value source/date in table, decision snapshot export (JSON/CSV). Remaining ideas: LLMs (batch assessment, explain assessment, Grok vs Deepseek comparison, sector summary); alerts and “suggested next actions”; price/buy-zone alerts if backend supports them. **Backend:** See **`BACKEND_IMPROVEMENTS.md`** for backend-side suggestions (alerts, LLM endpoints, data consistency, optional targets/history).
 
 ---
 
