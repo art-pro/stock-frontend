@@ -12,10 +12,13 @@ export const SECTOR_TARGET_PCT: Record<string, { min: number; max: number }> = {
   Energy: { min: 5, max: 10 },
 };
 
-/** Format target range for display, e.g. "30–35%" or "15%" */
+/** Format target range for display, e.g. "30–35%" or "15%" (lookup is case-insensitive) */
 export function formatSectorTarget(sectorName: string): string | null {
-  const target = SECTOR_TARGET_PCT[sectorName];
+  const key = Object.keys(SECTOR_TARGET_PCT).find(
+    (k) => k.toLowerCase() === (sectorName || '').toLowerCase()
+  );
+  const target = key ? SECTOR_TARGET_PCT[key] : undefined;
   if (!target) return null;
-  if (target.min === target.max) return `Target ${target.min}%`;
-  return `Target ${target.min}–${target.max}%`;
+  if (target.min === target.max) return `target ${target.min}%`;
+  return `target ${target.min}–${target.max}%`;
 }

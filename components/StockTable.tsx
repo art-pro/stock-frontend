@@ -894,18 +894,22 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               const rawWeight = sectorWeights?.[sectorName];
               const pct = sectorDisplayPct(rawWeight);
               const showPct = sectorWeights && rawWeight != null && pct != null && !Number.isNaN(pct);
-              const pctLabel = showPct ? ` (${formatNumber(pct, 1)}%)` : '';
               const targetLabel = sectorWeights ? formatSectorTarget(sectorName) : null;
+              const pctLabel = showPct
+                ? ` (${formatNumber(pct, 1)}%${targetLabel ? `, ${targetLabel}` : ''})`
+                : targetLabel
+                  ? ` (${targetLabel})`
+                  : '';
               const titleParts = [];
               if (sectorWeights) titleParts.push('Share of active portfolio (excluding cash) in this sector');
-              if (targetLabel) titleParts.push(targetLabel);
+              if (targetLabel) titleParts.push('Desired exposure: ' + targetLabel);
               return (
                 <div key={sectorName || 'Other'} className="bg-gray-800/50">
                   <div
                     className="px-3 py-2.5 text-sm font-semibold text-gray-200 border-b border-gray-700"
                     title={titleParts.length ? titleParts.join(' · ') : undefined}
                   >
-                    {sectorName}{pctLabel}{targetLabel ? ` — ${targetLabel}` : ''}
+                    {sectorName}{pctLabel}
                   </div>
                   <table className="min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-800">
