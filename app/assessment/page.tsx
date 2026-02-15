@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { stockAPI, assessmentAPI, exchangeRateAPI, portfolioAPI, settingsAPI, getErrorMessage } from '@/lib/api';
-import type { AssessmentRequest } from '@/lib/api';
+import type { AssessmentRequest, AssessmentResponse } from '@/lib/api';
 import {
   getSectorRebalanceSummary,
   getConcentration,
@@ -27,22 +27,6 @@ import {
   ArrowUpTrayIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
-
-interface AssessmentRequest {
-  ticker: string;
-  source: 'grok' | 'deepseek';
-  company_name?: string;
-  current_price?: number;
-  currency?: string;
-}
-
-interface AssessmentResponse {
-  ticker: string;
-  source: string;
-  assessment: string;
-  created_at: string;
-  status: 'pending' | 'completed' | 'failed';
-}
 
 export default function AssessmentPage() {
   const router = useRouter();
