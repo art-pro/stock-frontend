@@ -414,6 +414,12 @@ export interface AssessmentRequest {
   company_name?: string;
   current_price?: number;
   currency?: string;
+  /** Dashboard pane: sector rebalance hint (over/at/under target) */
+  rebalance_hint?: string;
+  /** Dashboard pane: concentration & tail risk */
+  concentration_hint?: string;
+  /** Dashboard pane: suggested next actions */
+  suggested_actions_hint?: string;
 }
 
 export interface AssessmentResponse {

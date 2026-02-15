@@ -3,7 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { stockAPI, assessmentAPI, exchangeRateAPI } from '@/lib/api';
+import { stockAPI, assessmentAPI, exchangeRateAPI, portfolioAPI, settingsAPI, getErrorMessage } from '@/lib/api';
+import type { AssessmentRequest } from '@/lib/api';
+import {
+  getSectorRebalanceSummary,
+  getConcentration,
+  getSuggestedActions,
+  formatRebalanceHintText,
+  formatConcentrationHintText,
+  formatSuggestedActionsHintText,
+} from '@/lib/portfolioInsights';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -93,7 +102,7 @@ export default function AssessmentPage() {
 
   const handleAssessment = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!ticker.trim()) {
       setError('Please enter a stock ticker');
       return;
@@ -104,26 +113,70 @@ export default function AssessmentPage() {
     setAssessment('');
 
     try {
-      const requestData: any = {
+      const requestData: Record<string, unknown> = {
         ticker: ticker.toUpperCase().trim(),
         source,
       };
-      
+
       if (companyName.trim()) {
         requestData.company_name = companyName.trim();
       }
-      
+
       if (currentPrice && parseFloat(currentPrice) > 0) {
         requestData.current_price = parseFloat(currentPrice);
         requestData.currency = currency;
       }
 
-      const response = await assessmentAPI.request(requestData);
+      // Fetch portfolio summary and sector targets to send dashboard hints to the LLM
+      try {
+        const [summaryRes, sectorTargetsRes] = await Promise.all([
+          portfolioAPI.getSummary(),
+          settingsAPI.getSectorTargets(),
+        ]);
+        const summary = summaryRes.data?.summary;
+        const stocks = summaryRes.data?.stocks ?? [];
+        const rows = sectorTargetsRes.data?.rows;
+        const sectorTargets: Record<string, { min: number; max: number }> | undefined =
+          Array.isArray(rows) && rows.length > 0
+            ? rows
+                .filter((r: { sector: string }) => (r.sector || '').toLowerCase() !== 'cash')
+                .reduce(
+                  (acc: Record<string, { min: number; max: number }>, r: { sector: string; min: number; max: number }) => ({
+                    ...acc,
+                    [r.sector]: { min: r.min, max: r.max },
+                  }),
+                  {}
+                )
+            : undefined;
+
+        if (summary?.sector_weights && Object.keys(summary.sector_weights).length > 0) {
+          const rebalanceSummary = getSectorRebalanceSummary(summary.sector_weights, sectorTargets);
+          const rebalanceHint = formatRebalanceHintText(rebalanceSummary);
+          if (rebalanceHint) requestData.rebalance_hint = rebalanceHint;
+        }
+
+        const activeStocks = stocks.filter((s: { shares_owned?: number }) => (s.shares_owned ?? 0) > 0);
+        if (activeStocks.length > 0) {
+          const conc = getConcentration(stocks);
+          const concentrationHint = formatConcentrationHintText(conc);
+          if (concentrationHint) requestData.concentration_hint = concentrationHint;
+        }
+
+        if (summary?.sector_weights && stocks.length > 0) {
+          const actions = getSuggestedActions(summary.sector_weights, stocks, sectorTargets);
+          const suggestedHint = formatSuggestedActionsHintText(actions);
+          if (suggestedHint) requestData.suggested_actions_hint = suggestedHint;
+        }
+      } catch (hintErr) {
+        console.warn('Could not fetch dashboard hints for assessment, continuing without them', hintErr);
+      }
+
+      const response = await assessmentAPI.request(requestData as AssessmentRequest);
 
       setAssessment(response.data.assessment);
       await fetchRecentAssessments();
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to generate assessment');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err) || 'Failed to generate assessment');
     } finally {
       setLoading(false);
     }

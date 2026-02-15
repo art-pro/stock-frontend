@@ -37,7 +37,7 @@ Scripts (`package.json`):
 - `lib/sectorTargets.ts`
   Desired sector exposure (target min–max %) from core philosophy; used in Active Positions sector headers and rebalance logic. **Persistent**: targets are loaded from backend via `useSectorTargets` / `SectorTargetsContext`; when API returns null, built-in defaults are used. Case-insensitive lookup. `formatSectorTarget(sectorName, customTargets?)` accepts optional persisted targets. Full sector table and rationale in Settings → Sector Targets and in CLAUDE.md “Sector exposure targets and rationale”.
 - `lib/portfolioInsights.ts`  
-  Display-only helpers for Phase 1: sector rebalance summary (over/at/under target), concentration (top-N %, max position), distance to buy/sell zone, Kelly hint (position size vs ½-Kelly). No backend changes.
+  Display-only helpers for Phase 1: sector rebalance summary (over/at/under target), concentration (top-N %, max position), distance to buy/sell zone, Kelly hint (position size vs ½-Kelly). No backend changes. Also provides **hint formatters for assessment context**: `formatRebalanceHintText(summary)`, `formatConcentrationHintText(conc)`, `formatSuggestedActionsHintText(actions)` — used by the assessment page to build the text sent to the LLM for the Sector rebalance hint, Concentration & tail risk, and Suggested next actions panes.
 - `components/RebalanceHint.tsx`  
   Dashboard widget: sectors vs targets (over / at / under / no target) using `sector_weights` and `lib/sectorTargets.ts`.
 - `components/RiskCard.tsx`  
@@ -49,7 +49,7 @@ Scripts (`package.json`):
 - `components/ExchangeRateTable.tsx`  
   FX management UI for tracked currencies/rates.
 - `app/assessment/page.tsx`  
-  Single-ticker AI assessment and image extraction workflow.
+  Single-ticker AI assessment and image extraction workflow. When the user requests a stock assessment (Request Stock Assessment), the page fetches portfolio summary and sector targets, computes **dashboard hints** (sector rebalance, concentration & tail risk, suggested next actions) from `lib/portfolioInsights.ts`, and sends them as optional body fields to `POST /assessment/request` so the LLM receives the same context as the dashboard panes alongside the backend’s portfolio/cash context.
 - `app/settings/page.tsx` + `hooks/useColumnSettings.ts` + **Sector Targets**
   User/password/portfolio settings; persistent column-visibility/order; **Sector Targets** tab: table of sector allocation targets (min–max %, rationale) loaded from and saved to backend (`GET/POST /settings/sector-targets`). RBAC: only admin can add, edit, delete rows and save; all users can view. Admins get Add sector, Save, Reset to defaults; inline edit sector/min/max/rationale; delete row (≥1 row). Saved targets apply to Dashboard tables and info boxes. “Reset to defaults” persists the built-in sector table.
 - `lib/api.ts`  
@@ -125,7 +125,7 @@ The frontend should align with backend formulas and action bands from `pkg/servi
   - per-stock metrics and action interpretation text/tooltips
   - dedicated sell-zone cards (min/max/status) aligned to backend EV thresholds
 - `app/assessment/page.tsx`
-  - user-facing strategy description
+  - user-facing strategy description; when requesting assessment, sends optional dashboard hints (rebalance, concentration, suggested actions) to the LLM — see “Request Stock Assessment and dashboard hints”.
 
 ### Unit and currency display rules
 - Backend rates semantics: `rate = currency units per 1 EUR`.
@@ -169,7 +169,7 @@ The frontend should align with backend formulas and action bands from `pkg/servi
    - maintain cash by currency
    - refresh conversion-dependent values
 4. **AI assessment**
-   - request narrative assessment per ticker
+   - request narrative assessment per ticker (Request Stock Assessment page sends dashboard hints: sector rebalance, concentration & tail risk, suggested next actions — see “Request Stock Assessment and dashboard hints” below)
    - parse and edit extracted JSON from screenshot pipeline
 5. **Settings**
    - auth settings and portfolio settings
@@ -222,6 +222,17 @@ Additive display-only features to support EV optimization, sector targets, and r
 - **Concentration and tail risk**: `getConcentration(stocks)` in `lib/portfolioInsights.ts`; `RiskCard` on dashboard shows largest position, top 3, top 5 % of equity.
 - **Fair value source/date**: StockTable Fair Value cell tooltip shows `fair_value_source` and `last_updated`.
 - **Export decision snapshot**: Dashboard buttons “Snapshot (JSON)” and “Snapshot (CSV)”. JSON: `exported_at`, portfolio metrics, rebalance_summary, concentration, per-stock fields (sector, assessment, zones, weight, half-Kelly, etc.). CSV: one row per active stock with key decision fields.
+
+## Request Stock Assessment and dashboard hints
+
+When the user clicks **Generate Assessment** on the **Request Stock Assessment** page (Assessment → Single Ticker Analysis), the frontend sends the same information as the dashboard panes to the LLM so recommendations can consider current portfolio state.
+
+- **Data flow:** Before calling `POST /assessment/request`, the page fetches `GET /portfolio/summary` and `GET /settings/sector-targets` (in parallel). From `summary.sector_weights`, `stocks`, and optional sector targets it computes:
+  - **Sector rebalance hint** — `getSectorRebalanceSummary` + `formatRebalanceHintText` (over/at/under/no target sectors).
+  - **Concentration & tail risk** — `getConcentration(stocks)` + `formatConcentrationHintText` (largest position, top 3, top 5 %).
+  - **Suggested next actions** — `getSuggestedActions(sector_weights, stocks, sectorTargets)` + `formatSuggestedActionsHintText` (sector trim, sell/trim zone, buy zone add, high EV underweight).
+- **API contract** (`lib/api.ts`): `AssessmentRequest` may include optional `rebalance_hint`, `concentration_hint`, `suggested_actions_hint` (strings). If hint fetch fails (e.g. not authenticated), the request is still sent without hints.
+- **Backend:** The assessment handler accepts these optional fields and appends a “DASHBOARD HINTS” block to the prompt after the existing portfolio/cash context, so the LLM sees both the current hint (portfolio table + cash) and the three pane summaries.
 
 ## Tests
 
@@ -316,7 +327,7 @@ API methods added in `lib/api.ts`:
 3. **Mixed source of truth for some UI math**
    - Some presentation-level conversions happen client-side; keep semantics aligned with backend.
 4. **Assessment context visibility vs scope**
-   - UI requests assessment without explicit portfolio scoping control.
+   - UI requests assessment without explicit portfolio scoping control. The Request Stock Assessment page does send dashboard hints (rebalance, concentration, suggested actions) when summary and sector targets are available, so the LLM receives current pane-style context.
 
 ## Engineering Guardrails for Future Work
 

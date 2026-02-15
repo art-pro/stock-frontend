@@ -219,3 +219,60 @@ export function getSuggestedActions(
   }
   return actions;
 }
+
+/** Format rebalance summary as text for LLM context (dashboard Sector rebalance hint pane). */
+export function formatRebalanceHintText(summary: RebalanceSummary): string {
+  const lines: string[] = [];
+  if (summary.over.length > 0) {
+    lines.push(
+      `${summary.over.length} over target: ${summary.over.map((d) => `${d.sector} ${d.currentPct.toFixed(1)}% (target ${d.targetMin}–${d.targetMax}%)`).join('; ')}`
+    );
+  }
+  if (summary.under.length > 0) {
+    lines.push(
+      `${summary.under.length} under target: ${summary.under.map((d) => `${d.sector} ${d.currentPct.toFixed(1)}% (target ${d.targetMin}–${d.targetMax}%)`).join('; ')}`
+    );
+  }
+  if (summary.at.length > 0) {
+    lines.push(`${summary.at.length} at target: ${summary.at.map((d) => d.sector).join(', ')}`);
+  }
+  if (summary.noTarget.length > 0) {
+    lines.push(
+      `${summary.noTarget.length} no target: ${summary.noTarget.map((d) => `${d.sector} (${d.currentPct.toFixed(1)}%)`).join(', ')}`
+    );
+  }
+  return lines.length ? lines.join('. ') : '';
+}
+
+/** Format concentration as text for LLM context (dashboard Concentration & tail risk pane). */
+export function formatConcentrationHintText(conc: ConcentrationSummary): string {
+  if (conc.maxPositionPct === 0 && conc.top3Pct === 0 && conc.top5Pct === 0) return '';
+  return `Largest position: ${conc.maxPositionTicker} ${conc.maxPositionPct.toFixed(1)}%. Top 3 positions: ${conc.top3Pct.toFixed(1)}%. Top 5 positions: ${conc.top5Pct.toFixed(1)}%.`;
+}
+
+/** Format suggested actions as text for LLM context (dashboard Suggested next actions pane). */
+export function formatSuggestedActionsHintText(actions: SuggestedAction[]): string {
+  const labels: string[] = [];
+  for (const a of actions) {
+    switch (a.type) {
+      case 'sector_over':
+        labels.push(`Consider trimming: ${a.sector} (current ${a.currentPct.toFixed(1)}%, target ${a.targetMin}–${a.targetMax}%)`);
+        break;
+      case 'sell_zone':
+        labels.push(`In sell zone: ${a.stock.ticker}`);
+        break;
+      case 'trim_zone':
+        labels.push(`In trim zone: ${a.stock.ticker}`);
+        break;
+      case 'buy_zone_add':
+        labels.push(`In buy zone and Add: ${a.stock.ticker}`);
+        break;
+      case 'high_ev_underweight':
+        labels.push(`High EV, underweight: ${a.stock.ticker}`);
+        break;
+      default:
+        break;
+    }
+  }
+  return labels.join('. ');
+}
