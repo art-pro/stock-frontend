@@ -6,6 +6,7 @@ import { PortfolioUnits, Stock } from '@/lib/api';
 import { TrashIcon, ArrowPathIcon, PencilIcon } from '@heroicons/react/24/outline';
 import EditTickerModal from './EditTickerModal';
 import { useColumnSettings } from '@/hooks/useColumnSettings';
+import { formatSectorTarget } from '@/lib/sectorTargets';
 
 // Define column rendering configuration
 interface TableColumn {
@@ -848,13 +849,17 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               const pct = sectorDisplayPct(rawWeight);
               const showPct = sectorWeights && rawWeight != null && pct != null && !Number.isNaN(pct);
               const pctLabel = showPct ? ` (${formatNumber(pct, 1)}%)` : '';
+              const targetLabel = sectorWeights ? formatSectorTarget(sectorName) : null;
+              const titleParts = [];
+              if (sectorWeights) titleParts.push('Share of active portfolio (excluding cash) in this sector');
+              if (targetLabel) titleParts.push(targetLabel);
               return (
                 <div key={sectorName || 'Other'} className="bg-gray-800/50">
                   <div
                     className="px-3 py-2.5 text-sm font-semibold text-gray-200 border-b border-gray-700"
-                    title={sectorWeights ? 'Share of active portfolio (excluding cash) in this sector' : undefined}
+                    title={titleParts.length ? titleParts.join(' · ') : undefined}
                   >
-                    {sectorName}{pctLabel}
+                    {sectorName}{pctLabel}{targetLabel ? ` — ${targetLabel}` : ''}
                   </div>
                   <table className="min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-800">
