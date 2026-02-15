@@ -4,11 +4,21 @@ import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { authAPI, portfolioAPI } from '@/lib/api';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import ColumnSettings, { ColumnConfig, DEFAULT_COLUMNS } from '@/components/ColumnSettings';
 import { useColumnSettings } from '@/hooks/useColumnSettings';
 import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
-import { SECTOR_TARGET_TABLE, CASH_TARGET_ROW } from '@/lib/sectorTargets';
+import { SECTOR_TARGET_TABLE, CASH_TARGET_ROW, type SectorTargetTableRow } from '@/lib/sectorTargets';
+
+function validateRow(row: SectorTargetTableRow): string | null {
+  if (!row.sector || !String(row.sector).trim()) return 'Sector name is required';
+  const min = Number(row.min);
+  const max = Number(row.max);
+  if (Number.isNaN(min) || Number.isNaN(max)) return 'Min and max must be numbers';
+  if (min < 0 || min > 100 || max < 0 || max > 100) return 'Min and max must be between 0 and 100';
+  if (min > max) return 'Min must be ≤ max';
+  return null;
+}
 
 function SectorTargetsTabContent({ canEditSectorTargets }: { canEditSectorTargets: boolean }) {
   const {
@@ -19,9 +29,61 @@ function SectorTargetsTabContent({ canEditSectorTargets }: { canEditSectorTarget
     saveError,
   } = useSectorTargetsContext();
 
+  const [draftRows, setDraftRows] = useState<SectorTargetTableRow[]>(() =>
+    tableRows.length > 0 ? tableRows.map((r) => ({ ...r })) : []
+  );
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoading && tableRows.length > 0) {
+      setDraftRows(tableRows.map((r) => ({ ...r })));
+    }
+  }, [isLoading, tableRows]);
+
   const handleResetToDefaults = () => {
     const defaultRows = [...SECTOR_TARGET_TABLE, CASH_TARGET_ROW];
+    setDraftRows(defaultRows.map((r) => ({ ...r })));
+    setValidationError(null);
     save(defaultRows);
+  };
+
+  const handleAddSector = () => {
+    setDraftRows((prev) => [...prev, { sector: '', min: 5, max: 10, rationale: '' }]);
+    setValidationError(null);
+  };
+
+  const handleDeleteRow = (index: number) => {
+    if (draftRows.length <= 1) return;
+    setDraftRows((prev) => prev.filter((_, i) => i !== index));
+    setValidationError(null);
+  };
+
+  const handleDraftChange = (index: number, field: keyof SectorTargetTableRow, value: string | number) => {
+    setDraftRows((prev) => {
+      const next = prev.map((r, i) => (i === index ? { ...r, [field]: value } : r));
+      return next;
+    });
+    setValidationError(null);
+  };
+
+  const handleSave = () => {
+    const errors: string[] = [];
+    draftRows.forEach((row, i) => {
+      const err = validateRow(row);
+      if (err) errors.push(`Row ${i + 1} (${row.sector || 'new'}): ${err}`);
+    });
+    if (errors.length) {
+      setValidationError(errors.join('. '));
+      return;
+    }
+    const normalized = draftRows.map((r) => ({
+      sector: String(r.sector).trim(),
+      min: Number(r.min),
+      max: Number(r.max),
+      rationale: String(r.rationale ?? '').trim(),
+    }));
+    setValidationError(null);
+    save(normalized);
   };
 
   if (isLoading) {
@@ -32,30 +94,50 @@ function SectorTargetsTabContent({ canEditSectorTargets }: { canEditSectorTarget
     );
   }
 
+  const rowsToShow = canEditSectorTargets ? draftRows : tableRows;
+
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
       <h2 className="text-xl font-bold text-white mb-4">Sector Allocation Targets</h2>
       <p className="text-sm text-gray-400 mb-4">
-        Ratios currently applied for rebalance hints and sector headers. Stored per user. Equity sectors only; Cash is separate.
+        Ratios applied to rebalance hints and sector headers on the Dashboard. Stored per user. Equity sectors and Cash (separate).
       </p>
       <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
         <span className="text-xs text-gray-500">
-          {canEditSectorTargets ? 'You can edit (admin).' : 'View only. Only admins can change targets.'}
+          {canEditSectorTargets ? 'You can add, edit, and delete rows (admin).' : 'View only. Only admins can change targets.'}
         </span>
         {canEditSectorTargets && (
-          <button
-            type="button"
-            onClick={handleResetToDefaults}
-            disabled={saveStatus === 'saving'}
-            className="text-sm px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
-          >
-            Reset to defaults
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleAddSector}
+              disabled={saveStatus === 'saving'}
+              className="text-sm px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50 flex items-center gap-1"
+            >
+              <PlusIcon className="w-4 h-4" /> Add sector
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveStatus === 'saving'}
+              className="text-sm px-3 py-1.5 bg-primary-600 text-white rounded hover:bg-primary-500 disabled:opacity-50"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={handleResetToDefaults}
+              disabled={saveStatus === 'saving'}
+              className="text-sm px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
+            >
+              Reset to defaults
+            </button>
+          </div>
         )}
       </div>
       {saveStatus === 'success' && (
         <div className="mb-4 bg-green-900/50 border border-green-700 text-green-200 px-4 py-2 rounded text-sm">
-          Saved.
+          Saved. Dashboard tables and info boxes use these targets.
         </div>
       )}
       {saveStatus === 'error' && saveError && (
@@ -63,23 +145,91 @@ function SectorTargetsTabContent({ canEditSectorTargets }: { canEditSectorTarget
           {saveError}
         </div>
       )}
+      {validationError && (
+        <div className="mb-4 bg-amber-900/50 border border-amber-700 text-amber-200 px-4 py-2 rounded text-sm">
+          {validationError}
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-gray-600">
               <th className="py-3 px-4 text-gray-300 font-medium">Sector</th>
-              <th className="py-3 px-4 text-gray-300 font-medium">Target Range</th>
+              <th className="py-3 px-4 text-gray-300 font-medium">Target Range (min–max %)</th>
               <th className="py-3 px-4 text-gray-300 font-medium">Key Rationale</th>
+              {canEditSectorTargets && <th className="py-3 px-4 text-gray-300 font-medium w-20">Actions</th>}
             </tr>
           </thead>
           <tbody>
-            {tableRows.map((row) => (
-              <tr key={row.sector} className="border-b border-gray-700 hover:bg-gray-700/50">
-                <td className="py-3 px-4 text-white font-medium">{row.sector}</td>
-                <td className="py-3 px-4 text-gray-300">
-                  {row.min === row.max ? `${row.min}%` : `${row.min}–${row.max}%`}
+            {rowsToShow.map((row, index) => (
+              <tr key={canEditSectorTargets ? index : row.sector} className="border-b border-gray-700 hover:bg-gray-700/50">
+                <td className="py-2 px-4">
+                  {canEditSectorTargets ? (
+                    <input
+                      type="text"
+                      value={row.sector}
+                      onChange={(e) => handleDraftChange(index, 'sector', e.target.value)}
+                      placeholder="e.g. Healthcare"
+                      className="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 text-sm"
+                    />
+                  ) : (
+                    <span className="font-medium text-white">{row.sector}</span>
+                  )}
                 </td>
-                <td className="py-3 px-4 text-gray-400 text-sm">{row.rationale}</td>
+                <td className="py-2 px-4">
+                  {canEditSectorTargets ? (
+                    <span className="flex items-center gap-1 flex-wrap">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={row.min}
+                        onChange={(e) => handleDraftChange(index, 'min', e.target.value === '' ? 0 : Number(e.target.value))}
+                        className="w-16 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 text-sm"
+                      />
+                      <span className="text-gray-400">–</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={row.max}
+                        onChange={(e) => handleDraftChange(index, 'max', e.target.value === '' ? 0 : Number(e.target.value))}
+                        className="w-16 bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 text-sm"
+                      />
+                      <span className="text-gray-400 text-xs">%</span>
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">
+                      {row.min === row.max ? `${row.min}%` : `${row.min}–${row.max}%`}
+                    </span>
+                  )}
+                </td>
+                <td className="py-2 px-4">
+                  {canEditSectorTargets ? (
+                    <input
+                      type="text"
+                      value={row.rationale ?? ''}
+                      onChange={(e) => handleDraftChange(index, 'rationale', e.target.value)}
+                      placeholder="Rationale"
+                      className="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 text-sm"
+                    />
+                  ) : (
+                    <span className="text-gray-400 text-sm">{row.rationale}</span>
+                  )}
+                </td>
+                {canEditSectorTargets && (
+                  <td className="py-2 px-4">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRow(index)}
+                      disabled={draftRows.length <= 1}
+                      title={draftRows.length <= 1 ? 'Keep at least one row' : 'Delete row'}
+                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

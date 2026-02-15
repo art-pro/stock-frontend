@@ -51,7 +51,7 @@ Scripts (`package.json`):
 - `app/assessment/page.tsx`  
   Single-ticker AI assessment and image extraction workflow.
 - `app/settings/page.tsx` + `hooks/useColumnSettings.ts` + **Sector Targets**
-  User/password/portfolio settings; persistent column-visibility/order; **Sector Targets** tab: table of sector allocation targets (min–max %, rationale) loaded from and saved to backend (`GET/POST /settings/sector-targets`). Elementary RBAC: only admin (e.g. `NEXT_PUBLIC_ADMIN_USERNAME` or `admin`) can edit; all authenticated users can view. “Reset to defaults” persists the built-in sector table.
+  User/password/portfolio settings; persistent column-visibility/order; **Sector Targets** tab: table of sector allocation targets (min–max %, rationale) loaded from and saved to backend (`GET/POST /settings/sector-targets`). RBAC: only admin can add, edit, delete rows and save; all users can view. Admins get Add sector, Save, Reset to defaults; inline edit sector/min/max/rationale; delete row (≥1 row). Saved targets apply to Dashboard tables and info boxes. “Reset to defaults” persists the built-in sector table.
 - `lib/api.ts`  
   API contracts, request methods, lightweight cache layer, cache invalidation helper.
 - `lib/auth.ts`  
