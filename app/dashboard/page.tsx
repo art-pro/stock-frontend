@@ -734,7 +734,7 @@ export default function DashboardPage() {
             onSelectAll={handleSelectAllPortfolio}
             onTickerUpdate={fetchData}
             units={units}
-            sectorWeights={metrics?.sector_weights ? Object.fromEntries(Object.entries(metrics.sector_weights).map(([k, v]) => [k, v * 100])) : undefined}
+            sectorWeights={metrics?.sector_weights}
           />
         </div>
 

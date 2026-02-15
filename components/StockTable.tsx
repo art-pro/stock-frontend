@@ -33,7 +33,7 @@ interface StockTableProps {
   isWatchlist?: boolean;
   onTickerUpdate?: () => void;
   units?: PortfolioUnits | null;
-  /** Sector weights as percentage (0–100) of equity portfolio; used in Active Positions to show sector share */
+  /** Sector weights (0–1 or 0–100) of equity portfolio; when set, Active Positions are grouped by sector with % in subtable header */
   sectorWeights?: Record<string, number>;
 }
 
@@ -136,13 +136,14 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       title: 'Sector (e.g. Technology, Healthcare). In Active Positions, % is share of equity portfolio.',
       render: (stock, props) => {
         const name = stock.sector || '—';
-        const pct = props.sectorWeights && !props.isWatchlist && stock.sector
+        const raw = props.sectorWeights && !props.isWatchlist && stock.sector
           ? props.sectorWeights[stock.sector]
           : undefined;
+        const pct = raw != null ? (raw > 0 && raw <= 1 ? raw * 100 : raw) : undefined;
         if (pct != null && !Number.isNaN(pct)) {
           return (
             <span title="Share of active portfolio (excluding cash) held in this sector">
-              {name} <span className="text-gray-400">({props.formatPercentage(pct, 1)})</span>
+              {name} <span className="text-gray-400">({props.formatNumber(pct, 1)}%)</span>
             </span>
           );
         }
@@ -650,6 +651,39 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
     return `${formatNumber(num, decimals)}%`;
   };
 
+  // Backend may send sector weights as 0–1 (fraction) or 0–100 (percentage); normalize for display
+  const sectorDisplayPct = (pct: number | undefined): number | undefined => {
+    if (pct == null || Number.isNaN(pct)) return undefined;
+    if (pct > 0 && pct <= 1) return pct * 100;
+    return pct;
+  };
+
+  const groupBySector = Boolean(sectorWeights && !isWatchlist);
+  const visibleColumnsForTable = groupBySector
+    ? visibleColumns.filter((c) => c.id !== 'sector')
+    : visibleColumns;
+
+  // When grouped: group stocks by sector, then order sectors by weight desc, then name
+  const stocksBySector = groupBySector
+    ? (() => {
+        const map = new Map<string, Stock[]>();
+        filteredStocks.forEach((s) => {
+          const key = s.sector || 'Other';
+          if (!map.has(key)) map.set(key, []);
+          map.get(key)!.push(s);
+        });
+        return map;
+      })()
+    : null;
+  const sectorsOrdered: string[] = stocksBySector
+    ? Array.from(stocksBySector.keys()).sort((a, b) => {
+        const wa = sectorWeights![a] ?? -1;
+        const wb = sectorWeights![b] ?? -1;
+        if (wb !== wa) return wb - wa;
+        return (a || '').localeCompare(b || '');
+      })
+    : [];
+
   const handleEditField = (stock: Stock, field: string, currentValue: number) => {
     setEditingField({ stockId: stock.id, field });
     setEditValue(currentValue.toString());
@@ -702,6 +736,97 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
     isWatchlist,
   };
 
+  const sortStocks = (list: Stock[]) =>
+    [...list].sort((a, b) => {
+      const aVal = a[sortField];
+      const bVal = b[sortField];
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      return 0;
+    });
+
+  const renderTableHead = (cols: TableColumn[]) => (
+    <tr>
+      {cols[0]?.id === 'checkbox' && onSelectAll && (
+        <th className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap checkbox-column">
+          <input
+            type="checkbox"
+            checked={stocks.length > 0 && selectedStockIds.length === stocks.length}
+            onChange={(e) => onSelectAll(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500 focus:ring-offset-gray-800 cursor-pointer"
+            title={selectedStockIds.length === stocks.length ? 'Unselect all' : 'Select all'}
+          />
+        </th>
+      )}
+      {cols.map((column) => {
+        if (column.id === 'checkbox') return null;
+        const alignClass =
+          column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left';
+        const isClickable = column.sortKey;
+        return (
+          <th
+            key={column.id}
+            className={`px-3 py-3 text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap ${alignClass} ${
+              isClickable ? 'cursor-pointer hover:bg-gray-700' : ''
+            } ${column.className || ''}`}
+            onClick={isClickable ? () => handleSort(column.sortKey!) : undefined}
+            title={column.title}
+          >
+            {column.label}
+          </th>
+        );
+      })}
+    </tr>
+  );
+
+  const renderRow = (stock: Stock, cols: TableColumn[]) => {
+    const isAnyUpdating = columnProps.isAnyUpdating(stock);
+    const isUpdatingAlphaVantage = columnProps.isUpdatingAlphaVantage(stock);
+    const isUpdatingGrok = columnProps.isUpdatingGrok(stock);
+    const enhancedProps = {
+      ...columnProps,
+      isAnyUpdating,
+      isUpdatingAlphaVantage,
+      isUpdatingGrok,
+    };
+    return (
+      <tr key={stock.id} className={`${getRowClass(stock.assessment)} ${isAnyUpdating ? 'opacity-60' : ''}`}>
+        {cols[0]?.id === 'checkbox' && (
+          <td className="px-3 py-4 whitespace-nowrap text-sm text-center checkbox-column">
+            {onSelectStock && (
+              <input
+                type="checkbox"
+                checked={selectedStockIds.includes(stock.id)}
+                onChange={() => onSelectStock(stock.id)}
+                className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500 focus:ring-offset-gray-800 cursor-pointer"
+                disabled={isAnyUpdating}
+              />
+            )}
+          </td>
+        )}
+        {cols.map((column) => {
+          if (column.id === 'checkbox') return null;
+          const alignClass =
+            column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left';
+          return (
+            <td
+              key={`${stock.id}-${column.id}`}
+              className={`px-3 py-4 whitespace-nowrap text-sm ${alignClass} ${column.className || ''} ${
+                column.id === 'ticker' ? 'font-medium text-primary-400' : ''
+              }`}
+            >
+              {column.render(stock, enhancedProps)}
+            </td>
+          );
+        })}
+      </tr>
+    );
+  };
+
   return (
     <div className="stock-table">
       <div className="mb-4">
@@ -715,98 +840,44 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-700">
-        <table className="min-w-full divide-y divide-gray-700">
-          <thead className="bg-gray-800">
-            <tr>
-              {/* Render header for checkbox column if it's the first visible column */}
-              {visibleColumns[0]?.id === 'checkbox' && onSelectAll && (
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap checkbox-column">
-                  <input
-                    type="checkbox"
-                    checked={stocks.length > 0 && selectedStockIds.length === stocks.length}
-                    onChange={(e) => onSelectAll(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500 focus:ring-offset-gray-800 cursor-pointer"
-                    title={selectedStockIds.length === stocks.length ? "Unselect all" : "Select all"}
-                  />
-                </th>
-              )}
-
-              {/* Render dynamic column headers */}
-              {visibleColumns.map(column => {
-                if (column.id === 'checkbox') return null; // Already handled above
-
-                const alignClass = column.align === 'center' ? 'text-center' :
-                                  column.align === 'right' ? 'text-right' : 'text-left';
-                const isClickable = column.sortKey;
-
-                return (
-                  <th
-                    key={column.id}
-                    className={`px-3 py-3 text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap ${alignClass} ${
-                      isClickable ? 'cursor-pointer hover:bg-gray-700' : ''
-                    } ${column.className || ''}`}
-                    onClick={isClickable ? () => handleSort(column.sortKey!) : undefined}
-                    title={column.title}
-                  >
-                    {column.label}
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-700">
-            {sortedStocks.map((stock) => {
-              const isAnyUpdating = columnProps.isAnyUpdating(stock);
-              const isUpdatingAlphaVantage = columnProps.isUpdatingAlphaVantage(stock);
-              const isUpdatingGrok = columnProps.isUpdatingGrok(stock);
-
+        {groupBySector && stocksBySector && sectorsOrdered.length > 0 ? (
+          <div className="divide-y divide-gray-700">
+            {sectorsOrdered.map((sectorName) => {
+              const sectorStocks = sortStocks(stocksBySector.get(sectorName) || []);
+              const rawWeight = sectorWeights![sectorName];
+              const pct = sectorDisplayPct(rawWeight);
+              const pctLabel =
+                pct != null && !Number.isNaN(pct) ? `${formatNumber(pct, 1)}%` : '—';
               return (
-                <tr key={stock.id} className={`${getRowClass(stock.assessment)} ${isAnyUpdating ? 'opacity-60' : ''}`}>
-                  {/* Render checkbox column if it's the first visible column */}
-                  {visibleColumns[0]?.id === 'checkbox' && (
-                    <td className="px-3 py-4 whitespace-nowrap text-sm text-center checkbox-column">
-                      {onSelectStock && (
-                        <input
-                          type="checkbox"
-                          checked={selectedStockIds.includes(stock.id)}
-                          onChange={() => onSelectStock(stock.id)}
-                          className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500 focus:ring-offset-gray-800 cursor-pointer"
-                          disabled={isAnyUpdating}
-                        />
-                      )}
-                    </td>
-                  )}
-
-                  {/* Render dynamic column cells */}
-                  {visibleColumns.map(column => {
-                    if (column.id === 'checkbox') return null; // Already handled above
-
-                    const alignClass = column.align === 'center' ? 'text-center' :
-                                      column.align === 'right' ? 'text-right' : 'text-left';
-
-                    const enhancedProps = {
-                      ...columnProps,
-                      isAnyUpdating,
-                      isUpdatingAlphaVantage,
-                      isUpdatingGrok,
-                    };
-
-                    return (
-                      <td
-                        key={`${stock.id}-${column.id}`}
-                        className={`px-3 py-4 whitespace-nowrap text-sm ${alignClass} ${column.className || ''} ${
-                          column.id === 'ticker' ? 'font-medium text-primary-400' : ''
-                        }`}
-                      >
-                        {column.render(stock, enhancedProps)}
-                      </td>
-                    );
-                  })}
-                </tr>
+                <div key={sectorName || 'Other'} className="bg-gray-800/50">
+                  <div
+                    className="px-3 py-2.5 text-sm font-semibold text-gray-200 border-b border-gray-700"
+                    title="Share of active portfolio (excluding cash) in this sector"
+                  >
+                    {sectorName} ({pctLabel})
+                  </div>
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="bg-gray-800">
+                      {renderTableHead(visibleColumnsForTable)}
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {sectorStocks.map((stock) => renderRow(stock, visibleColumnsForTable))}
+                    </tbody>
+                  </table>
+                </div>
               );
             })}
-          </tbody>
-        </table>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead className="bg-gray-800">
+              {renderTableHead(visibleColumnsForTable)}
+            </thead>
+            <tbody className="divide-y divide-gray-700">
+              {sortedStocks.map((stock) => renderRow(stock, visibleColumnsForTable))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {sortedStocks.length === 0 && (
