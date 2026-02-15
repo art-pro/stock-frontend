@@ -74,25 +74,24 @@ export default function PortfolioSummary({ metrics, units }: PortfolioSummaryPro
     return `${num?.toFixed(decimals) || 'N/A'}%`;
   };
 
-  // Prepare chart data including cash
+  // Prepare chart data including cash. Use fractions (0–1) for all segments so the pie proportions are correct.
   const totalPortfolioValue = metrics.total_value + totalCashValue;
-  const cashPercentage = totalPortfolioValue > 0 ? (totalCashValue / totalPortfolioValue) * 100 : 0;
-  
-  // Adjust sector weights to account for cash
+  const cashFraction = totalPortfolioValue > 0 ? totalCashValue / totalPortfolioValue : 0;
+
+  // Sector weights from backend are 0–1 (fraction of equity). Scale to fraction of (stocks + cash).
   const adjustedSectorWeights = Object.fromEntries(
     Object.entries(metrics.sector_weights).map(([sector, weight]) => [
-      sector, 
-      totalPortfolioValue > 0 ? (weight * metrics.total_value) / totalPortfolioValue : weight
+      sector,
+      totalPortfolioValue > 0 ? (weight * metrics.total_value) / totalPortfolioValue : weight,
     ])
   );
-  
+
   const chartLabels = [...Object.keys(adjustedSectorWeights)];
-  const chartValues = [...Object.values(adjustedSectorWeights)];
-  
-  // Add cash segment if there is cash available
-  if (cashPercentage > 0) {
+  const chartValues = [...Object.values(adjustedSectorWeights)] as number[];
+
+  if (cashFraction > 0) {
     chartLabels.push('Cash');
-    chartValues.push(cashPercentage);
+    chartValues.push(cashFraction);
   }
   
   const chartData = {
@@ -128,7 +127,9 @@ export default function PortfolioSummary({ metrics, units }: PortfolioSummaryPro
       tooltip: {
         callbacks: {
           label: function(context: any) {
-            return `${context.label}: ${context.parsed.toFixed(1)}%`;
+            // Chart values are fractions 0–1; show as percentage
+            const pct = (context.parsed * 100).toFixed(1);
+            return `${context.label}: ${pct}%`;
           }
         }
       }
