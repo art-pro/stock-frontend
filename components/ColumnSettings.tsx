@@ -56,8 +56,9 @@ export const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'shares_owned', label: 'Shares', visible: true, order: 21, portfolioOnly: true },
   { id: 'weight', label: 'Weight %', visible: true, order: 22, portfolioOnly: true },
   { id: 'unrealized_pnl', label: 'P&L', visible: true, order: 23, portfolioOnly: true },
-  { id: 'assessment', label: 'Assessment', visible: true, order: 24 },
-  { id: 'actions', label: 'Actions', visible: true, order: 25, required: true },
+  { id: 'comment', label: 'Notes', visible: true, order: 24 },
+  { id: 'assessment', label: 'Assessment', visible: true, order: 25 },
+  { id: 'actions', label: 'Actions', visible: true, order: 26, required: true },
 ];
 
 export default function ColumnSettings({ onSettingsChange, initialColumns = DEFAULT_COLUMNS }: ColumnSettingsProps) {

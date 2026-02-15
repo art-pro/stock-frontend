@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { PortfolioUnits, Stock } from '@/lib/api';
-import { TrashIcon, ArrowPathIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, ArrowPathIcon, PencilIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import EditTickerModal from './EditTickerModal';
 import { useColumnSettings } from '@/hooks/useColumnSettings';
 import { formatSectorTarget } from '@/lib/sectorTargets';
@@ -45,6 +45,19 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
   const [editingField, setEditingField] = useState<{ stockId: number; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
   const [editingTicker, setEditingTicker] = useState<Stock | null>(null);
+  const [expandedCommentStockId, setExpandedCommentStockId] = useState<number | null>(null);
+  const commentPopoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (expandedCommentStockId == null) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (commentPopoverRef.current && !commentPopoverRef.current.contains(e.target as Node)) {
+        setExpandedCommentStockId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [expandedCommentStockId]);
 
   // Column settings
   const { getVisibleColumns, isColumnVisible } = useColumnSettings();
@@ -513,6 +526,37 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       )
     },
     {
+    {
+      id: 'comment',
+      label: 'Notes',
+      sortKey: 'comment',
+      align: 'center',
+      title: 'Notes & Comments — hover or click to view',
+      render: (stock, props) => {
+        const hasComment = stock.comment != null && String(stock.comment).trim() !== '';
+        const isExpanded = props.expandedCommentStockId === stock.id;
+        return (
+          <div ref={isExpanded ? props.commentPopoverRef : undefined} className="relative inline-block">
+            <button
+              type="button"
+              onClick={() => props.setExpandedCommentStockId((id) => (id === stock.id ? null : stock.id))}
+              className={`p-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                hasComment ? 'text-primary-400 hover:text-primary-300' : 'text-gray-500 hover:text-gray-400'
+              }`}
+              title={hasComment ? String(stock.comment) : 'No notes — add on stock page'}
+            >
+              <QuestionMarkCircleIcon className="h-5 w-5" />
+            </button>
+            {isExpanded && (
+              <div className="absolute left-full top-0 ml-1 z-50 min-w-[200px] max-w-[320px] px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg shadow-xl text-left text-sm text-gray-200 whitespace-pre-wrap">
+                {hasComment ? String(stock.comment) : 'No notes. Add notes on the stock detail page.'}
+              </div>
+            )}
+          </div>
+        );
+      }
+    },
+    {
       id: 'assessment',
       label: 'Assessment',
       sortKey: 'assessment',
@@ -735,6 +779,9 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
     isAnyUpdating: (stock: Stock) => updatingStocks.some(u => u.stockId === stock.id),
     sectorWeights,
     isWatchlist,
+    expandedCommentStockId,
+    setExpandedCommentStockId,
+    commentPopoverRef,
   };
 
   const sortStocks = (list: Stock[]) =>
