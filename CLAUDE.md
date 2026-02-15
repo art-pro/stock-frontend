@@ -35,7 +35,7 @@ Scripts (`package.json`):
 - `components/StockTable.tsx`  
   Configurable table for portfolio and watchlist modes; sorting, filtering, inline edits, actions. Active Positions and Watchlist are grouped by sector (subtables with sector header). Active Positions show current sector % and desired exposure (target range) in each sector header. Notes column shows a (?) icon; hover or click reveals the stock’s Notes & Comments (`stock.comment`).
 - `lib/sectorTargets.ts`  
-  Desired sector exposure (target min–max %) from core philosophy; used in Active Positions sector headers. Case-insensitive lookup by sector name.
+  Desired sector exposure (target min–max %) from core philosophy; used in Active Positions sector headers. Case-insensitive lookup by sector name. Full sector table and rationale: see CLAUDE.md "Sector exposure targets and rationale".
 - `app/stocks/[id]/page.tsx`  
   Deep-dive stock details, editable fields, data-source transparency, historical chart, notes/comments.
 - `components/CashManagementTable.tsx`  
@@ -167,9 +167,29 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 ## Sector Grouping and Desired Exposure (v2.7.0)
 
 - **Active Positions** and **Watchlist** tables are grouped by sector: each sector is a subtable with a header row and then the stock rows. The Sector column is hidden when grouped.
-- **Active Positions** sector headers show: sector name, current percentage of equity portfolio (from backend `summary.sector_weights`), and desired exposure when defined (e.g. `Healthcare (46.8%, target 30–35%)`). Targets come from `lib/sectorTargets.ts` (core philosophy).
-- **Target ranges** (equity only; cash buffer 8–12% is separate): Healthcare 30–35%, Technology 15%, Communication Services 10–15%, Financials 10–15%, Industrials 10–15%, Energy 5–10%. Lookup is case-insensitive.
+- **Active Positions** sector headers show: sector name, current percentage of equity portfolio (from backend `summary.sector_weights`), and desired exposure when defined (e.g. `Healthcare (46.8%, target 30–35%)`). Targets come from `lib/sectorTargets.ts` (core philosophy). Lookup is case-insensitive.
 - **Watchlist** sector headers show only the sector name (no percentages; no targets).
+
+### Sector exposure targets and rationale (EV/Vol/Risk fit)
+
+Targets are derived from core philosophy. Cash buffer 8–12% is separate (not a sector).
+
+| Sector | Recommended % | Rationale |
+|--------|----------------|------------|
+| **Technology** | 15% | High-growth (AI/cloud, EPS 12–45%), but cap due to volatility (25–50%, beta 1–1.5). EV +15–20%; complements Comm Services but avoid overexposure (current ~41%—trim). |
+| **Insurance** | 10–15% (under Financials) | Defensive yield (4–5%), low vol (20–25%, beta 1–1.2). EV +5–8%; group with Financials for stability; fits 10–15% total Financials target. |
+| **Industrials** | 10–15% | Cyclical (equipment/defense, EPS 5–120%), moderate vol (25–35%, beta 1–1.2). EV +7–10%; diversify with Tech; monitor for drawdowns. |
+| **Healthcare** | 30–35% | Resilient demand (pharma/medtech, EPS 12–25%), low vol (20–25%, beta 0.5–0.7). EV +8–10%; core defensive anchor (current 46.8%—trim to target). |
+| **Financials** | 10–15% | Stable moats (insurance/conglomerates, EPS 8–16%), low vol (18–25%, beta 0.8–1). EV +6–9%; underweight currently—add high-EV like BRK.B on dips. |
+| **Financial Services** | 10–15% (under Financials) | Payments/networks (EPS 16%), moderate vol (22%, beta 0.9–1). EV +7–9%; group with Financials; add V if EV >7%. |
+| **Energy** | 5–10% | Dividend-focused (oil, EPS 5–8%), higher vol (25–30%, beta 0.6–0.9). EV +5–7%; cap due to commodity risks; fits as hedge. |
+| **Crypto** | 2–5% | Asymmetric upside (Bitcoin proxies), extreme vol (50%, beta 1.5+). EV +5–10% but high ruin risk—cap strictly; treat as "future rocket" allocation. |
+| **Consumer Defensive** | 10–15% | Stable staples (EPS 6%, yield 2–3%), low vol (15–20%, beta 0.4–0.6). EV +4–6%; defensive buffer like PG. |
+| **Consumer Cyclical** | 5–10% | Growth-oriented (e.g. e-commerce, EPS 36%), moderate vol (25%, beta 1.3+). EV +10–12%; cap volatility; add AMZN on dips. |
+| **Communication Services** | 10–15% | Ad/media stability (EPS 15–35%), moderate vol (25–30%, beta 1–1.2). EV +7–9%; current 11%—hold/add META if EV >7%. |
+| **Basic Materials** | 5–10% | Cyclical (fertilizers/metals, EPS variable), higher vol (30–35%, beta 0.9–1). EV +3–6%; cap exposure; diversify with Energy. |
+
+Implemented in `lib/sectorTargets.ts`; only the numeric ranges are used in the UI (sector headers in Active Positions).
 
 ## Sell Zone Discipline
 
