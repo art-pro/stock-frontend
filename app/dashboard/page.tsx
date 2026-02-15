@@ -5,8 +5,12 @@ import { useRouter } from 'next/navigation';
 import { isAuthenticated, removeToken } from '@/lib/auth';
 import { stockAPI, portfolioAPI, versionAPI, invalidateCache, Stock, PortfolioMetrics, PortfolioUnits } from '@/lib/api';
 import { FRONTEND_VERSION } from '@/lib/version';
+import { getSectorRebalanceSummary, getConcentration } from '@/lib/portfolioInsights';
+import { formatSectorTarget } from '@/lib/sectorTargets';
 import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
+import RebalanceHint from '@/components/RebalanceHint';
+import RiskCard from '@/components/RiskCard';
 import AddStockModal from '@/components/AddStockModal';
 import JsonUploadModal from '@/components/JsonUploadModal';
 import ExchangeRateTable from '@/components/ExchangeRateTable';
@@ -347,6 +351,87 @@ export default function DashboardPage() {
     }
   };
 
+  const handleExportDecisionSnapshot = (format: 'json' | 'csv') => {
+    if (!metrics) return;
+    const activeStocks = stocks.filter((s) => s.shares_owned > 0);
+    const rebalance = getSectorRebalanceSummary(metrics.sector_weights);
+    const concentration = getConcentration(activeStocks);
+    const sectorPct = (sector: string) => {
+      const w = metrics!.sector_weights[sector];
+      if (w == null) return null;
+      return w > 0 && w <= 1 ? w * 100 : w;
+    };
+    const snapshot = {
+      exported_at: new Date().toISOString(),
+      portfolio: {
+        total_value: metrics.total_value,
+        overall_ev: metrics.overall_ev,
+        weighted_volatility: metrics.weighted_volatility,
+        sharpe_ratio: metrics.sharpe_ratio,
+        kelly_utilization: metrics.kelly_utilization,
+        sector_weights: metrics.sector_weights,
+      },
+      rebalance_summary: {
+        over: rebalance.over,
+        at: rebalance.at,
+        under: rebalance.under,
+        noTarget: rebalance.noTarget,
+      },
+      concentration,
+      stocks: activeStocks.map((s) => ({
+        ticker: s.ticker,
+        company_name: s.company_name,
+        sector: s.sector,
+        sector_current_pct: sectorPct(s.sector),
+        sector_target: formatSectorTarget(s.sector),
+        assessment: s.assessment,
+        expected_value: s.expected_value,
+        buy_zone_status: s.buy_zone_status,
+        sell_zone_status: s.sell_zone_status,
+        weight: s.weight,
+        half_kelly_suggested: s.half_kelly_suggested,
+        current_price: s.current_price,
+        fair_value: s.fair_value,
+        fair_value_source: s.fair_value_source,
+      })),
+    };
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `decision-snapshot-${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      return;
+    }
+    const headers = ['ticker', 'sector', 'sector_pct', 'sector_target', 'assessment', 'ev', 'buy_zone_status', 'sell_zone_status', 'weight', 'half_kelly'];
+    const rows = activeStocks.map((s) => [
+      s.ticker,
+      s.sector,
+      sectorPct(s.sector)?.toFixed(1) ?? '',
+      formatSectorTarget(s.sector) ?? '',
+      s.assessment,
+      s.expected_value?.toFixed(1) ?? '',
+      s.buy_zone_status ?? '',
+      s.sell_zone_status ?? '',
+      (s.weight != null ? s.weight * 100 : '').toString(),
+      s.half_kelly_suggested?.toFixed(1) ?? '',
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `decision-snapshot-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleLogout = () => {
     removeToken();
     router.push('/login');
@@ -474,6 +559,18 @@ export default function DashboardPage() {
         {/* Portfolio Summary */}
         {metrics && <PortfolioSummary metrics={metrics} units={units} />}
 
+        {/* Phase 1: Rebalance hint + Risk (concentration) */}
+        {metrics && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            <div className="lg:col-span-2">
+              <RebalanceHint metrics={metrics} />
+            </div>
+            <div>
+              <RiskCard stocks={stocks} />
+            </div>
+          </div>
+        )}
+
         {/* Compact Status Bar */}
         <div className="mb-4 flex items-center justify-between text-xs px-1">
           <span className="text-gray-400">{stocks.length} positions tracked</span>
@@ -585,6 +682,23 @@ export default function DashboardPage() {
               <span className="text-sm font-medium">
                 {selectedStockIds.length > 0 ? `Export (${selectedStockIds.length})` : 'Export'}
               </span>
+            </button>
+            <button
+              onClick={() => handleExportDecisionSnapshot('json')}
+              disabled={!metrics}
+              className="flex items-center px-3 py-2 bg-amber-600/90 text-white rounded-lg hover:bg-amber-600 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Export decision snapshot as JSON (metrics, rebalance, concentration, per-stock)"
+            >
+              <DocumentArrowUpIcon className="h-4 w-4 mr-1.5" />
+              <span className="text-sm font-medium">Snapshot (JSON)</span>
+            </button>
+            <button
+              onClick={() => handleExportDecisionSnapshot('csv')}
+              disabled={!metrics}
+              className="flex items-center px-3 py-2 bg-amber-600/80 text-white rounded-lg hover:bg-amber-600 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Export decision snapshot as CSV (per-stock metrics)"
+            >
+              <span className="text-sm font-medium">Snapshot (CSV)</span>
             </button>
           </div>
         </div>

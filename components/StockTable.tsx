@@ -7,6 +7,7 @@ import { TrashIcon, ArrowPathIcon, PencilIcon, QuestionMarkCircleIcon } from '@h
 import EditTickerModal from './EditTickerModal';
 import { useColumnSettings } from '@/hooks/useColumnSettings';
 import { formatSectorTarget } from '@/lib/sectorTargets';
+import { getDistanceToBuyZone, getDistanceToSellZone, getKellyHint } from '@/lib/portfolioInsights';
 
 // Define column rendering configuration
 interface TableColumn {
@@ -292,7 +293,10 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
             <button onClick={props.handleCancelEdit} className="text-red-400 hover:text-red-300 text-xs">Cancel</button>
           </div>
         ) : (
-          <div className="flex items-center justify-end gap-2" title={`Source: ${stock.fair_value_source || 'Not available'}`}>
+          <div
+            className="flex items-center justify-end gap-2"
+            title={[stock.fair_value_source || 'Source: N/A', stock.last_updated ? `Updated: ${new Date(stock.last_updated).toLocaleString()}` : ''].filter(Boolean).join(' · ')}
+          >
             <span>{props.formatNumber(stock.fair_value)} {stock.fair_value > 0 ? stock.currency : ''}</span>
             <button
               onClick={() => props.handleEditField(stock, 'fair_value', stock.fair_value)}
@@ -337,13 +341,14 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       title: 'Status based on current price versus buy-zone thresholds',
       render: (stock) => {
         const status = stock.buy_zone_status || 'N/A';
+        const distance = getDistanceToBuyZone(stock);
         const cls =
           status === 'EV >> 15%' ? 'bg-emerald-900 text-emerald-200' :
           status === 'within buy zone' ? 'bg-green-900 text-green-200' :
           status === 'outside buy zone' ? 'bg-gray-700 text-gray-300' :
           'bg-gray-700 text-gray-300';
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
+          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${cls}`} title={distance !== 'N/A' ? `Distance: ${distance}` : undefined}>
             {status}
           </span>
         );
@@ -381,13 +386,14 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       title: 'Status based on current EV versus sell-zone thresholds',
       render: (stock) => {
         const status = stock.sell_zone_status || 'N/A';
+        const distance = getDistanceToSellZone(stock);
         const cls =
           status === 'In sell zone' ? 'bg-red-900 text-red-200' :
           status === 'In trim zone' ? 'bg-orange-900 text-orange-200' :
           status === 'Below sell zone' ? 'bg-emerald-900 text-emerald-200' :
           'bg-gray-700 text-gray-300';
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
+          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${cls}`} title={distance !== 'N/A' ? distance : undefined}>
             {status}
           </span>
         );
@@ -508,7 +514,17 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       sortKey: 'weight',
       align: 'right',
       portfolioOnly: true,
-      render: (stock, props) => props.formatPercentage(stock.weight, 1)
+      title: 'Position weight. Tooltip shows size vs ½-Kelly suggestion.',
+      render: (stock, props) => {
+        const kellyHint = getKellyHint(stock);
+        const weightPct = stock.weight != null ? (stock.weight <= 1 ? stock.weight * 100 : stock.weight) : null;
+        const title = [weightPct != null ? `${weightPct.toFixed(1)}% of portfolio` : null, kellyHint].filter(Boolean).join(' · ');
+        return (
+          <span title={title || undefined}>
+            {weightPct != null ? props.formatPercentage(weightPct, 1) : 'N/A'}
+          </span>
+        );
+      }
     },
     {
       id: 'unrealized_pnl',

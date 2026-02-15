@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { invalidateCache, stockAPI, Stock, StockHistory, FairValueHistoryEntry } from '@/lib/api';
+import { getDistanceToBuyZone, getDistanceToSellZone, getKellyHint } from '@/lib/portfolioInsights';
 import DataSourceModal from '@/components/DataSourceModal';
 import TooltipIcon from '@/components/Tooltip';
 import { Line } from 'react-chartjs-2';
@@ -947,7 +948,9 @@ export default function StockDetailPage() {
               <p className="text-lg font-semibold text-white">
                 {stock.weight.toFixed(2)}%
               </p>
-              <p className="text-xs text-gray-600 mt-1">Calculated</p>
+              <p className="text-xs text-gray-600 mt-1">
+                {getKellyHint(stock) ?? 'Calculated'}
+              </p>
             </div>
             
             <div>
@@ -1001,7 +1004,9 @@ export default function StockDetailPage() {
               }`}>
                 {stock.buy_zone_status || 'N/A'}
               </p>
-              <p className="text-xs text-gray-600 mt-1">Calculated</p>
+              <p className="text-xs text-gray-600 mt-1">
+                {getDistanceToBuyZone(stock) !== 'N/A' ? `Distance: ${getDistanceToBuyZone(stock)}` : 'Calculated'}
+              </p>
             </div>
 
             <div>
@@ -1040,7 +1045,9 @@ export default function StockDetailPage() {
               }`}>
                 {stock.sell_zone_status || 'N/A'}
               </p>
-              <p className="text-xs text-gray-600 mt-1">Calculated</p>
+              <p className="text-xs text-gray-600 mt-1">
+                {getDistanceToSellZone(stock) !== 'N/A' ? getDistanceToSellZone(stock) : 'Calculated'}
+              </p>
             </div>
             
             <div>

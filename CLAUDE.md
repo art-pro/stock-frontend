@@ -36,8 +36,14 @@ Scripts (`package.json`):
   Configurable table for portfolio and watchlist modes; sorting, filtering, inline edits, actions. Active Positions and Watchlist are grouped by sector (subtables with sector header). Active Positions show current sector % and desired exposure (target range) in each sector header. Notes column shows a (?) icon; hover or click reveals the stock’s Notes & Comments (`stock.comment`).
 - `lib/sectorTargets.ts`  
   Desired sector exposure (target min–max %) from core philosophy; used in Active Positions sector headers. Case-insensitive lookup by sector name. Full sector table and rationale: see CLAUDE.md "Sector exposure targets and rationale".
+- `lib/portfolioInsights.ts`  
+  Display-only helpers for Phase 1: sector rebalance summary (over/at/under target), concentration (top-N %, max position), distance to buy/sell zone, Kelly hint (position size vs ½-Kelly). No backend changes.
+- `components/RebalanceHint.tsx`  
+  Dashboard widget: sectors vs targets (over / at / under / no target) using `sector_weights` and `lib/sectorTargets.ts`.
+- `components/RiskCard.tsx`  
+  Dashboard widget: concentration and tail risk (largest position, top 3, top 5 % of equity).
 - `app/stocks/[id]/page.tsx`  
-  Deep-dive stock details, editable fields, data-source transparency, historical chart, notes/comments.
+  Deep-dive stock details, editable fields, data-source transparency, historical chart, notes/comments. Shows distance to buy/sell zone and Kelly hint (position vs ½-Kelly) under relevant cards.
 - `components/CashManagementTable.tsx`  
   Cash CRUD and conversion display.
 - `components/ExchangeRateTable.tsx`  
@@ -106,13 +112,15 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 ### Where frontend reflects decisions
 - `components/StockTable.tsx`
   - EV color coding and action badge rendering
-  - Buy zone limit columns (`Buy Zone Min`, `Buy Zone Max`) with currency-aware display and sorting
-  - Sell zone columns (`Sell Zone Min`, `Sell Zone Max`, `Sell Zone Status`) for trim/sell discipline
+  - Buy zone limit columns (`Buy Zone Min`, `Buy Zone Max`) with currency-aware display and sorting; Buy Zone Status tooltip shows distance to buy zone (from `lib/portfolioInsights.ts`)
+  - Sell zone columns (`Sell Zone Min`, `Sell Zone Max`, `Sell Zone Status`) for trim/sell discipline; Sell Zone Status tooltip shows distance/sell-zone text
   - Sector grouping (subtables) and, in Active Positions, sector current % and target range in header (from `lib/sectorTargets.ts`)
   - Notes column: (?) icon to show `stock.comment` (Notes & Comments) on hover or click
+  - Fair Value cell tooltip: source and last updated date
+  - Weight % column tooltip: portfolio % and position size vs ½-Kelly (when available)
   - tooltips for metric meaning
 - `components/PortfolioSummary.tsx`
-  - overall EV, Sharpe, volatility, Kelly utilization displays
+  - overall EV, Sharpe, volatility, Kelly utilization displays; Kelly card shows target band 75–85%
 - `app/stocks/[id]/page.tsx`
   - per-stock metrics and action interpretation text/tooltips
   - dedicated sell-zone cards (min/max/status) aligned to backend EV thresholds
@@ -142,11 +150,14 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 
 1. **Dashboard operations**
    - View active positions + watchlist, each grouped by sector (subtables; sector name in header; Active Positions also show current % and target range per sector)
+   - **Rebalance hint**: sectors vs targets (over / at / under); consider trim/add by sector
+   - **Risk card**: concentration (largest position, top 3, top 5 % of equity)
    - select subset and update from Alpha Vantage or Grok
    - run trusted fair-value sync for selected active positions (Grok + Deepseek backend collection)
-   - review buy zone limits directly in table columns (`Buy Zone Min`, `Buy Zone Max`)
-   - review sell-zone thresholds directly in table columns (`Sell Zone Min`, `Sell Zone Max`, `Sell Zone Status`)
+   - review buy zone limits and distance to buy zone (tooltip on Buy Zone Status)
+   - review sell-zone thresholds and status (tooltip on Sell Zone Status)
    - view Notes & Comments per stock via the Notes column (?) icon (hover or click)
+   - **Export decision snapshot**: JSON or CSV (metrics, rebalance summary, concentration, per-stock decision data)
    - inline edits for core numeric inputs
    - import/export JSON
 2. **Stock detail editing**
@@ -190,6 +201,17 @@ Targets are derived from core philosophy. Cash buffer 8–12% is separate (not a
 | **Basic Materials** | 5–10% | Cyclical (fertilizers/metals, EPS variable), higher vol (30–35%, beta 0.9–1). EV +3–6%; cap exposure; diversify with Energy. |
 
 Implemented in `lib/sectorTargets.ts`; only the numeric ranges are used in the UI (sector headers in Active Positions).
+
+## Phase 1: Math/Logic and Data (Core Enhancements)
+
+Additive display-only features to support EV optimization, sector targets, and risk visibility. No new backend logic.
+
+- **Rebalance hint** (dashboard): Uses `summary.sector_weights` and `lib/sectorTargets.ts` to classify sectors over / at / under target. Rendered by `RebalanceHint`; lists sectors and current % vs target range.
+- **Distance to buy/sell zone**: Helpers in `lib/portfolioInsights.ts` (`getDistanceToBuyZone`, `getDistanceToSellZone`). Shown in StockTable as tooltips on Buy Zone Status and Sell Zone Status; on stock detail under the status cards.
+- **Kelly utilization vs half-Kelly hint**: Portfolio Summary shows “Target 75–85%” on Kelly card. Per-stock: `getKellyHint(stock)` in `lib/portfolioInsights.ts` (e.g. “0.92× ½-Kelly”); Weight % column tooltip in table; stock detail under Portfolio Weight.
+- **Concentration and tail risk**: `getConcentration(stocks)` in `lib/portfolioInsights.ts`; `RiskCard` on dashboard shows largest position, top 3, top 5 % of equity.
+- **Fair value source/date**: StockTable Fair Value cell tooltip shows `fair_value_source` and `last_updated`.
+- **Export decision snapshot**: Dashboard buttons “Snapshot (JSON)” and “Snapshot (CSV)”. JSON: `exported_at`, portfolio metrics, rebalance_summary, concentration, per-stock fields (sector, assessment, zones, weight, half-Kelly, etc.). CSV: one row per active stock with key decision fields.
 
 ## Sell Zone Discipline
 
@@ -303,6 +325,10 @@ API methods added in `lib/api.ts`:
 
 - **Frontend version** is set in `lib/version.ts` (`FRONTEND_VERSION`) and `package.json` (`version`). Bump both for releases.
 - **Backend version** is reported by the API (`versionAPI.getBackendVersion()`); bump the backend version in the backend repository when releasing the backend.
+
+## Suggested improvements (additive only)
+
+See **`INVESTMENT_IMPROVEMENTS.md`** for the full list. **Phase 1 (math/logic and data)** is implemented: rebalance hint, distance to buy/sell zone, Kelly hint, concentration/Risk card, fair value source/date in table, decision snapshot export (JSON/CSV). Remaining ideas: LLMs (batch assessment, explain assessment, Grok vs Deepseek comparison, sector summary); alerts and “suggested next actions”; price/buy-zone alerts if backend supports them.
 
 ---
 

@@ -198,11 +198,12 @@ export default function PortfolioSummary({ metrics, units }: PortfolioSummaryPro
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 className="text-sm font-medium text-gray-400 mb-2 tooltip">
           Kelly Utilization
-          <span className="tooltiptext">Sum of position weights vs. suggested allocations</span>
+          <span className="tooltiptext">Sum of position weights vs. suggested allocations. Target band: 75–85%.</span>
         </h3>
         <p className="text-2xl font-bold text-white">
           {formatPercent(metrics.kelly_utilization, 1)}
         </p>
+        <p className="text-xs text-gray-500 mt-1">Target 75–85%</p>
       </div>
 
       {/* Sector Allocation Chart */}
