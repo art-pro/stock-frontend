@@ -97,7 +97,7 @@ export default function AssessmentPage() {
     setAssessment('');
 
     try {
-      const requestData: Record<string, unknown> = {
+      const requestData: AssessmentRequest = {
         ticker: ticker.toUpperCase().trim(),
         source,
       };
@@ -155,7 +155,7 @@ export default function AssessmentPage() {
         console.warn('Could not fetch dashboard hints for assessment, continuing without them', hintErr);
       }
 
-      const response = await assessmentAPI.request(requestData as AssessmentRequest);
+      const response = await assessmentAPI.request(requestData);
 
       setAssessment(response.data.assessment);
       await fetchRecentAssessments();
