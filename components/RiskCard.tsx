@@ -18,20 +18,20 @@ export default function RiskCard({ stocks }: RiskCardProps) {
         Concentration & tail risk
       </h3>
       <p className="text-xs text-gray-500 mb-3">
-        Top positions as % of equity (no cash). High concentration increases tail risk.
+        Share of equity (stocks only, no cash) held in your largest holdings. High concentration increases tail risk.
       </p>
       <div className="grid grid-cols-2 gap-4 text-sm">
         <div>
-          <span className="text-gray-500 block">Largest position</span>
+          <span className="text-gray-500 block" title="Single largest position by portfolio weight">Largest position</span>
           <span className="text-white font-semibold">{conc.maxPositionTicker}</span>
           <span className="text-gray-400 ml-1">{conc.maxPositionPct.toFixed(1)}%</span>
         </div>
         <div>
-          <span className="text-gray-500 block">Top 3</span>
+          <span className="text-gray-500 block" title="Combined weight of your 3 biggest positions">Top 3 positions</span>
           <span className="text-white font-semibold">{conc.top3Pct.toFixed(1)}%</span>
         </div>
         <div>
-          <span className="text-gray-500 block">Top 5</span>
+          <span className="text-gray-500 block" title="Combined weight of your 5 biggest positions">Top 5 positions</span>
           <span className="text-white font-semibold">{conc.top5Pct.toFixed(1)}%</span>
         </div>
       </div>

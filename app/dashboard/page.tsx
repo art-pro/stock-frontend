@@ -11,6 +11,7 @@ import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
 import RebalanceHint from '@/components/RebalanceHint';
 import RiskCard from '@/components/RiskCard';
+import SuggestedActions from '@/components/SuggestedActions';
 import AddStockModal from '@/components/AddStockModal';
 import JsonUploadModal from '@/components/JsonUploadModal';
 import ExchangeRateTable from '@/components/ExchangeRateTable';
@@ -568,6 +569,13 @@ export default function DashboardPage() {
             <div>
               <RiskCard stocks={stocks} />
             </div>
+          </div>
+        )}
+
+        {/* Suggested next actions */}
+        {metrics && (
+          <div className="mb-6">
+            <SuggestedActions metrics={metrics} stocks={stocks} />
           </div>
         )}
 

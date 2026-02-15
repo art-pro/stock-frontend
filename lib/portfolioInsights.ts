@@ -159,3 +159,57 @@ export function getKellyHint(stock: Stock): string | null {
   if (ratio == null || !Number.isFinite(ratio)) return null;
   return `${ratio.toFixed(2)}× ½-Kelly`;
 }
+
+export type SuggestedAction =
+  | { type: 'sector_over'; sector: string; currentPct: number; targetMin: number; targetMax: number }
+  | { type: 'sell_zone'; stock: Stock }
+  | { type: 'trim_zone'; stock: Stock }
+  | { type: 'buy_zone_add'; stock: Stock }
+  | { type: 'high_ev_underweight'; stock: Stock };
+
+/**
+ * Suggested next actions from current data (read-only). No backend changes.
+ * Rules: sectors over target; stocks in sell/trim zone; stocks Add + in buy zone; optional high EV + underweight.
+ */
+export function getSuggestedActions(
+  sectorWeights: Record<string, number>,
+  stocks: Stock[]
+): SuggestedAction[] {
+  const actions: SuggestedAction[] = [];
+  const rebalance = getSectorRebalanceSummary(sectorWeights);
+  for (const d of rebalance.over) {
+    actions.push({
+      type: 'sector_over',
+      sector: d.sector,
+      currentPct: d.currentPct,
+      targetMin: d.targetMin,
+      targetMax: d.targetMax,
+    });
+  }
+  const activeStocks = stocks.filter((s) => s.shares_owned > 0);
+  for (const stock of activeStocks) {
+    const sellStatus = (stock.sell_zone_status || '').trim();
+    if (sellStatus === 'In sell zone') {
+      actions.push({ type: 'sell_zone', stock });
+      continue;
+    }
+    if (sellStatus === 'In trim zone') {
+      actions.push({ type: 'trim_zone', stock });
+      continue;
+    }
+    const assessment = (stock.assessment || '').trim();
+    const buyStatus = (stock.buy_zone_status || '').trim();
+    const inBuyZone = buyStatus === 'within buy zone' || buyStatus === 'EV >> 15%';
+    if (assessment === 'Add' && inBuyZone) {
+      actions.push({ type: 'buy_zone_add', stock });
+      continue;
+    }
+    const ev = stock.expected_value;
+    const weightPct = stock.weight != null ? (stock.weight <= 1 ? stock.weight * 100 : stock.weight) : 0;
+    const halfKelly = stock.half_kelly_suggested ?? 0;
+    if (ev != null && ev > 15 && halfKelly > 0 && weightPct < halfKelly) {
+      actions.push({ type: 'high_ev_underweight', stock });
+    }
+  }
+  return actions;
+}
