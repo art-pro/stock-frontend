@@ -7,6 +7,7 @@ import { stockAPI, portfolioAPI, versionAPI, invalidateCache, Stock, PortfolioMe
 import { FRONTEND_VERSION } from '@/lib/version';
 import { getSectorRebalanceSummary, getConcentration } from '@/lib/portfolioInsights';
 import { formatSectorTarget } from '@/lib/sectorTargets';
+import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
 import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
 import RebalanceHint from '@/components/RebalanceHint';
@@ -29,6 +30,7 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { targetPctBySector } = useSectorTargetsContext();
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null);
   const [units, setUnits] = useState<PortfolioUnits | null>(null);
@@ -355,7 +357,7 @@ export default function DashboardPage() {
   const handleExportDecisionSnapshot = (format: 'json' | 'csv') => {
     if (!metrics) return;
     const activeStocks = stocks.filter((s) => s.shares_owned > 0);
-    const rebalance = getSectorRebalanceSummary(metrics.sector_weights);
+    const rebalance = getSectorRebalanceSummary(metrics.sector_weights, targetPctBySector);
     const concentration = getConcentration(activeStocks);
     const sectorPct = (sector: string) => {
       const w = metrics!.sector_weights[sector];
@@ -384,7 +386,7 @@ export default function DashboardPage() {
         company_name: s.company_name,
         sector: s.sector,
         sector_current_pct: sectorPct(s.sector),
-        sector_target: formatSectorTarget(s.sector),
+        sector_target: formatSectorTarget(s.sector, targetPctBySector),
         assessment: s.assessment,
         expected_value: s.expected_value,
         buy_zone_status: s.buy_zone_status,
@@ -413,7 +415,7 @@ export default function DashboardPage() {
       s.ticker,
       s.sector,
       sectorPct(s.sector)?.toFixed(1) ?? '',
-      formatSectorTarget(s.sector) ?? '',
+      formatSectorTarget(s.sector, targetPctBySector) ?? '',
       s.assessment,
       s.expected_value?.toFixed(1) ?? '',
       s.buy_zone_status ?? '',
@@ -564,7 +566,7 @@ export default function DashboardPage() {
         {metrics && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
             <div className="lg:col-span-2">
-              <RebalanceHint metrics={metrics} />
+              <RebalanceHint metrics={metrics} sectorTargets={targetPctBySector} />
             </div>
             <div>
               <RiskCard stocks={stocks} />
@@ -575,7 +577,7 @@ export default function DashboardPage() {
         {/* Suggested next actions */}
         {metrics && (
           <div className="mb-6">
-            <SuggestedActions metrics={metrics} stocks={stocks} />
+            <SuggestedActions metrics={metrics} stocks={stocks} sectorTargets={targetPctBySector} />
           </div>
         )}
 
@@ -857,6 +859,7 @@ export default function DashboardPage() {
             onTickerUpdate={fetchData}
             units={units}
             sectorWeights={metrics?.sector_weights}
+            sectorTargets={targetPctBySector}
           />
         </div>
 
@@ -889,6 +892,7 @@ export default function DashboardPage() {
             isWatchlist={true}
             onTickerUpdate={fetchData}
             units={units}
+            sectorTargets={targetPctBySector}
           />
         </div>
 

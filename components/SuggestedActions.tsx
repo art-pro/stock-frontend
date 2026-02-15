@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { Stock, PortfolioMetrics } from '@/lib/api';
 import { getSuggestedActions, SuggestedAction } from '@/lib/portfolioInsights';
+import type { SectorTargetPct } from '@/hooks/useSectorTargets';
 
 interface SuggestedActionsProps {
   metrics: PortfolioMetrics;
   stocks: Stock[];
+  sectorTargets?: SectorTargetPct;
 }
 
 function actionLabel(a: SuggestedAction): string {
@@ -31,8 +33,8 @@ function actionHref(a: SuggestedAction): string | null {
   return `/stocks/${a.stock.id}`;
 }
 
-export default function SuggestedActions({ metrics, stocks }: SuggestedActionsProps) {
-  const actions = getSuggestedActions(metrics.sector_weights, stocks);
+export default function SuggestedActions({ metrics, stocks, sectorTargets }: SuggestedActionsProps) {
+  const actions = getSuggestedActions(metrics.sector_weights, stocks, sectorTargets);
   if (actions.length === 0) return null;
 
   return (

@@ -25,20 +25,25 @@ function toPct(weight: number): number {
   return weight;
 }
 
+type TargetMap = Record<string, { min: number; max: number }>;
+
 /** Get target min/max for sector (case-insensitive). */
-function getTarget(sectorName: string): { min: number; max: number } | null {
-  const key = Object.keys(SECTOR_TARGET_PCT).find(
+function getTarget(sectorName: string, targets: TargetMap): { min: number; max: number } | null {
+  const key = Object.keys(targets).find(
     (k) => k.toLowerCase() === (sectorName || '').toLowerCase()
   );
-  return key ? SECTOR_TARGET_PCT[key] : null;
+  return key ? targets[key] : null;
 }
 
 /**
  * Classify sectors vs targets. Uses equity-only sector_weights (0-1 or 0-100).
+ * Pass optional targets (e.g. from persisted settings); otherwise uses default SECTOR_TARGET_PCT.
  */
 export function getSectorRebalanceSummary(
-  sectorWeights: Record<string, number>
+  sectorWeights: Record<string, number>,
+  customTargets?: TargetMap
 ): RebalanceSummary {
+  const targets = customTargets ?? SECTOR_TARGET_PCT;
   const over: SectorDeviation[] = [];
   const at: SectorDeviation[] = [];
   const under: SectorDeviation[] = [];
@@ -46,7 +51,7 @@ export function getSectorRebalanceSummary(
 
   for (const [sector, weight] of Object.entries(sectorWeights)) {
     const currentPct = toPct(weight);
-    const target = getTarget(sector);
+    const target = getTarget(sector, targets);
     if (!target) {
       noTarget.push({ sector, currentPct });
       continue;
@@ -173,10 +178,11 @@ export type SuggestedAction =
  */
 export function getSuggestedActions(
   sectorWeights: Record<string, number>,
-  stocks: Stock[]
+  stocks: Stock[],
+  customTargets?: TargetMap
 ): SuggestedAction[] {
   const actions: SuggestedAction[] = [];
-  const rebalance = getSectorRebalanceSummary(sectorWeights);
+  const rebalance = getSectorRebalanceSummary(sectorWeights, customTargets);
   for (const d of rebalance.over) {
     actions.push({
       type: 'sector_over',

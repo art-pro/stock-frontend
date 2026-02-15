@@ -30,12 +30,12 @@ Scripts (`package.json`):
 
 - `app/dashboard/page.tsx`  
   Main operational surface: summary, stock tables, bulk/single updates, import/export, quick tools.
-- `components/PortfolioSummary.tsx`  
-  Portfolio-level KPIs + sector pie chart; merges stock summary with cash.
+- `components/PortfolioSummary.tsx`
+  Portfolio-level KPIs + **sector pie chart**. Pie is **stock-level**: one slice per active position (and one for Cash), with sectors in **shades of the same colour** (e.g. Healthcare = greens, Technology = blues). Clicking a sector highlights it and shows below the chart the list of stocks in that sector with their portfolio weight %. Receives optional `stocks` prop from dashboard for drill-down. Cash segment uses same 0–1 scale as sectors so proportions are correct.
 - `components/StockTable.tsx`  
   Configurable table for portfolio and watchlist modes; sorting, filtering, inline edits, actions. Active Positions and Watchlist are grouped by sector (subtables with sector header). Active Positions show current sector % and desired exposure (target range) in each sector header. Notes column shows a (?) icon; hover or click reveals the stock’s Notes & Comments (`stock.comment`).
-- `lib/sectorTargets.ts`  
-  Desired sector exposure (target min–max %) from core philosophy; used in Active Positions sector headers. Case-insensitive lookup by sector name. Full sector table and rationale: see CLAUDE.md "Sector exposure targets and rationale".
+- `lib/sectorTargets.ts`
+  Desired sector exposure (target min–max %) from core philosophy; used in Active Positions sector headers and rebalance logic. **Persistent**: targets are loaded from backend via `useSectorTargets` / `SectorTargetsContext`; when API returns null, built-in defaults are used. Case-insensitive lookup. `formatSectorTarget(sectorName, customTargets?)` accepts optional persisted targets. Full sector table and rationale in Settings → Sector Targets and in CLAUDE.md “Sector exposure targets and rationale”.
 - `lib/portfolioInsights.ts`  
   Display-only helpers for Phase 1: sector rebalance summary (over/at/under target), concentration (top-N %, max position), distance to buy/sell zone, Kelly hint (position size vs ½-Kelly). No backend changes.
 - `components/RebalanceHint.tsx`  
@@ -50,8 +50,8 @@ Scripts (`package.json`):
   FX management UI for tracked currencies/rates.
 - `app/assessment/page.tsx`  
   Single-ticker AI assessment and image extraction workflow.
-- `app/settings/page.tsx` + `hooks/useColumnSettings.ts`  
-  User/password/portfolio settings + persistent column-visibility/order settings.
+- `app/settings/page.tsx` + `hooks/useColumnSettings.ts` + **Sector Targets**
+  User/password/portfolio settings; persistent column-visibility/order; **Sector Targets** tab: table of sector allocation targets (min–max %, rationale) loaded from and saved to backend (`GET/POST /settings/sector-targets`). Elementary RBAC: only admin (e.g. `NEXT_PUBLIC_ADMIN_USERNAME` or `admin`) can edit; all authenticated users can view. “Reset to defaults” persists the built-in sector table.
 - `lib/api.ts`  
   API contracts, request methods, lightweight cache layer, cache invalidation helper.
 - `lib/auth.ts`  
@@ -174,8 +174,9 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 5. **Settings**
    - auth settings and portfolio settings
    - persistent customizable table columns (includes buy zone, sell zone, and Notes column visibility/order)
+   - **Sector Targets** tab: view (all users) or edit (admin) the sector allocation table; load/save via `GET/POST /settings/sector-targets`; “Reset to defaults” to persist built-in targets. Rebalance hints and sector headers use these persisted targets when available.
 
-## Sector Grouping and Desired Exposure (v2.7.0)
+## Sector Grouping and Desired Exposure
 
 - **Active Positions** and **Watchlist** tables are grouped by sector: each sector is a subtable with a header row and then the stock rows. The Sector column is hidden when grouped.
 - **Active Positions** sector headers show: sector name, current percentage of equity portfolio (from backend `summary.sector_weights`), and desired exposure when defined (e.g. `Healthcare (46.8%, target 30–35%)`). Targets come from `lib/sectorTargets.ts` (core philosophy). Lookup is case-insensitive.
@@ -200,7 +201,7 @@ Targets are derived from core philosophy. Cash buffer 8–12% is separate (not a
 | **Communication Services** | 10–15% | Ad/media stability (EPS 15–35%), moderate vol (25–30%, beta 1–1.2). EV +7–9%; current 11%—hold/add META if EV >7%. |
 | **Basic Materials** | 5–10% | Cyclical (fertilizers/metals, EPS variable), higher vol (30–35%, beta 0.9–1). EV +3–6%; cap exposure; diversify with Energy. |
 
-Implemented in `lib/sectorTargets.ts`; only the numeric ranges are used in the UI (sector headers in Active Positions).
+Implemented in `lib/sectorTargets.ts`. Targets are **persistent per user**: `contexts/SectorTargetsContext.tsx` and `hooks/useSectorTargets.ts` load from `GET /settings/sector-targets` and optionally save via `POST /settings/sector-targets`. Dashboard, RebalanceHint, SuggestedActions, and StockTable receive `targetPctBySector` from context so rebalance logic and sector headers use saved targets when present; otherwise defaults from `lib/sectorTargets.ts` are used. Numeric ranges appear in sector headers (Active Positions and Watchlist) and in Settings → Sector Targets table.
 
 ## Phase 1: Math/Logic and Data (Core Enhancements)
 
@@ -212,6 +213,12 @@ Additive display-only features to support EV optimization, sector targets, and r
 - **Concentration and tail risk**: `getConcentration(stocks)` in `lib/portfolioInsights.ts`; `RiskCard` on dashboard shows largest position, top 3, top 5 % of equity.
 - **Fair value source/date**: StockTable Fair Value cell tooltip shows `fair_value_source` and `last_updated`.
 - **Export decision snapshot**: Dashboard buttons “Snapshot (JSON)” and “Snapshot (CSV)”. JSON: `exported_at`, portfolio metrics, rebalance_summary, concentration, per-stock fields (sector, assessment, zones, weight, half-Kelly, etc.). CSV: one row per active stock with key decision fields.
+
+## Tests
+
+- **`lib/sectorTargets.test.ts`** – `formatSectorTarget` (default/custom targets, case-insensitive, single-value range); default table and Cash row.
+- **`lib/portfolioInsights.test.ts`** – `getSectorRebalanceSummary` (over/at/under, 0–1 vs 0–100 weights, custom targets, noTarget); `getSuggestedActions` (sector_over, custom targets, sell/trim zone); `getConcentration`.
+- **`hooks/useSectorTargets.test.tsx`** – load defaults when API returns null; use persisted rows when API returns data; save() calls API and reloads; when not authenticated, no API call.
 
 ## Sell Zone Discipline
 
@@ -328,7 +335,7 @@ API methods added in `lib/api.ts`:
 
 ## Suggested improvements (additive only)
 
-See **`INVESTMENT_IMPROVEMENTS.md`** for the full list. **Phase 1 (math/logic and data)** is implemented: rebalance hint, distance to buy/sell zone, Kelly hint, concentration/Risk card, fair value source/date in table, decision snapshot export (JSON/CSV). Remaining ideas: LLMs (batch assessment, explain assessment, Grok vs Deepseek comparison, sector summary); alerts and “suggested next actions”; price/buy-zone alerts if backend supports them. **Backend:** See **`BACKEND_IMPROVEMENTS.md`** for backend-side suggestions (alerts, LLM endpoints, data consistency, optional targets/history).
+See **`INVESTMENT_IMPROVEMENTS.md`** for the full list. **Phase 1 (math/logic and data)** is implemented: rebalance hint, distance to buy/sell zone, Kelly hint, concentration/Risk card, fair value source/date in table, decision snapshot export (JSON/CSV). Sector targets (persistent, Settings tab, RBAC) and stock-level sector pie with shades/click-to-highlight are in place; tests cover sectorTargets, portfolioInsights, useSectorTargets. Remaining ideas: LLMs (batch assessment, explain assessment, Grok vs Deepseek comparison, sector summary); alerts and “suggested next actions”; price/buy-zone alerts if backend supports them. **Backend:** See **`BACKEND_IMPROVEMENTS.md`** for more. Sector targets and LLM endpoints are implemented.
 
 ---
 

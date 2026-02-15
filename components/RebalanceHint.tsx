@@ -2,13 +2,15 @@
 
 import { PortfolioMetrics } from '@/lib/api';
 import { getSectorRebalanceSummary } from '@/lib/portfolioInsights';
+import type { SectorTargetPct } from '@/hooks/useSectorTargets';
 
 interface RebalanceHintProps {
   metrics: PortfolioMetrics;
+  sectorTargets?: SectorTargetPct;
 }
 
-export default function RebalanceHint({ metrics }: RebalanceHintProps) {
-  const summary = getSectorRebalanceSummary(metrics.sector_weights);
+export default function RebalanceHint({ metrics, sectorTargets }: RebalanceHintProps) {
+  const summary = getSectorRebalanceSummary(metrics.sector_weights, sectorTargets);
   const { over, at, under, noTarget } = summary;
   const total = over.length + at.length + under.length;
   if (total === 0 && noTarget.length === 0) return null;

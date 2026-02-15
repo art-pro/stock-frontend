@@ -438,9 +438,20 @@ export const assessmentAPI = {
 // User Settings API
 export const settingsAPI = {
   getColumnSettings: () => api.get<{ settings: string }>('/settings/columns'),
-  saveColumnSettings: (settings: string) => 
+  saveColumnSettings: (settings: string) =>
     api.post('/settings/columns', { settings }),
+  getSectorTargets: () =>
+    api.get<{ rows: SectorTargetRow[] | null }>('/settings/sector-targets'),
+  saveSectorTargets: (payload: { rows: SectorTargetRow[] }) =>
+    api.post('/settings/sector-targets', payload),
 };
+
+export interface SectorTargetRow {
+  sector: string;
+  min: number;
+  max: number;
+  rationale: string;
+}
 
 export default api;
 

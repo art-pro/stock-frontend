@@ -7,11 +7,96 @@ import { authAPI, portfolioAPI } from '@/lib/api';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import ColumnSettings, { ColumnConfig, DEFAULT_COLUMNS } from '@/components/ColumnSettings';
 import { useColumnSettings } from '@/hooks/useColumnSettings';
+import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
+import { SECTOR_TARGET_TABLE, CASH_TARGET_ROW } from '@/lib/sectorTargets';
+
+function SectorTargetsTabContent({ canEditSectorTargets }: { canEditSectorTargets: boolean }) {
+  const {
+    tableRows,
+    save,
+    isLoading,
+    saveStatus,
+    saveError,
+  } = useSectorTargetsContext();
+
+  const handleResetToDefaults = () => {
+    const defaultRows = [...SECTOR_TARGET_TABLE, CASH_TARGET_ROW];
+    save(defaultRows);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="animate-pulse text-gray-400">Loading sector targets...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h2 className="text-xl font-bold text-white mb-4">Sector Allocation Targets</h2>
+      <p className="text-sm text-gray-400 mb-4">
+        Ratios currently applied for rebalance hints and sector headers. Stored per user. Equity sectors only; Cash is separate.
+      </p>
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
+        <span className="text-xs text-gray-500">
+          {canEditSectorTargets ? 'You can edit (admin).' : 'View only. Only admins can change targets.'}
+        </span>
+        {canEditSectorTargets && (
+          <button
+            type="button"
+            onClick={handleResetToDefaults}
+            disabled={saveStatus === 'saving'}
+            className="text-sm px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:opacity-50"
+          >
+            Reset to defaults
+          </button>
+        )}
+      </div>
+      {saveStatus === 'success' && (
+        <div className="mb-4 bg-green-900/50 border border-green-700 text-green-200 px-4 py-2 rounded text-sm">
+          Saved.
+        </div>
+      )}
+      {saveStatus === 'error' && saveError && (
+        <div className="mb-4 bg-red-900/50 border border-red-700 text-red-200 px-4 py-2 rounded text-sm">
+          {saveError}
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-gray-600">
+              <th className="py-3 px-4 text-gray-300 font-medium">Sector</th>
+              <th className="py-3 px-4 text-gray-300 font-medium">Target Range</th>
+              <th className="py-3 px-4 text-gray-300 font-medium">Key Rationale</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableRows.map((row) => (
+              <tr key={row.sector} className="border-b border-gray-700 hover:bg-gray-700/50">
+                <td className="py-3 px-4 text-white font-medium">{row.sector}</td>
+                <td className="py-3 px-4 text-gray-300">
+                  {row.min === row.max ? `${row.min}%` : `${row.min}–${row.max}%`}
+                </td>
+                <td className="py-3 px-4 text-gray-400 text-sm">{row.rationale}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'username' | 'password' | 'portfolio' | 'columns'>('username');
+  const [activeTab, setActiveTab] = useState<'username' | 'password' | 'portfolio' | 'columns' | 'sector-targets'>('username');
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
+
+  // Elementary RBAC: only admin can edit sector targets (view allowed for all authenticated users)
+  const adminUsername = typeof process.env.NEXT_PUBLIC_ADMIN_USERNAME === 'string' ? process.env.NEXT_PUBLIC_ADMIN_USERNAME : 'admin';
+  const canEditSectorTargets = currentUser?.username === adminUsername;
   
   // Username form
   const [usernamePassword, setUsernamePassword] = useState('');
@@ -209,6 +294,16 @@ export default function SettingsPage() {
             }`}
           >
             Column Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('sector-targets')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'sector-targets'
+                ? 'text-primary-400 border-b-2 border-primary-400'
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Sector Targets
           </button>
         </div>
 
@@ -450,6 +545,11 @@ export default function SettingsPage() {
               </button>
             </form>
           </div>
+        )}
+
+        {/* Sector Targets Tab */}
+        {activeTab === 'sector-targets' && (
+          <SectorTargetsTabContent canEditSectorTargets={canEditSectorTargets} />
         )}
 
         {/* Column Settings Tab */}

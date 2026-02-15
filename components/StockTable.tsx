@@ -37,9 +37,11 @@ interface StockTableProps {
   units?: PortfolioUnits | null;
   /** Sector weights (0–1 or 0–100) of equity portfolio; when set, Active Positions are grouped by sector with % in subtable header */
   sectorWeights?: Record<string, number>;
+  /** Persisted sector targets (min/max %); when set, sector headers show target from these instead of defaults */
+  sectorTargets?: Record<string, { min: number; max: number }>;
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false, onTickerUpdate, units, sectorWeights }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false, onTickerUpdate, units, sectorWeights, sectorTargets }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
@@ -910,7 +912,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               const rawWeight = sectorWeights?.[sectorName];
               const pct = sectorDisplayPct(rawWeight);
               const showPct = sectorWeights && rawWeight != null && pct != null && !Number.isNaN(pct);
-              const targetLabel = formatSectorTarget(sectorName);
+              const targetLabel = formatSectorTarget(sectorName, sectorTargets);
               const pctLabel = showPct
                 ? ` (${formatNumber(pct, 1)}%${targetLabel ? `, ${targetLabel}` : ''})`
                 : targetLabel
