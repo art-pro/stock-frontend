@@ -33,9 +33,11 @@ interface StockTableProps {
   isWatchlist?: boolean;
   onTickerUpdate?: () => void;
   units?: PortfolioUnits | null;
+  /** Sector weights as percentage (0–100) of equity portfolio; used in Active Positions to show sector share */
+  sectorWeights?: Record<string, number>;
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false, onTickerUpdate, units }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false, onTickerUpdate, units, sectorWeights }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
@@ -131,7 +133,21 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       label: 'Sector',
       sortKey: 'sector',
       align: 'left',
-      render: (stock) => stock.sector
+      title: 'Sector (e.g. Technology, Healthcare). In Active Positions, % is share of equity portfolio.',
+      render: (stock, props) => {
+        const name = stock.sector || '—';
+        const pct = props.sectorWeights && !props.isWatchlist && stock.sector
+          ? props.sectorWeights[stock.sector]
+          : undefined;
+        if (pct != null && !Number.isNaN(pct)) {
+          return (
+            <span title="Share of active portfolio (excluding cash) held in this sector">
+              {name} <span className="text-gray-400">({props.formatPercentage(pct, 1)})</span>
+            </span>
+          );
+        }
+        return <span>{name}</span>;
+      }
     },
     {
       id: 'beta',
@@ -682,6 +698,8 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
     isUpdatingAlphaVantage: (stock: Stock) => updatingStocks.some(u => u.stockId === stock.id && u.source === 'alphavantage'),
     isUpdatingGrok: (stock: Stock) => updatingStocks.some(u => u.stockId === stock.id && u.source === 'grok'),
     isAnyUpdating: (stock: Stock) => updatingStocks.some(u => u.stockId === stock.id),
+    sectorWeights,
+    isWatchlist,
   };
 
   return (
