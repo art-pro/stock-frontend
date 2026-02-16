@@ -551,6 +551,7 @@ export default function StockDetailPage() {
   };
 
   const rowKeyToStockField: Record<string, string> = {
+    fair_value_estimate: 'fair_value',
     downside_risk: 'downside_risk',
     probability_positive: 'probability_positive',
     beta: 'beta',
