@@ -402,6 +402,86 @@ export default function StockDetailPage() {
     };
   }, [stock?.ticker, grokAssessmentText, deepseekAssessmentText]);
 
+  const parseMetricValue = (value: string) => {
+    const raw = (value || '').trim();
+    const upperRaw = raw.toUpperCase();
+    const hasPercent = raw.includes('%');
+    const hasMultiple = /\bx\b/i.test(raw);
+    const codeMatch = upperRaw.match(/\b(USD|EUR|GBP|DKK|RUB|JPY|CHF|CAD|AUD|NOK|SEK)\b/);
+    const symbolMatch = raw.match(/[$€£¥]/);
+
+    const numberMatch = raw.match(/-?\d[\d,]*\.?\d*/);
+    if (!numberMatch) {
+      return {
+        hasNumeric: false,
+        normalizedText: upperRaw.replace(/\s+/g, ' ').trim(),
+      };
+    }
+
+    let numericToken = numberMatch[0];
+    if (numericToken.includes(',') && numericToken.includes('.')) {
+      numericToken = numericToken.replace(/,/g, '');
+    } else {
+      numericToken = numericToken.replace(/,/g, '.');
+    }
+    const numericValue = Number.parseFloat(numericToken);
+    if (!Number.isFinite(numericValue)) {
+      return {
+        hasNumeric: false,
+        normalizedText: upperRaw.replace(/\s+/g, ' ').trim(),
+      };
+    }
+
+    const unitType = hasPercent
+      ? 'percent'
+      : (codeMatch || symbolMatch)
+        ? 'currency'
+        : hasMultiple
+          ? 'multiple'
+          : 'plain';
+
+    return {
+      hasNumeric: true,
+      numericValue,
+      unitType,
+      currencyCode: codeMatch?.[1],
+      currencySymbol: symbolMatch?.[0],
+      normalizedText: upperRaw.replace(/\s+/g, ' ').trim(),
+    };
+  };
+
+  const compareMetricValues = (left: string, right: string) => {
+    const a = parseMetricValue(left);
+    const b = parseMetricValue(right);
+
+    if (a.hasNumeric && b.hasNumeric) {
+      const sameUnitType = a.unitType === b.unitType || (a.unitType === 'plain' || b.unitType === 'plain');
+      if (!sameUnitType) return false;
+      return Math.abs((a.numericValue || 0) - (b.numericValue || 0)) < 0.0001;
+    }
+    return (a.normalizedText || '') === (b.normalizedText || '');
+  };
+
+  const formatAverageMetric = (rowKey: string, left: string, right: string) => {
+    if (rowKey === 'current_price') return '—';
+    const a = parseMetricValue(left);
+    const b = parseMetricValue(right);
+    if (!a.hasNumeric || !b.hasNumeric) return 'N/A';
+
+    const avg = ((a.numericValue || 0) + (b.numericValue || 0)) / 2;
+    const preferredUnit = a.unitType !== 'plain' ? a.unitType : b.unitType;
+
+    if (preferredUnit === 'percent') return `${avg.toFixed(2)}%`;
+    if (preferredUnit === 'multiple') return `${avg.toFixed(2)}x`;
+    if (preferredUnit === 'currency') {
+      const code = a.currencyCode || b.currencyCode;
+      const symbol = a.currencySymbol || b.currencySymbol;
+      if (code) return `${avg.toFixed(2)} ${code}`;
+      if (symbol) return `${symbol}${avg.toFixed(2)}`;
+    }
+    return avg.toFixed(2);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
@@ -1055,17 +1135,20 @@ export default function StockDetailPage() {
                         <th className="py-2 pr-4 text-gray-400 font-medium">Parameter</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Grok</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Deepseek</th>
+                        <th className="py-2 pr-4 text-gray-400 font-medium">Average</th>
                         <th className="py-2 text-gray-400 font-medium">Diff</th>
                       </tr>
                     </thead>
                     <tbody>
                       {assessmentCompareRows.map((row) => {
-                        const same = row.grok.trim().toLowerCase() === row.deepseek.trim().toLowerCase();
+                        const same = compareMetricValues(row.grok || '', row.deepseek || '');
+                        const averageValue = formatAverageMetric(row.key, row.grok || '', row.deepseek || '');
                         return (
                           <tr key={row.key} className="border-b border-gray-800 align-top">
                             <td className="py-2 pr-4 text-gray-200 font-medium">{row.label}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.grok || 'N/A'}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.deepseek || 'N/A'}</td>
+                            <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{averageValue}</td>
                             <td className={`py-2 font-semibold ${same ? 'text-emerald-300' : 'text-amber-300'}`}>
                               {same ? 'Same' : 'Different'}
                             </td>
