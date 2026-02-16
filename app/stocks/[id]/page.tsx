@@ -303,7 +303,11 @@ export default function StockDetailPage() {
     try {
       setAssessmentRefreshing(true);
       const response = await assessmentAPI.getByTicker(stock.ticker, undefined, 30);
-      setAssessments(response.data || []);
+      const items = response.data || [];
+      // Keep UI responsive if backend persistence is slightly delayed.
+      if (items.length > 0) {
+        setAssessments(items);
+      }
     } catch (err: any) {
       alert(err.response?.data?.error || err.message || 'Failed to refresh assessments');
     } finally {
@@ -329,7 +333,26 @@ export default function StockDetailPage() {
         payload.currency = stock.currency;
       }
 
-      await assessmentAPI.request(payload);
+      const response = await assessmentAPI.request(payload);
+      const assessmentText = response.data?.assessment || '';
+      if (assessmentText) {
+        // Optimistic update so the new text is visible immediately.
+        const nextEntry: AssessmentResponse = {
+          id: Date.now(),
+          ticker: stock.ticker,
+          source,
+          assessment: assessmentText,
+          created_at: new Date().toISOString(),
+          status: 'completed',
+        };
+        setAssessments((prev) => {
+          const filtered = prev.filter((a) => (a.source || '').toLowerCase() !== source);
+          return [nextEntry, ...filtered];
+        });
+      }
+
+      // Let backend commit/update persisted records, then reload canonical data.
+      await new Promise((resolve) => setTimeout(resolve, 300));
       await refreshAssessments();
     } catch (err: any) {
       setAssessmentAskError(err.response?.data?.error || err.message || 'Failed to request assessment');
