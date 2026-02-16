@@ -285,6 +285,65 @@ export default function StockDetailPage() {
     );
   };
 
+  const latestBySource = assessments.reduce<{ grok?: AssessmentResponse; deepseek?: AssessmentResponse }>((acc, item) => {
+    const src = (item.source || '').toLowerCase();
+    if (src === 'grok' && !acc.grok) acc.grok = item;
+    if (src === 'deepseek' && !acc.deepseek) acc.deepseek = item;
+    return acc;
+  }, {});
+  const grokAssessmentText = latestBySource.grok?.assessment || '';
+  const deepseekAssessmentText = latestBySource.deepseek?.assessment || '';
+
+  const refreshAssessments = async () => {
+    if (!stock?.ticker) return;
+    try {
+      setAssessmentRefreshing(true);
+      const response = await assessmentAPI.getByTicker(stock.ticker, undefined, 30);
+      setAssessments(response.data || []);
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.message || 'Failed to refresh assessments');
+    } finally {
+      setAssessmentRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    const ticker = stock?.ticker;
+    if (!ticker || !grokAssessmentText || !deepseekAssessmentText) {
+      setAssessmentCompareRows([]);
+      setAssessmentCompareError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const runCompare = async () => {
+      try {
+        setAssessmentCompareLoading(true);
+        setAssessmentCompareError(null);
+        const response = await assessmentAPI.compare({
+          ticker,
+          grok_assessment: grokAssessmentText,
+          deepseek_assessment: deepseekAssessmentText,
+        });
+        if (!cancelled) {
+          setAssessmentCompareRows(response.data.rows || []);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setAssessmentCompareRows([]);
+          setAssessmentCompareError(err.response?.data?.error || err.message || 'Failed to compare assessments');
+        }
+      } finally {
+        if (!cancelled) setAssessmentCompareLoading(false);
+      }
+    };
+
+    runCompare();
+    return () => {
+      cancelled = true;
+    };
+  }, [stock?.ticker, grokAssessmentText, deepseekAssessmentText]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
@@ -402,64 +461,6 @@ export default function StockDetailPage() {
     const d = new Date(entry.recorded_at);
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   });
-  const latestBySource = assessments.reduce<{ grok?: AssessmentResponse; deepseek?: AssessmentResponse }>((acc, item) => {
-    const src = (item.source || '').toLowerCase();
-    if (src === 'grok' && !acc.grok) acc.grok = item;
-    if (src === 'deepseek' && !acc.deepseek) acc.deepseek = item;
-    return acc;
-  }, {});
-  const grokAssessmentText = latestBySource.grok?.assessment || '';
-  const deepseekAssessmentText = latestBySource.deepseek?.assessment || '';
-
-  const refreshAssessments = async () => {
-    if (!stock?.ticker) return;
-    try {
-      setAssessmentRefreshing(true);
-      const response = await assessmentAPI.getByTicker(stock.ticker, undefined, 30);
-      setAssessments(response.data || []);
-    } catch (err: any) {
-      alert(err.response?.data?.error || err.message || 'Failed to refresh assessments');
-    } finally {
-      setAssessmentRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    const ticker = stock?.ticker;
-    if (!ticker || !grokAssessmentText || !deepseekAssessmentText) {
-      setAssessmentCompareRows([]);
-      setAssessmentCompareError(null);
-      return;
-    }
-
-    let cancelled = false;
-    const runCompare = async () => {
-      try {
-        setAssessmentCompareLoading(true);
-        setAssessmentCompareError(null);
-        const response = await assessmentAPI.compare({
-          ticker,
-          grok_assessment: grokAssessmentText,
-          deepseek_assessment: deepseekAssessmentText,
-        });
-        if (!cancelled) {
-          setAssessmentCompareRows(response.data.rows || []);
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setAssessmentCompareRows([]);
-          setAssessmentCompareError(err.response?.data?.error || err.message || 'Failed to compare assessments');
-        }
-      } finally {
-        if (!cancelled) setAssessmentCompareLoading(false);
-      }
-    };
-
-    runCompare();
-    return () => {
-      cancelled = true;
-    };
-  }, [stock?.ticker, grokAssessmentText, deepseekAssessmentText]);
 
   return (
     <div className="min-h-screen bg-gray-900">
