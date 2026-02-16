@@ -42,6 +42,7 @@ export default function StockDetailPage() {
   const [assessmentCompareRows, setAssessmentCompareRows] = useState<AssessmentCompareRow[]>([]);
   const [assessmentCompareLoading, setAssessmentCompareLoading] = useState(false);
   const [assessmentCompareError, setAssessmentCompareError] = useState<string | null>(null);
+  const [assessmentApplyKey, setAssessmentApplyKey] = useState<string | null>(null);
   const [assessmentRefreshing, setAssessmentRefreshing] = useState(false);
   const [assessmentRequestPrice, setAssessmentRequestPrice] = useState('');
   const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | 'both' | null>(null);
@@ -516,6 +517,49 @@ export default function StockDetailPage() {
       if (symbol) return `${symbol}${avg.toFixed(2)}`;
     }
     return avg.toFixed(2);
+  };
+
+  const averageNumericMetric = (rowKey: string, left: string, right: string): number | null => {
+    if (rowKey === 'current_price') return null;
+    const a = parseMetricValue(left);
+    const b = parseMetricValue(right);
+    if (!a.hasNumeric || !b.hasNumeric) return null;
+    return ((a.numericValue || 0) + (b.numericValue || 0)) / 2;
+  };
+
+  const rowKeyToStockField: Record<string, string> = {
+    downside_risk: 'downside_risk',
+    probability_positive: 'probability_positive',
+    beta: 'beta',
+    volatility: 'volatility',
+    forward_pe_ratio: 'pe_ratio',
+    eps_growth: 'eps_growth_rate',
+    debt_to_ebitda_ttm: 'debt_to_ebitda',
+    dividend_yield: 'dividend_yield',
+  };
+
+  const applyAverageToStock = async (row: AssessmentCompareRow) => {
+    if (!stock) return;
+    const targetField = rowKeyToStockField[row.key];
+    if (!targetField) return;
+    const avgNumeric = averageNumericMetric(row.key, row.grok || '', row.deepseek || '');
+    if (avgNumeric === null) {
+      alert('Average value is not numeric and cannot be applied.');
+      return;
+    }
+
+    try {
+      setAssessmentApplyKey(row.key);
+      const response = await stockAPI.updateField(stock.id, targetField, avgNumeric);
+      if (response?.data) {
+        setStock(response.data);
+      }
+      invalidateCache('portfolio');
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.message || 'Failed to apply average value');
+    } finally {
+      setAssessmentApplyKey(null);
+    }
   };
 
   if (loading) {
@@ -1186,12 +1230,28 @@ export default function StockDetailPage() {
                       {assessmentCompareRows.map((row) => {
                         const same = compareMetricValues(row.grok || '', row.deepseek || '');
                         const averageValue = formatAverageMetric(row.key, row.grok || '', row.deepseek || '');
+                        const averageNumeric = averageNumericMetric(row.key, row.grok || '', row.deepseek || '');
+                        const canApply = Boolean(rowKeyToStockField[row.key] && averageNumeric !== null);
                         return (
                           <tr key={row.key} className="border-b border-gray-800 align-top">
                             <td className="py-2 pr-4 text-gray-200 font-medium">{row.label}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.grok || 'N/A'}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.deepseek || 'N/A'}</td>
-                            <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{averageValue}</td>
+                            <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">
+                              <div className="flex items-center gap-2">
+                                <span>{averageValue}</span>
+                                {canApply && (
+                                  <button
+                                    onClick={() => applyAverageToStock(row)}
+                                    disabled={assessmentApplyKey !== null}
+                                    className="px-1.5 py-0.5 text-[11px] rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Apply averaged value to this stock field"
+                                  >
+                                    {assessmentApplyKey === row.key ? 'Applying...' : 'Apply'}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
                             <td className={`py-2 font-semibold ${same ? 'text-emerald-300' : 'text-amber-300'}`}>
                               {same ? 'Same' : 'Different'}
                             </td>
