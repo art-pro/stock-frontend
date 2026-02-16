@@ -775,7 +775,7 @@ export default function StockDetailPage() {
         {/* Data Source Information */}
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-bold text-white mb-4">Data Sources</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div 
               className="flex items-start space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700/50 transition-colors"
               onClick={() => openDataSourceModal('alphavantage')}
@@ -839,6 +839,39 @@ export default function StockDetailPage() {
                       {new Date(stock.grok_fetched_at).toLocaleTimeString('en-US', { 
                         hour: '2-digit', 
                         minute: '2-digit' 
+                      })}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 italic">No data fetched yet</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3 p-3 rounded-lg border border-gray-700 bg-gray-900/20">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-grow">
+                <h3 className="text-sm font-medium text-gray-300 mb-1">Deepseek AI</h3>
+                <p className="text-xs text-gray-500 mb-2">Analysis & predictions</p>
+                {latestBySource.deepseek?.created_at ? (
+                  <div>
+                    <p className="text-sm text-white">
+                      {new Date(latestBySource.deepseek.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(latestBySource.deepseek.created_at).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
                       })}
                     </p>
                   </div>
