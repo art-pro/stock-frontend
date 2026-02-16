@@ -44,7 +44,7 @@ export default function StockDetailPage() {
   const [assessmentCompareError, setAssessmentCompareError] = useState<string | null>(null);
   const [assessmentRefreshing, setAssessmentRefreshing] = useState(false);
   const [assessmentRequestPrice, setAssessmentRequestPrice] = useState('');
-  const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | null>(null);
+  const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | 'both' | null>(null);
   const [assessmentAskError, setAssessmentAskError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -315,47 +315,83 @@ export default function StockDetailPage() {
     }
   };
 
+  const upsertLocalAssessment = (source: 'grok' | 'deepseek', assessmentText: string) => {
+    if (!stock || !assessmentText) return;
+    const nextEntry: AssessmentResponse = {
+      id: Date.now() + (source === 'grok' ? 1 : 2),
+      ticker: stock.ticker,
+      source,
+      assessment: assessmentText,
+      created_at: new Date().toISOString(),
+      status: 'completed',
+    };
+    setAssessments((prev) => {
+      const filtered = prev.filter((a) => (a.source || '').toLowerCase() !== source);
+      return [nextEntry, ...filtered];
+    });
+  };
+
+  const buildAssessmentPayload = (source: 'grok' | 'deepseek') => {
+    if (!stock) return null;
+    const requestPrice = Number.parseFloat(assessmentRequestPrice.replace(',', '.'));
+    const payload: any = {
+      ticker: stock.ticker,
+      isin: stock.isin || undefined,
+      company_name: stock.company_name || undefined,
+      source,
+    };
+    if (Number.isFinite(requestPrice) && requestPrice > 0) {
+      payload.current_price = requestPrice;
+      payload.currency = stock.currency;
+    }
+    return payload;
+  };
+
   const askAssessmentFromStockPage = async (source: 'grok' | 'deepseek') => {
     if (!stock) return;
     try {
       setAssessmentAskingSource(source);
       setAssessmentAskError(null);
-
-      const requestPrice = Number.parseFloat(assessmentRequestPrice.replace(',', '.'));
-      const payload: any = {
-        ticker: stock.ticker,
-        isin: stock.isin || undefined,
-        company_name: stock.company_name || undefined,
-        source,
-      };
-      if (Number.isFinite(requestPrice) && requestPrice > 0) {
-        payload.current_price = requestPrice;
-        payload.currency = stock.currency;
-      }
+      const payload = buildAssessmentPayload(source);
+      if (!payload) return;
 
       const response = await assessmentAPI.request(payload);
       const assessmentText = response.data?.assessment || '';
-      if (assessmentText) {
-        // Optimistic update so the new text is visible immediately.
-        const nextEntry: AssessmentResponse = {
-          id: Date.now(),
-          ticker: stock.ticker,
-          source,
-          assessment: assessmentText,
-          created_at: new Date().toISOString(),
-          status: 'completed',
-        };
-        setAssessments((prev) => {
-          const filtered = prev.filter((a) => (a.source || '').toLowerCase() !== source);
-          return [nextEntry, ...filtered];
-        });
-      }
+      upsertLocalAssessment(source, assessmentText);
 
       // Let backend commit/update persisted records, then reload canonical data.
       await new Promise((resolve) => setTimeout(resolve, 300));
       await refreshAssessments();
     } catch (err: any) {
       setAssessmentAskError(err.response?.data?.error || err.message || 'Failed to request assessment');
+    } finally {
+      setAssessmentAskingSource(null);
+    }
+  };
+
+  const askBothAssessmentsFromStockPage = async () => {
+    if (!stock) return;
+    try {
+      setAssessmentAskingSource('both');
+      setAssessmentAskError(null);
+
+      const grokPayload = buildAssessmentPayload('grok');
+      const deepseekPayload = buildAssessmentPayload('deepseek');
+      if (!grokPayload || !deepseekPayload) return;
+
+      const [grokResponse, deepseekResponse] = await Promise.all([
+        assessmentAPI.request(grokPayload),
+        assessmentAPI.request(deepseekPayload),
+      ]);
+
+      upsertLocalAssessment('grok', grokResponse.data?.assessment || '');
+      upsertLocalAssessment('deepseek', deepseekResponse.data?.assessment || '');
+
+      // Let backend commit/update persisted records and diff, then refresh canonical data.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await refreshAssessments();
+    } catch (err: any) {
+      setAssessmentAskError(err.response?.data?.error || err.message || 'Failed to request assessments');
     } finally {
       setAssessmentAskingSource(null);
     }
@@ -1073,6 +1109,13 @@ export default function StockDetailPage() {
                 className="px-3 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {assessmentAskingSource === 'deepseek' ? 'Asking Deepseek...' : 'Ask Deepseek'}
+              </button>
+              <button
+                onClick={askBothAssessmentsFromStockPage}
+                disabled={assessmentAskingSource !== null}
+                className="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {assessmentAskingSource === 'both' ? 'Asking Both...' : 'Ask Both'}
               </button>
             </div>
             {assessmentAskError && (
