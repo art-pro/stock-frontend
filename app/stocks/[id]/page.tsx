@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { invalidateCache, stockAPI, assessmentAPI, Stock, StockHistory, FairValueHistoryEntry, AssessmentResponse } from '@/lib/api';
+import { invalidateCache, stockAPI, assessmentAPI, Stock, StockHistory, FairValueHistoryEntry, AssessmentResponse, AssessmentCompareRow } from '@/lib/api';
 import { getDistanceToBuyZone, getDistanceToSellZone, getKellyHint } from '@/lib/portfolioInsights';
 import DataSourceModal from '@/components/DataSourceModal';
 import TooltipIcon from '@/components/Tooltip';
@@ -39,6 +39,9 @@ export default function StockDetailPage() {
   const [history, setHistory] = useState<StockHistory[]>([]);
   const [fairValueHistory, setFairValueHistory] = useState<FairValueHistoryEntry[]>([]);
   const [assessments, setAssessments] = useState<AssessmentResponse[]>([]);
+  const [assessmentCompareRows, setAssessmentCompareRows] = useState<AssessmentCompareRow[]>([]);
+  const [assessmentCompareLoading, setAssessmentCompareLoading] = useState(false);
+  const [assessmentCompareError, setAssessmentCompareError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -404,6 +407,45 @@ export default function StockDetailPage() {
     if (src === 'deepseek' && !acc.deepseek) acc.deepseek = item;
     return acc;
   }, {});
+  const grokAssessmentText = latestBySource.grok?.assessment || '';
+  const deepseekAssessmentText = latestBySource.deepseek?.assessment || '';
+
+  useEffect(() => {
+    const ticker = stock?.ticker;
+    if (!ticker || !grokAssessmentText || !deepseekAssessmentText) {
+      setAssessmentCompareRows([]);
+      setAssessmentCompareError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const runCompare = async () => {
+      try {
+        setAssessmentCompareLoading(true);
+        setAssessmentCompareError(null);
+        const response = await assessmentAPI.compare({
+          ticker,
+          grok_assessment: grokAssessmentText,
+          deepseek_assessment: deepseekAssessmentText,
+        });
+        if (!cancelled) {
+          setAssessmentCompareRows(response.data.rows || []);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setAssessmentCompareRows([]);
+          setAssessmentCompareError(err.response?.data?.error || err.message || 'Failed to compare assessments');
+        }
+      } finally {
+        if (!cancelled) setAssessmentCompareLoading(false);
+      }
+    };
+
+    runCompare();
+    return () => {
+      cancelled = true;
+    };
+  }, [stock?.ticker, grokAssessmentText, deepseekAssessmentText]);
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -847,6 +889,47 @@ export default function StockDetailPage() {
               )}
             </div>
           </div>
+
+          {(grokAssessmentText && deepseekAssessmentText) && (
+            <div className="mt-6 pt-4 border-t border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-200 mb-3">Assessment Diff (LLM Extracted)</h3>
+              {assessmentCompareLoading ? (
+                <p className="text-sm text-gray-400">Comparing Grok and Deepseek summaries...</p>
+              ) : assessmentCompareError ? (
+                <p className="text-sm text-red-300">{assessmentCompareError}</p>
+              ) : assessmentCompareRows.length === 0 ? (
+                <p className="text-sm text-gray-500">No comparison data available.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b border-gray-700">
+                        <th className="py-2 pr-4 text-gray-400 font-medium">Parameter</th>
+                        <th className="py-2 pr-4 text-gray-400 font-medium">Grok</th>
+                        <th className="py-2 pr-4 text-gray-400 font-medium">Deepseek</th>
+                        <th className="py-2 text-gray-400 font-medium">Diff</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {assessmentCompareRows.map((row) => {
+                        const same = row.grok.trim().toLowerCase() === row.deepseek.trim().toLowerCase();
+                        return (
+                          <tr key={row.key} className="border-b border-gray-800 align-top">
+                            <td className="py-2 pr-4 text-gray-200 font-medium">{row.label}</td>
+                            <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.grok || 'N/A'}</td>
+                            <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.deepseek || 'N/A'}</td>
+                            <td className={`py-2 font-semibold ${same ? 'text-emerald-300' : 'text-amber-300'}`}>
+                              {same ? 'Same' : 'Different'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Detailed Metrics */}

@@ -433,6 +433,17 @@ export interface AssessmentResponse {
   status: 'pending' | 'completed' | 'failed';
 }
 
+export interface AssessmentCompareRow {
+  key: string;
+  label: string;
+  grok: string;
+  deepseek: string;
+}
+
+export interface AssessmentCompareResponse {
+  rows: AssessmentCompareRow[];
+}
+
 export const assessmentAPI = {
   request: (data: AssessmentRequest) => 
     api.post<{ assessment: string }>('/assessment/request', data, { timeout: ASSESSMENT_TIMEOUT }),
@@ -447,6 +458,8 @@ export const assessmentAPI = {
         limit,
       },
     }),
+  compare: (data: { ticker: string; grok_assessment: string; deepseek_assessment: string }) =>
+    api.post<AssessmentCompareResponse>('/assessment/compare', data, { timeout: ASSESSMENT_TIMEOUT }),
   getById: (id: number) => 
     api.get<AssessmentResponse>(`/assessment/${id}`),
 };
