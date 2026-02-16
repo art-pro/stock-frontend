@@ -5,6 +5,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
 // Default timeout for API requests (30 seconds)
 const DEFAULT_TIMEOUT = 30000;
+// LLM-heavy endpoints may require substantially longer response times.
+const ASSESSMENT_TIMEOUT = 180000;
 
 // Maximum cache size to prevent memory leaks
 const MAX_CACHE_SIZE = 100;
@@ -432,9 +434,9 @@ export interface AssessmentResponse {
 
 export const assessmentAPI = {
   request: (data: AssessmentRequest) => 
-    api.post<{ assessment: string }>('/assessment/request', data),
+    api.post<{ assessment: string }>('/assessment/request', data, { timeout: ASSESSMENT_TIMEOUT }),
   extractFromImages: (images: string[], source?: 'grok' | 'deepseek') =>
-    api.post<any>('/assessment/extract-from-images', { images, source }),
+    api.post<any>('/assessment/extract-from-images', { images, source }, { timeout: ASSESSMENT_TIMEOUT }),
   getRecent: () => 
     api.get<AssessmentResponse[]>('/assessment/recent'),
   getById: (id: number) => 
