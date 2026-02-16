@@ -45,7 +45,7 @@ export default function StockDetailPage() {
   const [assessmentApplyKey, setAssessmentApplyKey] = useState<string | null>(null);
   const [assessmentRefreshing, setAssessmentRefreshing] = useState(false);
   const [assessmentRequestPrice, setAssessmentRequestPrice] = useState('');
-  const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | 'both' | null>(null);
+  const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | 'alphavantage' | 'all' | null>(null);
   const [assessmentAskError, setAssessmentAskError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -370,29 +370,47 @@ export default function StockDetailPage() {
     }
   };
 
-  const askBothAssessmentsFromStockPage = async () => {
+  const askAlphaVantageFromStockPage = async () => {
     if (!stock) return;
     try {
-      setAssessmentAskingSource('both');
+      setAssessmentAskingSource('alphavantage');
+      setAssessmentAskError(null);
+      const response = await stockAPI.updateSingle(stock.id, 'alphavantage');
+      setStock(response.data);
+      invalidateCache('portfolio');
+    } catch (err: any) {
+      setAssessmentAskError(err.response?.data?.error || err.message || 'Failed to request Alpha Vantage update');
+    } finally {
+      setAssessmentAskingSource(null);
+    }
+  };
+
+  const askAllFromStockPage = async () => {
+    if (!stock) return;
+    try {
+      setAssessmentAskingSource('all');
       setAssessmentAskError(null);
 
       const grokPayload = buildAssessmentPayload('grok');
       const deepseekPayload = buildAssessmentPayload('deepseek');
       if (!grokPayload || !deepseekPayload) return;
 
-      const [grokResponse, deepseekResponse] = await Promise.all([
+      const [grokResponse, deepseekResponse, alphaResponse] = await Promise.all([
         assessmentAPI.request(grokPayload),
         assessmentAPI.request(deepseekPayload),
+        stockAPI.updateSingle(stock.id, 'alphavantage'),
       ]);
 
       upsertLocalAssessment('grok', grokResponse.data?.assessment || '');
       upsertLocalAssessment('deepseek', deepseekResponse.data?.assessment || '');
+      setStock(alphaResponse.data);
+      invalidateCache('portfolio');
 
       // Let backend commit/update persisted records and diff, then refresh canonical data.
       await new Promise((resolve) => setTimeout(resolve, 400));
       await refreshAssessments();
     } catch (err: any) {
-      setAssessmentAskError(err.response?.data?.error || err.message || 'Failed to request assessments');
+      setAssessmentAskError(err.response?.data?.error || err.message || 'Failed to request all sources');
     } finally {
       setAssessmentAskingSource(null);
     }
@@ -487,6 +505,11 @@ export default function StockDetailPage() {
     };
   };
 
+  const isMissingMetric = (value: string) => {
+    const normalized = (value || '').trim().toUpperCase();
+    return normalized === '' || normalized === 'N/A' || normalized === '—' || normalized === '-';
+  };
+
   const compareMetricValues = (left: string, right: string) => {
     const a = parseMetricValue(left);
     const b = parseMetricValue(right);
@@ -499,32 +522,32 @@ export default function StockDetailPage() {
     return (a.normalizedText || '') === (b.normalizedText || '');
   };
 
-  const formatAverageMetric = (rowKey: string, left: string, right: string) => {
+  const formatAverageMetric = (rowKey: string, values: string[]) => {
     if (rowKey === 'current_price') return '—';
-    const a = parseMetricValue(left);
-    const b = parseMetricValue(right);
-    if (!a.hasNumeric || !b.hasNumeric) return 'N/A';
+    const parsedValues = values.map(parseMetricValue).filter((v) => v.hasNumeric);
+    if (parsedValues.length === 0) return 'N/A';
 
-    const avg = ((a.numericValue || 0) + (b.numericValue || 0)) / 2;
-    const preferredUnit = a.unitType !== 'plain' ? a.unitType : b.unitType;
+    const avg = parsedValues.reduce((acc, item) => acc + (item.numericValue || 0), 0) / parsedValues.length;
+    const preferredUnit = parsedValues.find((v) => v.unitType !== 'plain')?.unitType || 'plain';
+    const preferredCode = parsedValues.find((v) => v.currencyCode)?.currencyCode;
+    const preferredSymbol = parsedValues.find((v) => v.currencySymbol)?.currencySymbol;
 
     if (preferredUnit === 'percent') return `${avg.toFixed(2)}%`;
     if (preferredUnit === 'multiple') return `${avg.toFixed(2)}x`;
     if (preferredUnit === 'currency') {
-      const code = a.currencyCode || b.currencyCode;
-      const symbol = a.currencySymbol || b.currencySymbol;
+      const code = preferredCode;
+      const symbol = preferredSymbol;
       if (code) return `${avg.toFixed(2)} ${code}`;
       if (symbol) return `${symbol}${avg.toFixed(2)}`;
     }
     return avg.toFixed(2);
   };
 
-  const averageNumericMetric = (rowKey: string, left: string, right: string): number | null => {
+  const averageNumericMetric = (rowKey: string, values: string[]): number | null => {
     if (rowKey === 'current_price') return null;
-    const a = parseMetricValue(left);
-    const b = parseMetricValue(right);
-    if (!a.hasNumeric || !b.hasNumeric) return null;
-    return ((a.numericValue || 0) + (b.numericValue || 0)) / 2;
+    const parsedValues = values.map(parseMetricValue).filter((v) => v.hasNumeric);
+    if (parsedValues.length === 0) return null;
+    return parsedValues.reduce((acc, item) => acc + (item.numericValue || 0), 0) / parsedValues.length;
   };
 
   const rowKeyToStockField: Record<string, string> = {
@@ -538,11 +561,83 @@ export default function StockDetailPage() {
     dividend_yield: 'dividend_yield',
   };
 
+  const parseNumericString = (raw: unknown): number | null => {
+    if (typeof raw !== 'string') return null;
+    const normalized = raw.trim().replace(/,/g, '.');
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const getAlphaVantageValueForRow = (rowKey: string): string => {
+    if (!stock?.alpha_vantage_raw_json) return 'N/A';
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(stock.alpha_vantage_raw_json);
+    } catch {
+      return 'N/A';
+    }
+
+    const overview = parsed?.overview || {};
+    const quote = parsed?.quote?.['Global Quote'] || {};
+    const currency = stock.currency || 'USD';
+
+    const price = parseNumericString(quote['05. price']);
+    const target = parseNumericString(overview['AnalystTargetPrice']);
+    const beta = parseNumericString(overview['Beta']);
+    const forwardPE = parseNumericString(overview['ForwardPE'] || overview['PERatio']);
+    const epsGrowthYoy = parseNumericString(overview['QuarterlyEarningsGrowthYOY']);
+    const dividendYield = parseNumericString(overview['DividendYield']);
+    const evToEbitda = parseNumericString(overview['EVToEBITDA']);
+
+    switch (rowKey) {
+      case 'current_price':
+        return price !== null ? `${price.toFixed(2)} ${currency}` : 'N/A';
+      case 'fair_value_estimate':
+        return target !== null ? `${target.toFixed(2)} ${currency}` : 'N/A';
+      case 'upside_potential':
+        if (price !== null && target !== null && price > 0) {
+          return `${(((target - price) / price) * 100).toFixed(1)}%`;
+        }
+        return 'N/A';
+      case 'beta':
+        return beta !== null ? beta.toFixed(2) : 'N/A';
+      case 'downside_risk':
+        return Number.isFinite(stock.downside_risk) ? `${stock.downside_risk.toFixed(1)}%` : 'N/A';
+      case 'probability_positive':
+        return Number.isFinite(stock.probability_positive) ? stock.probability_positive.toFixed(2) : 'N/A';
+      case 'volatility':
+        return Number.isFinite(stock.volatility) ? `${stock.volatility.toFixed(1)}%` : 'N/A';
+      case 'forward_pe_ratio':
+        return forwardPE !== null ? `${forwardPE.toFixed(2)}x` : 'N/A';
+      case 'eps_growth':
+        return epsGrowthYoy !== null ? `${(epsGrowthYoy * 100).toFixed(1)}%` : 'N/A';
+      case 'debt_to_ebitda_ttm':
+        return evToEbitda !== null ? `${evToEbitda.toFixed(1)}x` : 'N/A';
+      case 'dividend_yield':
+        return dividendYield !== null ? `${(dividendYield * 100).toFixed(2)}%` : 'N/A';
+      case 'expected_value_calculation':
+        return Number.isFinite(stock.expected_value) ? `${stock.expected_value.toFixed(2)}%` : 'N/A';
+      case 'kelly_criterion_sizing':
+        return Number.isFinite(stock.kelly_fraction) ? `${stock.kelly_fraction.toFixed(2)}%` : 'N/A';
+      case 'buy_zone':
+        if (stock.buy_zone_min > 0 && stock.buy_zone_max > 0) {
+          return `${stock.buy_zone_min.toFixed(2)}-${stock.buy_zone_max.toFixed(2)} ${currency}`;
+        }
+        return 'N/A';
+      case 'final_assessment':
+        return (stock.assessment || 'N/A').toUpperCase();
+      default:
+        return 'N/A';
+    }
+  };
+
   const applyAverageToStock = async (row: AssessmentCompareRow) => {
     if (!stock) return;
     const targetField = rowKeyToStockField[row.key];
     if (!targetField) return;
-    const avgNumeric = averageNumericMetric(row.key, row.grok || '', row.deepseek || '');
+    const alphaValue = getAlphaVantageValueForRow(row.key);
+    const avgNumeric = averageNumericMetric(row.key, [row.grok || '', row.deepseek || '', alphaValue]);
     if (avgNumeric === null) {
       alert('Average value is not numeric and cannot be applied.');
       return;
@@ -1155,11 +1250,18 @@ export default function StockDetailPage() {
                 {assessmentAskingSource === 'deepseek' ? 'Asking Deepseek...' : 'Ask Deepseek'}
               </button>
               <button
-                onClick={askBothAssessmentsFromStockPage}
+                onClick={askAlphaVantageFromStockPage}
+                disabled={assessmentAskingSource !== null}
+                className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {assessmentAskingSource === 'alphavantage' ? 'Asking Alpha Vantage...' : 'Ask Alpha Vantage'}
+              </button>
+              <button
+                onClick={askAllFromStockPage}
                 disabled={assessmentAskingSource !== null}
                 className="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {assessmentAskingSource === 'both' ? 'Asking Both...' : 'Ask Both'}
+                {assessmentAskingSource === 'all' ? 'Asking All...' : 'Ask All'}
               </button>
             </div>
             {assessmentAskError && (
@@ -1222,21 +1324,27 @@ export default function StockDetailPage() {
                         <th className="py-2 pr-4 text-gray-400 font-medium">Parameter</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Grok</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Deepseek</th>
+                        <th className="py-2 pr-4 text-gray-400 font-medium">Alpha Vantage</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Average</th>
                         <th className="py-2 text-gray-400 font-medium">Diff</th>
                       </tr>
                     </thead>
                     <tbody>
                       {assessmentCompareRows.map((row) => {
-                        const same = compareMetricValues(row.grok || '', row.deepseek || '');
-                        const averageValue = formatAverageMetric(row.key, row.grok || '', row.deepseek || '');
-                        const averageNumeric = averageNumericMetric(row.key, row.grok || '', row.deepseek || '');
+                        const alphaValue = getAlphaVantageValueForRow(row.key);
+                        const comparableValues = [row.grok || '', row.deepseek || '', alphaValue].filter((v) => !isMissingMetric(v));
+                        const same =
+                          comparableValues.length <= 1 ||
+                          comparableValues.every((value) => compareMetricValues(comparableValues[0], value));
+                        const averageValue = formatAverageMetric(row.key, [row.grok || '', row.deepseek || '', alphaValue]);
+                        const averageNumeric = averageNumericMetric(row.key, [row.grok || '', row.deepseek || '', alphaValue]);
                         const canApply = Boolean(rowKeyToStockField[row.key] && averageNumeric !== null);
                         return (
                           <tr key={row.key} className="border-b border-gray-800 align-top">
                             <td className="py-2 pr-4 text-gray-200 font-medium">{row.label}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.grok || 'N/A'}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.deepseek || 'N/A'}</td>
+                            <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{alphaValue}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">
                               <div className="flex items-center gap-2">
                                 <span>{averageValue}</span>
