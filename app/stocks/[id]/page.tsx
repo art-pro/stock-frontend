@@ -42,6 +42,7 @@ export default function StockDetailPage() {
   const [assessmentCompareRows, setAssessmentCompareRows] = useState<AssessmentCompareRow[]>([]);
   const [assessmentCompareLoading, setAssessmentCompareLoading] = useState(false);
   const [assessmentCompareError, setAssessmentCompareError] = useState<string | null>(null);
+  const [assessmentRefreshing, setAssessmentRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -409,6 +410,19 @@ export default function StockDetailPage() {
   }, {});
   const grokAssessmentText = latestBySource.grok?.assessment || '';
   const deepseekAssessmentText = latestBySource.deepseek?.assessment || '';
+
+  const refreshAssessments = async () => {
+    if (!stock?.ticker) return;
+    try {
+      setAssessmentRefreshing(true);
+      const response = await assessmentAPI.getByTicker(stock.ticker, undefined, 30);
+      setAssessments(response.data || []);
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.message || 'Failed to refresh assessments');
+    } finally {
+      setAssessmentRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     const ticker = stock?.ticker;
@@ -851,7 +865,17 @@ export default function StockDetailPage() {
 
         {/* Assessment Information */}
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">Assessment</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white">Assessment</h2>
+            <button
+              onClick={refreshAssessments}
+              disabled={assessmentRefreshing}
+              className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Fetch latest Grok and Deepseek assessments for this ticker"
+            >
+              {assessmentRefreshing ? 'Refreshing...' : 'Refresh Assessment'}
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-3 rounded-lg border border-gray-700 bg-gray-900/30">
               <div className="flex items-center justify-between mb-2">
