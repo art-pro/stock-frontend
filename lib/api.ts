@@ -458,6 +458,8 @@ export const assessmentAPI = {
         limit,
       },
     }),
+  getDiffByTicker: (ticker: string) =>
+    api.get<AssessmentCompareResponse>(`/assessment/ticker/${encodeURIComponent(ticker)}/diff`),
   compare: (data: { ticker: string; grok_assessment: string; deepseek_assessment: string }) =>
     api.post<AssessmentCompareResponse>('/assessment/compare', data, { timeout: ASSESSMENT_TIMEOUT }),
   getById: (id: number) => 

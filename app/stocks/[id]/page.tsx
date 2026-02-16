@@ -320,11 +320,7 @@ export default function StockDetailPage() {
       try {
         setAssessmentCompareLoading(true);
         setAssessmentCompareError(null);
-        const response = await assessmentAPI.compare({
-          ticker,
-          grok_assessment: grokAssessmentText,
-          deepseek_assessment: deepseekAssessmentText,
-        });
+        const response = await assessmentAPI.getDiffByTicker(ticker);
         if (!cancelled) {
           setAssessmentCompareRows(response.data.rows || []);
         }
