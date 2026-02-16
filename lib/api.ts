@@ -425,6 +425,7 @@ export interface AssessmentRequest {
 }
 
 export interface AssessmentResponse {
+  id?: number;
   ticker: string;
   source: string;
   assessment: string;
@@ -439,6 +440,13 @@ export const assessmentAPI = {
     api.post<any>('/assessment/extract-from-images', { images, source }, { timeout: ASSESSMENT_TIMEOUT }),
   getRecent: () => 
     api.get<AssessmentResponse[]>('/assessment/recent'),
+  getByTicker: (ticker: string, source?: 'grok' | 'deepseek', limit: number = 20) =>
+    api.get<AssessmentResponse[]>(`/assessment/ticker/${encodeURIComponent(ticker)}`, {
+      params: {
+        ...(source ? { source } : {}),
+        limit,
+      },
+    }),
   getById: (id: number) => 
     api.get<AssessmentResponse>(`/assessment/${id}`),
 };

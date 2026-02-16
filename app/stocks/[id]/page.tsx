@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { invalidateCache, stockAPI, Stock, StockHistory, FairValueHistoryEntry } from '@/lib/api';
+import { invalidateCache, stockAPI, assessmentAPI, Stock, StockHistory, FairValueHistoryEntry, AssessmentResponse } from '@/lib/api';
 import { getDistanceToBuyZone, getDistanceToSellZone, getKellyHint } from '@/lib/portfolioInsights';
 import DataSourceModal from '@/components/DataSourceModal';
 import TooltipIcon from '@/components/Tooltip';
@@ -38,6 +38,7 @@ export default function StockDetailPage() {
   const [stock, setStock] = useState<Stock | null>(null);
   const [history, setHistory] = useState<StockHistory[]>([]);
   const [fairValueHistory, setFairValueHistory] = useState<FairValueHistoryEntry[]>([]);
+  const [assessments, setAssessments] = useState<AssessmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -61,14 +62,16 @@ export default function StockDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [stockRes, historyRes, fairValueHistoryRes] = await Promise.all([
-          stockAPI.getById(id),
+        const stockRes = await stockAPI.getById(id);
+        const [historyRes, fairValueHistoryRes, assessmentsRes] = await Promise.all([
           stockAPI.getHistory(id),
           stockAPI.getFairValueHistory(id),
+          assessmentAPI.getByTicker(stockRes.data.ticker, undefined, 30),
         ]);
         setStock(stockRes.data);
         setHistory(historyRes.data);
         setFairValueHistory(fairValueHistoryRes.data);
+        setAssessments(assessmentsRes.data || []);
       } catch (err) {
         console.error(err);
         alert('Failed to load stock details');
@@ -395,6 +398,12 @@ export default function StockDetailPage() {
     const d = new Date(entry.recorded_at);
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   });
+  const latestBySource = assessments.reduce<{ grok?: AssessmentResponse; deepseek?: AssessmentResponse }>((acc, item) => {
+    const src = (item.source || '').toLowerCase();
+    if (src === 'grok' && !acc.grok) acc.grok = item;
+    if (src === 'deepseek' && !acc.deepseek) acc.deepseek = item;
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -794,6 +803,48 @@ export default function StockDetailPage() {
                 <span className="text-gray-400">Primary Source:</span>
                 <span className="ml-2 text-white">{stock.data_source || 'Not specified'}</span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Assessment Information */}
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+          <h2 className="text-xl font-bold text-white mb-4">Assessment</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-3 rounded-lg border border-gray-700 bg-gray-900/30">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-200">Grok</h3>
+                {latestBySource.grok?.created_at && (
+                  <span className="text-xs text-gray-500">
+                    {new Date(latestBySource.grok.created_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              {latestBySource.grok ? (
+                <p className="text-sm text-gray-300 whitespace-pre-wrap max-h-56 overflow-y-auto">
+                  {latestBySource.grok.assessment}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 italic">No Grok assessment yet.</p>
+              )}
+            </div>
+
+            <div className="p-3 rounded-lg border border-gray-700 bg-gray-900/30">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-200">Deepseek</h3>
+                {latestBySource.deepseek?.created_at && (
+                  <span className="text-xs text-gray-500">
+                    {new Date(latestBySource.deepseek.created_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              {latestBySource.deepseek ? (
+                <p className="text-sm text-gray-300 whitespace-pre-wrap max-h-56 overflow-y-auto">
+                  {latestBySource.deepseek.assessment}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 italic">No Deepseek assessment yet.</p>
+              )}
             </div>
           </div>
         </div>
