@@ -374,7 +374,15 @@ export default function StockDetailPage() {
       try {
         setAssessmentCompareLoading(true);
         setAssessmentCompareError(null);
-        const response = await assessmentAPI.getDiffByTicker(ticker);
+        let response = await assessmentAPI.getDiffByTicker(ticker);
+        if (!response.data.rows || response.data.rows.length === 0) {
+          // Fallback: regenerate persisted diff if missing.
+          response = await assessmentAPI.compare({
+            ticker,
+            grok_assessment: grokAssessmentText,
+            deepseek_assessment: deepseekAssessmentText,
+          });
+        }
         if (!cancelled) {
           setAssessmentCompareRows(response.data.rows || []);
         }
