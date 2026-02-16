@@ -43,6 +43,9 @@ export default function StockDetailPage() {
   const [assessmentCompareLoading, setAssessmentCompareLoading] = useState(false);
   const [assessmentCompareError, setAssessmentCompareError] = useState<string | null>(null);
   const [assessmentRefreshing, setAssessmentRefreshing] = useState(false);
+  const [assessmentRequestPrice, setAssessmentRequestPrice] = useState('');
+  const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | null>(null);
+  const [assessmentAskError, setAssessmentAskError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -73,6 +76,7 @@ export default function StockDetailPage() {
           assessmentAPI.getByTicker(stockRes.data.ticker, undefined, 30),
         ]);
         setStock(stockRes.data);
+        setAssessmentRequestPrice(stockRes.data.current_price > 0 ? String(stockRes.data.current_price) : '');
         setHistory(historyRes.data);
         setFairValueHistory(fairValueHistoryRes.data);
         setAssessments(assessmentsRes.data || []);
@@ -304,6 +308,33 @@ export default function StockDetailPage() {
       alert(err.response?.data?.error || err.message || 'Failed to refresh assessments');
     } finally {
       setAssessmentRefreshing(false);
+    }
+  };
+
+  const askAssessmentFromStockPage = async (source: 'grok' | 'deepseek') => {
+    if (!stock) return;
+    try {
+      setAssessmentAskingSource(source);
+      setAssessmentAskError(null);
+
+      const requestPrice = Number.parseFloat(assessmentRequestPrice.replace(',', '.'));
+      const payload: any = {
+        ticker: stock.ticker,
+        isin: stock.isin || undefined,
+        company_name: stock.company_name || undefined,
+        source,
+      };
+      if (Number.isFinite(requestPrice) && requestPrice > 0) {
+        payload.current_price = requestPrice;
+        payload.currency = stock.currency;
+      }
+
+      await assessmentAPI.request(payload);
+      await refreshAssessments();
+    } catch (err: any) {
+      setAssessmentAskError(err.response?.data?.error || err.message || 'Failed to request assessment');
+    } finally {
+      setAssessmentAskingSource(null);
     }
   };
 
@@ -906,6 +937,38 @@ export default function StockDetailPage() {
               {assessmentRefreshing ? 'Refreshing...' : 'Refresh Assessment'}
             </button>
           </div>
+
+          <div className="mb-4 p-3 rounded-lg border border-gray-700 bg-gray-900/30">
+            <p className="text-xs text-gray-400 mb-3">Request a fresh assessment directly for this stock.</p>
+            <div className="flex flex-col md:flex-row gap-2 md:items-center">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={assessmentRequestPrice}
+                onChange={(e) => setAssessmentRequestPrice(e.target.value)}
+                placeholder={`Current price (${stock.currency})`}
+                className="w-full md:w-56 bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none text-sm"
+              />
+              <button
+                onClick={() => askAssessmentFromStockPage('grok')}
+                disabled={assessmentAskingSource !== null}
+                className="px-3 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {assessmentAskingSource === 'grok' ? 'Asking Grok...' : 'Ask Grok'}
+              </button>
+              <button
+                onClick={() => askAssessmentFromStockPage('deepseek')}
+                disabled={assessmentAskingSource !== null}
+                className="px-3 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {assessmentAskingSource === 'deepseek' ? 'Asking Deepseek...' : 'Ask Deepseek'}
+              </button>
+            </div>
+            {assessmentAskError && (
+              <p className="text-xs text-red-300 mt-2">{assessmentAskError}</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="p-3 rounded-lg border border-gray-700 bg-gray-900/30">
               <div className="flex items-center justify-between mb-2">

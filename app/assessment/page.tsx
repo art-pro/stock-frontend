@@ -34,6 +34,7 @@ export default function AssessmentPage() {
   
   // Single Assessment State
   const [ticker, setTicker] = useState('');
+  const [isin, setIsin] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [currentPrice, setCurrentPrice] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -101,6 +102,10 @@ export default function AssessmentPage() {
         ticker: ticker.toUpperCase().trim(),
         source,
       };
+
+      if (isin.trim()) {
+        requestData.isin = isin.trim().toUpperCase();
+      }
 
       if (companyName.trim()) {
         requestData.company_name = companyName.trim();
@@ -519,6 +524,23 @@ export default function AssessmentPage() {
                       disabled={loading}
                       required
                     />
+                  </div>
+
+                  <div>
+                    <label htmlFor="isin" className="block text-sm font-medium text-gray-400 mb-2">
+                      ISIN
+                    </label>
+                    <input
+                      type="text"
+                      id="isin"
+                      value={isin}
+                      onChange={(e) => setIsin(e.target.value.toUpperCase())}
+                      placeholder="e.g., US5949181045"
+                      maxLength={12}
+                      className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
+                      disabled={loading}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Use ISIN for unambiguous stock identification</p>
                   </div>
 
                   <div>

@@ -412,6 +412,7 @@ export const cashAPI = {
 // Assessment API
 export interface AssessmentRequest {
   ticker: string;
+  isin?: string;
   source: 'grok' | 'deepseek';
   company_name?: string;
   current_price?: number;
