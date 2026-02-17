@@ -534,6 +534,9 @@ export default function StockDetailPage() {
     return (a.normalizedText || '') === (b.normalizedText || '');
   };
 
+  /** Row keys that use trimmed mean (drop min and max, then average). All other numeric metrics use median. */
+  const TRIMMED_MEAN_ROW_KEYS = new Set<string>(['beta', 'volatility']);
+
   const medianOfNumbers = (nums: number[]): number => {
     if (nums.length === 0) return 0;
     const sorted = [...nums].sort((a, b) => a - b);
@@ -541,34 +544,43 @@ export default function StockDetailPage() {
     return sorted.length % 2 !== 0 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
   };
 
-  const formatMedianMetric = (rowKey: string, values: string[]) => {
+  /** Trim one value from each end (min and max), then average. If n < 3, average all. */
+  const trimmedMeanOfNumbers = (nums: number[]): number => {
+    if (nums.length === 0) return 0;
+    if (nums.length <= 2) return nums.reduce((a, b) => a + b, 0) / nums.length;
+    const sorted = [...nums].sort((a, b) => a - b);
+    const trimmed = sorted.slice(1, -1);
+    return trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
+  };
+
+  const formatResultMetric = (rowKey: string, values: string[]) => {
     if (rowKey === 'current_price') return '—';
     const parsedValues = values.map(parseMetricValue).filter((v) => v.hasNumeric);
     if (parsedValues.length === 0) return 'N/A';
 
     const nums = parsedValues.map((v) => v.numericValue ?? 0);
-    const median = medianOfNumbers(nums);
+    const value = TRIMMED_MEAN_ROW_KEYS.has(rowKey) ? trimmedMeanOfNumbers(nums) : medianOfNumbers(nums);
     const preferredUnit = parsedValues.find((v) => v.unitType !== 'plain')?.unitType || 'plain';
     const preferredCode = parsedValues.find((v) => v.currencyCode)?.currencyCode;
     const preferredSymbol = parsedValues.find((v) => v.currencySymbol)?.currencySymbol;
 
-    if (preferredUnit === 'percent') return `${median.toFixed(2)}%`;
-    if (preferredUnit === 'multiple') return `${median.toFixed(2)}x`;
+    if (preferredUnit === 'percent') return `${value.toFixed(2)}%`;
+    if (preferredUnit === 'multiple') return `${value.toFixed(2)}x`;
     if (preferredUnit === 'currency') {
       const code = preferredCode;
       const symbol = preferredSymbol;
-      if (code) return `${median.toFixed(2)} ${code}`;
-      if (symbol) return `${symbol}${median.toFixed(2)}`;
+      if (code) return `${value.toFixed(2)} ${code}`;
+      if (symbol) return `${symbol}${value.toFixed(2)}`;
     }
-    return median.toFixed(2);
+    return value.toFixed(2);
   };
 
-  const medianNumericMetric = (rowKey: string, values: string[]): number | null => {
+  const resultNumericMetric = (rowKey: string, values: string[]): number | null => {
     if (rowKey === 'current_price') return null;
     const parsedValues = values.map(parseMetricValue).filter((v) => v.hasNumeric);
     if (parsedValues.length === 0) return null;
     const nums = parsedValues.map((v) => v.numericValue ?? 0);
-    return medianOfNumbers(nums);
+    return TRIMMED_MEAN_ROW_KEYS.has(rowKey) ? trimmedMeanOfNumbers(nums) : medianOfNumbers(nums);
   };
 
   const rowKeyToStockField: Record<string, string> = {
@@ -654,27 +666,27 @@ export default function StockDetailPage() {
     }
   };
 
-  const applyMedianToStock = async (row: AssessmentCompareRow) => {
+  const applyResultToStock = async (row: AssessmentCompareRow) => {
     if (!stock) return;
     const targetField = rowKeyToStockField[row.key];
     if (!targetField) return;
     const alphaValue = getAlphaVantageValueForRow(row.key);
     const values = [row.grok || '', row.deepseek || '', row.perplexity || '', row.chatgpt || '', alphaValue];
-    const medianNumeric = medianNumericMetric(row.key, values);
-    if (medianNumeric === null) {
-      alert('Median value is not numeric and cannot be applied.');
+    const resultNumeric = resultNumericMetric(row.key, values);
+    if (resultNumeric === null) {
+      alert('Result value is not numeric and cannot be applied.');
       return;
     }
 
     try {
       setAssessmentApplyKey(row.key);
-      const response = await stockAPI.updateField(stock.id, targetField, medianNumeric);
+      const response = await stockAPI.updateField(stock.id, targetField, resultNumeric);
       if (response?.data) {
         setStock(response.data);
       }
       invalidateCache('portfolio');
     } catch (err: any) {
-      alert(err.response?.data?.error || err.message || 'Failed to apply median value');
+      alert(err.response?.data?.error || err.message || 'Failed to apply result value');
     } finally {
       setAssessmentApplyKey(null);
     }
@@ -1400,7 +1412,7 @@ export default function StockDetailPage() {
                         <th className="py-2 pr-4 text-gray-400 font-medium">Perplexity</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">ChatGPT</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Alpha Vantage</th>
-                        <th className="py-2 pr-4 text-gray-400 font-medium">Median</th>
+                        <th className="py-2 pr-4 text-gray-400 font-medium">Result</th>
                         <th className="py-2 text-gray-400 font-medium">Diff</th>
                       </tr>
                     </thead>
@@ -1412,9 +1424,9 @@ export default function StockDetailPage() {
                         const same =
                           comparableValues.length <= 1 ||
                           comparableValues.every((value) => compareMetricValues(comparableValues[0]!, value));
-                        const medianValue = formatMedianMetric(row.key, values);
-                        const medianNumeric = medianNumericMetric(row.key, values);
-                        const canApply = Boolean(rowKeyToStockField[row.key] && medianNumeric !== null);
+                        const resultValue = formatResultMetric(row.key, values);
+                        const resultNumeric = resultNumericMetric(row.key, values);
+                        const canApply = Boolean(rowKeyToStockField[row.key] && resultNumeric !== null);
                         return (
                           <tr key={row.key} className="border-b border-gray-800 align-top">
                             <td className="py-2 pr-4 text-gray-200 font-medium">{row.label}</td>
@@ -1425,13 +1437,13 @@ export default function StockDetailPage() {
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{alphaValue}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">
                               <div className="flex items-center gap-2">
-                                <span>{medianValue}</span>
+                                <span>{resultValue}</span>
                                 {canApply && (
                                   <button
-                                    onClick={() => applyMedianToStock(row)}
+                                    onClick={() => applyResultToStock(row)}
                                     disabled={assessmentApplyKey !== null}
                                     className="px-1.5 py-0.5 text-[11px] rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Apply median value to this stock field"
+                                    title="Apply result value to this stock field"
                                   >
                                     {assessmentApplyKey === row.key ? 'Applying...' : 'Apply'}
                                   </button>
