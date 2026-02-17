@@ -45,7 +45,7 @@ export default function StockDetailPage() {
   const [assessmentApplyKey, setAssessmentApplyKey] = useState<string | null>(null);
   const [assessmentRefreshing, setAssessmentRefreshing] = useState(false);
   const [assessmentRequestPrice, setAssessmentRequestPrice] = useState('');
-  const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | 'alphavantage' | 'all' | null>(null);
+  const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | 'perplexity' | 'alphavantage' | 'all' | null>(null);
   const [assessmentAskError, setAssessmentAskError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -290,14 +290,16 @@ export default function StockDetailPage() {
     );
   };
 
-  const latestBySource = assessments.reduce<{ grok?: AssessmentResponse; deepseek?: AssessmentResponse }>((acc, item) => {
+  const latestBySource = assessments.reduce<{ grok?: AssessmentResponse; deepseek?: AssessmentResponse; perplexity?: AssessmentResponse }>((acc, item) => {
     const src = (item.source || '').toLowerCase();
     if (src === 'grok' && !acc.grok) acc.grok = item;
     if (src === 'deepseek' && !acc.deepseek) acc.deepseek = item;
+    if (src === 'perplexity' && !acc.perplexity) acc.perplexity = item;
     return acc;
   }, {});
   const grokAssessmentText = latestBySource.grok?.assessment || '';
   const deepseekAssessmentText = latestBySource.deepseek?.assessment || '';
+  const perplexityAssessmentText = latestBySource.perplexity?.assessment || '';
 
   const refreshAssessments = async () => {
     if (!stock?.ticker) return;
@@ -316,10 +318,11 @@ export default function StockDetailPage() {
     }
   };
 
-  const upsertLocalAssessment = (source: 'grok' | 'deepseek', assessmentText: string) => {
+  const upsertLocalAssessment = (source: 'grok' | 'deepseek' | 'perplexity', assessmentText: string) => {
     if (!stock || !assessmentText) return;
+    const idOffset = source === 'grok' ? 1 : source === 'deepseek' ? 2 : 3;
     const nextEntry: AssessmentResponse = {
-      id: Date.now() + (source === 'grok' ? 1 : 2),
+      id: Date.now() + idOffset,
       ticker: stock.ticker,
       source,
       assessment: assessmentText,
@@ -332,7 +335,7 @@ export default function StockDetailPage() {
     });
   };
 
-  const buildAssessmentPayload = (source: 'grok' | 'deepseek') => {
+  const buildAssessmentPayload = (source: 'grok' | 'deepseek' | 'perplexity') => {
     if (!stock) return null;
     const requestPrice = Number.parseFloat(assessmentRequestPrice.replace(',', '.'));
     const payload: any = {
@@ -348,7 +351,7 @@ export default function StockDetailPage() {
     return payload;
   };
 
-  const askAssessmentFromStockPage = async (source: 'grok' | 'deepseek') => {
+  const askAssessmentFromStockPage = async (source: 'grok' | 'deepseek' | 'perplexity') => {
     if (!stock) return;
     try {
       setAssessmentAskingSource(source);
@@ -393,16 +396,19 @@ export default function StockDetailPage() {
 
       const grokPayload = buildAssessmentPayload('grok');
       const deepseekPayload = buildAssessmentPayload('deepseek');
-      if (!grokPayload || !deepseekPayload) return;
+      const perplexityPayload = buildAssessmentPayload('perplexity');
+      if (!grokPayload || !deepseekPayload || !perplexityPayload) return;
 
-      const [grokResponse, deepseekResponse, alphaResponse] = await Promise.all([
+      const [grokResponse, deepseekResponse, perplexityResponse, alphaResponse] = await Promise.all([
         assessmentAPI.request(grokPayload),
         assessmentAPI.request(deepseekPayload),
+        assessmentAPI.request(perplexityPayload),
         stockAPI.updateSingle(stock.id, 'alphavantage'),
       ]);
 
       upsertLocalAssessment('grok', grokResponse.data?.assessment || '');
       upsertLocalAssessment('deepseek', deepseekResponse.data?.assessment || '');
+      upsertLocalAssessment('perplexity', perplexityResponse.data?.assessment || '');
       setStock(alphaResponse.data);
       invalidateCache('portfolio');
 
@@ -431,11 +437,11 @@ export default function StockDetailPage() {
         setAssessmentCompareError(null);
         let response = await assessmentAPI.getDiffByTicker(ticker);
         if (!response.data.rows || response.data.rows.length === 0) {
-          // Fallback: regenerate persisted diff if missing.
           response = await assessmentAPI.compare({
             ticker,
             grok_assessment: grokAssessmentText,
             deepseek_assessment: deepseekAssessmentText,
+            ...(perplexityAssessmentText ? { perplexity_assessment: perplexityAssessmentText } : {}),
           });
         }
         if (!cancelled) {
@@ -455,7 +461,7 @@ export default function StockDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [stock?.ticker, grokAssessmentText, deepseekAssessmentText]);
+  }, [stock?.ticker, grokAssessmentText, deepseekAssessmentText, perplexityAssessmentText]);
 
   const parseMetricValue = (value: string) => {
     const raw = (value || '').trim();
@@ -522,32 +528,41 @@ export default function StockDetailPage() {
     return (a.normalizedText || '') === (b.normalizedText || '');
   };
 
-  const formatAverageMetric = (rowKey: string, values: string[]) => {
+  const medianOfNumbers = (nums: number[]): number => {
+    if (nums.length === 0) return 0;
+    const sorted = [...nums].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+  };
+
+  const formatMedianMetric = (rowKey: string, values: string[]) => {
     if (rowKey === 'current_price') return '—';
     const parsedValues = values.map(parseMetricValue).filter((v) => v.hasNumeric);
     if (parsedValues.length === 0) return 'N/A';
 
-    const avg = parsedValues.reduce((acc, item) => acc + (item.numericValue || 0), 0) / parsedValues.length;
+    const nums = parsedValues.map((v) => v.numericValue ?? 0);
+    const median = medianOfNumbers(nums);
     const preferredUnit = parsedValues.find((v) => v.unitType !== 'plain')?.unitType || 'plain';
     const preferredCode = parsedValues.find((v) => v.currencyCode)?.currencyCode;
     const preferredSymbol = parsedValues.find((v) => v.currencySymbol)?.currencySymbol;
 
-    if (preferredUnit === 'percent') return `${avg.toFixed(2)}%`;
-    if (preferredUnit === 'multiple') return `${avg.toFixed(2)}x`;
+    if (preferredUnit === 'percent') return `${median.toFixed(2)}%`;
+    if (preferredUnit === 'multiple') return `${median.toFixed(2)}x`;
     if (preferredUnit === 'currency') {
       const code = preferredCode;
       const symbol = preferredSymbol;
-      if (code) return `${avg.toFixed(2)} ${code}`;
-      if (symbol) return `${symbol}${avg.toFixed(2)}`;
+      if (code) return `${median.toFixed(2)} ${code}`;
+      if (symbol) return `${symbol}${median.toFixed(2)}`;
     }
-    return avg.toFixed(2);
+    return median.toFixed(2);
   };
 
-  const averageNumericMetric = (rowKey: string, values: string[]): number | null => {
+  const medianNumericMetric = (rowKey: string, values: string[]): number | null => {
     if (rowKey === 'current_price') return null;
     const parsedValues = values.map(parseMetricValue).filter((v) => v.hasNumeric);
     if (parsedValues.length === 0) return null;
-    return parsedValues.reduce((acc, item) => acc + (item.numericValue || 0), 0) / parsedValues.length;
+    const nums = parsedValues.map((v) => v.numericValue ?? 0);
+    return medianOfNumbers(nums);
   };
 
   const rowKeyToStockField: Record<string, string> = {
@@ -633,26 +648,27 @@ export default function StockDetailPage() {
     }
   };
 
-  const applyAverageToStock = async (row: AssessmentCompareRow) => {
+  const applyMedianToStock = async (row: AssessmentCompareRow) => {
     if (!stock) return;
     const targetField = rowKeyToStockField[row.key];
     if (!targetField) return;
     const alphaValue = getAlphaVantageValueForRow(row.key);
-    const avgNumeric = averageNumericMetric(row.key, [row.grok || '', row.deepseek || '', alphaValue]);
-    if (avgNumeric === null) {
-      alert('Average value is not numeric and cannot be applied.');
+    const values = [row.grok || '', row.deepseek || '', row.perplexity || '', alphaValue];
+    const medianNumeric = medianNumericMetric(row.key, values);
+    if (medianNumeric === null) {
+      alert('Median value is not numeric and cannot be applied.');
       return;
     }
 
     try {
       setAssessmentApplyKey(row.key);
-      const response = await stockAPI.updateField(stock.id, targetField, avgNumeric);
+      const response = await stockAPI.updateField(stock.id, targetField, medianNumeric);
       if (response?.data) {
         setStock(response.data);
       }
       invalidateCache('portfolio');
     } catch (err: any) {
-      alert(err.response?.data?.error || err.message || 'Failed to apply average value');
+      alert(err.response?.data?.error || err.message || 'Failed to apply median value');
     } finally {
       setAssessmentApplyKey(null);
     }
@@ -1251,6 +1267,13 @@ export default function StockDetailPage() {
                 {assessmentAskingSource === 'deepseek' ? 'Asking Deepseek...' : 'Ask Deepseek'}
               </button>
               <button
+                onClick={() => askAssessmentFromStockPage('perplexity')}
+                disabled={assessmentAskingSource !== null}
+                className="px-3 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {assessmentAskingSource === 'perplexity' ? 'Asking Perplexity...' : 'Ask Perplexity'}
+              </button>
+              <button
                 onClick={askAlphaVantageFromStockPage}
                 disabled={assessmentAskingSource !== null}
                 className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1270,7 +1293,7 @@ export default function StockDetailPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-3 rounded-lg border border-gray-700 bg-gray-900/30">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-gray-200">Grok</h3>
@@ -1306,13 +1329,31 @@ export default function StockDetailPage() {
                 <p className="text-sm text-gray-500 italic">No Deepseek assessment yet.</p>
               )}
             </div>
+
+            <div className="p-3 rounded-lg border border-gray-700 bg-gray-900/30">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-200">Perplexity</h3>
+                {latestBySource.perplexity?.created_at && (
+                  <span className="text-xs text-gray-500">
+                    {new Date(latestBySource.perplexity.created_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              {latestBySource.perplexity ? (
+                <p className="text-sm text-gray-300 whitespace-pre-wrap max-h-56 overflow-y-auto">
+                  {latestBySource.perplexity.assessment}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 italic">No Perplexity assessment yet.</p>
+              )}
+            </div>
           </div>
 
           {(grokAssessmentText && deepseekAssessmentText) && (
             <div className="mt-6 pt-4 border-t border-gray-700">
               <h3 className="text-sm font-semibold text-gray-200 mb-3">Assessment Diff (LLM Extracted)</h3>
               {assessmentCompareLoading ? (
-                <p className="text-sm text-gray-400">Comparing Grok and Deepseek summaries...</p>
+                <p className="text-sm text-gray-400">Comparing LLM summaries...</p>
               ) : assessmentCompareError ? (
                 <p className="text-sm text-red-300">{assessmentCompareError}</p>
               ) : assessmentCompareRows.length === 0 ? (
@@ -1325,36 +1366,39 @@ export default function StockDetailPage() {
                         <th className="py-2 pr-4 text-gray-400 font-medium">Parameter</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Grok</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Deepseek</th>
+                        <th className="py-2 pr-4 text-gray-400 font-medium">Perplexity</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Alpha Vantage</th>
-                        <th className="py-2 pr-4 text-gray-400 font-medium">Average</th>
+                        <th className="py-2 pr-4 text-gray-400 font-medium">Median</th>
                         <th className="py-2 text-gray-400 font-medium">Diff</th>
                       </tr>
                     </thead>
                     <tbody>
                       {assessmentCompareRows.map((row) => {
                         const alphaValue = getAlphaVantageValueForRow(row.key);
-                        const comparableValues = [row.grok || '', row.deepseek || '', alphaValue].filter((v) => !isMissingMetric(v));
+                        const values = [row.grok || '', row.deepseek || '', row.perplexity || '', alphaValue];
+                        const comparableValues = values.filter((v) => !isMissingMetric(v));
                         const same =
                           comparableValues.length <= 1 ||
-                          comparableValues.every((value) => compareMetricValues(comparableValues[0], value));
-                        const averageValue = formatAverageMetric(row.key, [row.grok || '', row.deepseek || '', alphaValue]);
-                        const averageNumeric = averageNumericMetric(row.key, [row.grok || '', row.deepseek || '', alphaValue]);
-                        const canApply = Boolean(rowKeyToStockField[row.key] && averageNumeric !== null);
+                          comparableValues.every((value) => compareMetricValues(comparableValues[0]!, value));
+                        const medianValue = formatMedianMetric(row.key, values);
+                        const medianNumeric = medianNumericMetric(row.key, values);
+                        const canApply = Boolean(rowKeyToStockField[row.key] && medianNumeric !== null);
                         return (
                           <tr key={row.key} className="border-b border-gray-800 align-top">
                             <td className="py-2 pr-4 text-gray-200 font-medium">{row.label}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.grok || 'N/A'}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.deepseek || 'N/A'}</td>
+                            <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.perplexity ?? 'N/A'}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{alphaValue}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">
                               <div className="flex items-center gap-2">
-                                <span>{averageValue}</span>
+                                <span>{medianValue}</span>
                                 {canApply && (
                                   <button
-                                    onClick={() => applyAverageToStock(row)}
+                                    onClick={() => applyMedianToStock(row)}
                                     disabled={assessmentApplyKey !== null}
                                     className="px-1.5 py-0.5 text-[11px] rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Apply averaged value to this stock field"
+                                    title="Apply median value to this stock field"
                                   >
                                     {assessmentApplyKey === row.key ? 'Applying...' : 'Apply'}
                                   </button>

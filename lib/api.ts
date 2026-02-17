@@ -413,7 +413,7 @@ export const cashAPI = {
 export interface AssessmentRequest {
   ticker: string;
   isin?: string;
-  source: 'grok' | 'deepseek';
+  source: 'grok' | 'deepseek' | 'perplexity';
   company_name?: string;
   current_price?: number;
   currency?: string;
@@ -439,6 +439,7 @@ export interface AssessmentCompareRow {
   label: string;
   grok: string;
   deepseek: string;
+  perplexity?: string;
 }
 
 export interface AssessmentCompareResponse {
@@ -452,7 +453,7 @@ export const assessmentAPI = {
     api.post<any>('/assessment/extract-from-images', { images, source }, { timeout: ASSESSMENT_TIMEOUT }),
   getRecent: () => 
     api.get<AssessmentResponse[]>('/assessment/recent'),
-  getByTicker: (ticker: string, source?: 'grok' | 'deepseek', limit: number = 20) =>
+  getByTicker: (ticker: string, source?: 'grok' | 'deepseek' | 'perplexity', limit: number = 20) =>
     api.get<AssessmentResponse[]>(`/assessment/ticker/${encodeURIComponent(ticker)}`, {
       params: {
         ...(source ? { source } : {}),
@@ -461,7 +462,7 @@ export const assessmentAPI = {
     }),
   getDiffByTicker: (ticker: string) =>
     api.get<AssessmentCompareResponse>(`/assessment/ticker/${encodeURIComponent(ticker)}/diff`),
-  compare: (data: { ticker: string; grok_assessment: string; deepseek_assessment: string }) =>
+  compare: (data: { ticker: string; grok_assessment: string; deepseek_assessment: string; perplexity_assessment?: string }) =>
     api.post<AssessmentCompareResponse>('/assessment/compare', data, { timeout: ASSESSMENT_TIMEOUT }),
   getById: (id: number) => 
     api.get<AssessmentResponse>(`/assessment/${id}`),
