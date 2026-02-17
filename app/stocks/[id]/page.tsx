@@ -45,7 +45,7 @@ export default function StockDetailPage() {
   const [assessmentApplyKey, setAssessmentApplyKey] = useState<string | null>(null);
   const [assessmentRefreshing, setAssessmentRefreshing] = useState(false);
   const [assessmentRequestPrice, setAssessmentRequestPrice] = useState('');
-  const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | 'perplexity' | 'alphavantage' | 'all' | null>(null);
+  const [assessmentAskingSource, setAssessmentAskingSource] = useState<'grok' | 'deepseek' | 'perplexity' | 'chatgpt' | 'alphavantage' | 'all' | null>(null);
   const [assessmentAskError, setAssessmentAskError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -290,16 +290,18 @@ export default function StockDetailPage() {
     );
   };
 
-  const latestBySource = assessments.reduce<{ grok?: AssessmentResponse; deepseek?: AssessmentResponse; perplexity?: AssessmentResponse }>((acc, item) => {
+  const latestBySource = assessments.reduce<{ grok?: AssessmentResponse; deepseek?: AssessmentResponse; perplexity?: AssessmentResponse; chatgpt?: AssessmentResponse }>((acc, item) => {
     const src = (item.source || '').toLowerCase();
     if (src === 'grok' && !acc.grok) acc.grok = item;
     if (src === 'deepseek' && !acc.deepseek) acc.deepseek = item;
     if (src === 'perplexity' && !acc.perplexity) acc.perplexity = item;
+    if (src === 'chatgpt' && !acc.chatgpt) acc.chatgpt = item;
     return acc;
   }, {});
   const grokAssessmentText = latestBySource.grok?.assessment || '';
   const deepseekAssessmentText = latestBySource.deepseek?.assessment || '';
   const perplexityAssessmentText = latestBySource.perplexity?.assessment || '';
+  const chatgptAssessmentText = latestBySource.chatgpt?.assessment || '';
 
   const refreshAssessments = async () => {
     if (!stock?.ticker) return;
@@ -318,9 +320,9 @@ export default function StockDetailPage() {
     }
   };
 
-  const upsertLocalAssessment = (source: 'grok' | 'deepseek' | 'perplexity', assessmentText: string) => {
+  const upsertLocalAssessment = (source: 'grok' | 'deepseek' | 'perplexity' | 'chatgpt', assessmentText: string) => {
     if (!stock || !assessmentText) return;
-    const idOffset = source === 'grok' ? 1 : source === 'deepseek' ? 2 : 3;
+    const idOffset = source === 'grok' ? 1 : source === 'deepseek' ? 2 : source === 'perplexity' ? 3 : 4;
     const nextEntry: AssessmentResponse = {
       id: Date.now() + idOffset,
       ticker: stock.ticker,
@@ -335,7 +337,7 @@ export default function StockDetailPage() {
     });
   };
 
-  const buildAssessmentPayload = (source: 'grok' | 'deepseek' | 'perplexity') => {
+  const buildAssessmentPayload = (source: 'grok' | 'deepseek' | 'perplexity' | 'chatgpt') => {
     if (!stock) return null;
     const requestPrice = Number.parseFloat(assessmentRequestPrice.replace(',', '.'));
     const payload: any = {
@@ -351,7 +353,7 @@ export default function StockDetailPage() {
     return payload;
   };
 
-  const askAssessmentFromStockPage = async (source: 'grok' | 'deepseek' | 'perplexity') => {
+  const askAssessmentFromStockPage = async (source: 'grok' | 'deepseek' | 'perplexity' | 'chatgpt') => {
     if (!stock) return;
     try {
       setAssessmentAskingSource(source);
@@ -397,18 +399,21 @@ export default function StockDetailPage() {
       const grokPayload = buildAssessmentPayload('grok');
       const deepseekPayload = buildAssessmentPayload('deepseek');
       const perplexityPayload = buildAssessmentPayload('perplexity');
-      if (!grokPayload || !deepseekPayload || !perplexityPayload) return;
+      const chatgptPayload = buildAssessmentPayload('chatgpt');
+      if (!grokPayload || !deepseekPayload || !perplexityPayload || !chatgptPayload) return;
 
-      const [grokResponse, deepseekResponse, perplexityResponse, alphaResponse] = await Promise.all([
+      const [grokResponse, deepseekResponse, perplexityResponse, chatgptResponse, alphaResponse] = await Promise.all([
         assessmentAPI.request(grokPayload),
         assessmentAPI.request(deepseekPayload),
         assessmentAPI.request(perplexityPayload),
+        assessmentAPI.request(chatgptPayload),
         stockAPI.updateSingle(stock.id, 'alphavantage'),
       ]);
 
       upsertLocalAssessment('grok', grokResponse.data?.assessment || '');
       upsertLocalAssessment('deepseek', deepseekResponse.data?.assessment || '');
       upsertLocalAssessment('perplexity', perplexityResponse.data?.assessment || '');
+      upsertLocalAssessment('chatgpt', chatgptResponse.data?.assessment || '');
       setStock(alphaResponse.data);
       invalidateCache('portfolio');
 
@@ -442,6 +447,7 @@ export default function StockDetailPage() {
             grok_assessment: grokAssessmentText,
             deepseek_assessment: deepseekAssessmentText,
             ...(perplexityAssessmentText ? { perplexity_assessment: perplexityAssessmentText } : {}),
+            ...(chatgptAssessmentText ? { chatgpt_assessment: chatgptAssessmentText } : {}),
           });
         }
         if (!cancelled) {
@@ -461,7 +467,7 @@ export default function StockDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [stock?.ticker, grokAssessmentText, deepseekAssessmentText, perplexityAssessmentText]);
+  }, [stock?.ticker, grokAssessmentText, deepseekAssessmentText, perplexityAssessmentText, chatgptAssessmentText]);
 
   const parseMetricValue = (value: string) => {
     const raw = (value || '').trim();
@@ -653,7 +659,7 @@ export default function StockDetailPage() {
     const targetField = rowKeyToStockField[row.key];
     if (!targetField) return;
     const alphaValue = getAlphaVantageValueForRow(row.key);
-    const values = [row.grok || '', row.deepseek || '', row.perplexity || '', alphaValue];
+    const values = [row.grok || '', row.deepseek || '', row.perplexity || '', row.chatgpt || '', alphaValue];
     const medianNumeric = medianNumericMetric(row.key, values);
     if (medianNumeric === null) {
       alert('Median value is not numeric and cannot be applied.');
@@ -1274,6 +1280,13 @@ export default function StockDetailPage() {
                 {assessmentAskingSource === 'perplexity' ? 'Asking Perplexity...' : 'Ask Perplexity'}
               </button>
               <button
+                onClick={() => askAssessmentFromStockPage('chatgpt')}
+                disabled={assessmentAskingSource !== null}
+                className="px-3 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {assessmentAskingSource === 'chatgpt' ? 'Asking ChatGPT...' : 'Ask ChatGPT'}
+              </button>
+              <button
                 onClick={askAlphaVantageFromStockPage}
                 disabled={assessmentAskingSource !== null}
                 className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1347,6 +1360,24 @@ export default function StockDetailPage() {
                 <p className="text-sm text-gray-500 italic">No Perplexity assessment yet.</p>
               )}
             </div>
+
+            <div className="p-3 rounded-lg border border-gray-700 bg-gray-900/30">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-200">ChatGPT</h3>
+                {latestBySource.chatgpt?.created_at && (
+                  <span className="text-xs text-gray-500">
+                    {new Date(latestBySource.chatgpt.created_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              {latestBySource.chatgpt ? (
+                <p className="text-sm text-gray-300 whitespace-pre-wrap max-h-56 overflow-y-auto">
+                  {latestBySource.chatgpt.assessment}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 italic">No ChatGPT assessment yet.</p>
+              )}
+            </div>
           </div>
 
           {(grokAssessmentText && deepseekAssessmentText) && (
@@ -1367,6 +1398,7 @@ export default function StockDetailPage() {
                         <th className="py-2 pr-4 text-gray-400 font-medium">Grok</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Deepseek</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Perplexity</th>
+                        <th className="py-2 pr-4 text-gray-400 font-medium">ChatGPT</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Alpha Vantage</th>
                         <th className="py-2 pr-4 text-gray-400 font-medium">Median</th>
                         <th className="py-2 text-gray-400 font-medium">Diff</th>
@@ -1375,7 +1407,7 @@ export default function StockDetailPage() {
                     <tbody>
                       {assessmentCompareRows.map((row) => {
                         const alphaValue = getAlphaVantageValueForRow(row.key);
-                        const values = [row.grok || '', row.deepseek || '', row.perplexity || '', alphaValue];
+                        const values = [row.grok || '', row.deepseek || '', row.perplexity || '', row.chatgpt || '', alphaValue];
                         const comparableValues = values.filter((v) => !isMissingMetric(v));
                         const same =
                           comparableValues.length <= 1 ||
@@ -1389,6 +1421,7 @@ export default function StockDetailPage() {
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.grok || 'N/A'}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.deepseek || 'N/A'}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.perplexity ?? 'N/A'}</td>
+                            <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{row.chatgpt ?? 'N/A'}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">{alphaValue}</td>
                             <td className="py-2 pr-4 text-gray-300 whitespace-pre-wrap">
                               <div className="flex items-center gap-2">
