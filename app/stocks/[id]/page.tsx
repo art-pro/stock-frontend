@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { invalidateCache, stockAPI, assessmentAPI, Stock, StockHistory, FairValueHistoryEntry, AssessmentResponse, AssessmentCompareRow } from '@/lib/api';
+import { invalidateCache, stockAPI, assessmentAPI, Stock, StockHistory, AssessmentResponse, AssessmentCompareRow } from '@/lib/api';
 import { getDistanceToBuyZone, getDistanceToSellZone, getKellyHint } from '@/lib/portfolioInsights';
-import DataSourceModal from '@/components/DataSourceModal';
 import TooltipIcon from '@/components/Tooltip';
 import { Line } from 'react-chartjs-2';
 import {
@@ -37,7 +36,6 @@ export default function StockDetailPage() {
 
   const [stock, setStock] = useState<Stock | null>(null);
   const [history, setHistory] = useState<StockHistory[]>([]);
-  const [fairValueHistory, setFairValueHistory] = useState<FairValueHistoryEntry[]>([]);
   const [assessments, setAssessments] = useState<AssessmentResponse[]>([]);
   const [assessmentCompareRows, setAssessmentCompareRows] = useState<AssessmentCompareRow[]>([]);
   const [assessmentCompareLoading, setAssessmentCompareLoading] = useState(false);
@@ -51,8 +49,6 @@ export default function StockDetailPage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [saving, setSaving] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalSource, setModalSource] = useState<'alphavantage' | 'grok'>('alphavantage');
   const [updatingAlphaVantage, setUpdatingAlphaVantage] = useState(false);
   const [updatingGrok, setUpdatingGrok] = useState(false);
 
@@ -71,15 +67,13 @@ export default function StockDetailPage() {
       try {
         setLoading(true);
         const stockRes = await stockAPI.getById(id);
-        const [historyRes, fairValueHistoryRes, assessmentsRes] = await Promise.all([
+        const [historyRes, assessmentsRes] = await Promise.all([
           stockAPI.getHistory(id),
-          stockAPI.getFairValueHistory(id),
           assessmentAPI.getByTicker(stockRes.data.ticker, undefined, 30),
         ]);
         setStock(stockRes.data);
         setAssessmentRequestPrice(stockRes.data.current_price > 0 ? String(stockRes.data.current_price) : '');
         setHistory(historyRes.data);
-        setFairValueHistory(fairValueHistoryRes.data);
         setAssessments(assessmentsRes.data || []);
       } catch (err) {
         console.error(err);
@@ -126,11 +120,6 @@ export default function StockDetailPage() {
   const handleCancelEdit = () => {
     setEditingField(null);
     setEditValue('');
-  };
-
-  const openDataSourceModal = (source: 'alphavantage' | 'grok') => {
-    setModalSource(source);
-    setModalOpen(true);
   };
 
   const handleUpdateFromSource = async (source: 'alphavantage' | 'grok') => {
@@ -809,35 +798,8 @@ export default function StockDetailPage() {
     },
   };
 
-  const now = new Date();
-  const currentMonthFairValueHistory = fairValueHistory.filter((entry) => {
-    const d = new Date(entry.recorded_at);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  });
-
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* Data Source Modal */}
-      {stock && (
-        <DataSourceModal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          source={modalSource}
-          data={{
-            ticker: stock.ticker,
-            companyName: stock.company_name,
-            fetchedAt: modalSource === 'alphavantage' ? stock.alpha_vantage_fetched_at : stock.grok_fetched_at,
-            dataSource: stock.data_source,
-            fairValueSource: stock.fair_value_source,
-            currentPrice: stock.current_price,
-            fairValue: stock.fair_value,
-            currency: stock.currency,
-            lastUpdated: stock.last_updated,
-            rawJson: modalSource === 'alphavantage' ? stock.alpha_vantage_raw_json : stock.grok_raw_json
-          }}
-        />
-      )}
-      
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -1085,168 +1047,6 @@ export default function StockDetailPage() {
               {stock.assessment}
             </p>
             <p className="text-xs text-gray-500 mt-1">Calculated (not editable)</p>
-          </div>
-        </div>
-
-        {/* Fair Value Source */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
-          <EditableField 
-            field="fair_value_source" 
-            label="Fair Value Source" 
-            value={stock.fair_value_source || ''} 
-            isString={true}
-            multiline={true}
-            tooltip="Source of the fair value estimate (e.g., analyst consensus, DCF model, URL)."
-          />
-        </div>
-
-        {/* Fair Value Source History */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">Fair Value History</h2>
-          {currentMonthFairValueHistory.length === 0 ? (
-            <p className="text-sm text-gray-400">No current data for this month.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="text-left border-b border-gray-700">
-                    <th className="py-2 pr-4 text-gray-400 font-medium">Date</th>
-                    <th className="py-2 pr-4 text-gray-400 font-medium">Fair Value</th>
-                    <th className="py-2 text-gray-400 font-medium">Source</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentMonthFairValueHistory.map((entry) => (
-                    <tr key={entry.id} className="border-b border-gray-800">
-                      <td className="py-2 pr-4 text-gray-300">{new Date(entry.recorded_at).toLocaleDateString()}</td>
-                      <td className="py-2 pr-4 text-white">{entry.fair_value.toFixed(2)} {stock.currency}</td>
-                      <td className="py-2 text-gray-300 break-words">{entry.source}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Data Source Information */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">Data Sources</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div 
-              className="flex items-start space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700/50 transition-colors"
-              onClick={() => openDataSourceModal('alphavantage')}
-            >
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="flex-grow">
-                <h3 className="text-sm font-medium text-gray-300 mb-1 group-hover:text-white">Alpha Vantage</h3>
-                <p className="text-xs text-gray-500 mb-2">Market data & financials</p>
-                {stock.alpha_vantage_fetched_at ? (
-                  <div>
-                    <p className="text-sm text-white">
-                      {new Date(stock.alpha_vantage_fetched_at).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                      })}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(stock.alpha_vantage_fetched_at).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-600 italic">No data fetched yet</p>
-                )}
-              </div>
-            </div>
-
-            <div 
-              className="flex items-start space-x-3 p-3 rounded-lg cursor-pointer hover:bg-gray-700/50 transition-colors"
-              onClick={() => openDataSourceModal('grok')}
-            >
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="flex-grow">
-                <h3 className="text-sm font-medium text-gray-300 mb-1 group-hover:text-white">Grok AI</h3>
-                <p className="text-xs text-gray-500 mb-2">Analysis & predictions</p>
-                {stock.grok_fetched_at ? (
-                  <div>
-                    <p className="text-sm text-white">
-                      {new Date(stock.grok_fetched_at).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric', 
-                        year: 'numeric' 
-                      })}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(stock.grok_fetched_at).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-600 italic">No data fetched yet</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3 p-3 rounded-lg border border-gray-700 bg-gray-900/20">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="flex-grow">
-                <h3 className="text-sm font-medium text-gray-300 mb-1">Deepseek AI</h3>
-                <p className="text-xs text-gray-500 mb-2">Analysis & predictions</p>
-                {latestBySource.deepseek?.created_at ? (
-                  <div>
-                    <p className="text-sm text-white">
-                      {new Date(latestBySource.deepseek.created_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(latestBySource.deepseek.created_at).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-600 italic">No data fetched yet</p>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Additional data source info */}
-          <div className="mt-4 pt-4 border-t border-gray-700">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-400">Primary Source:</span>
-                <span className="ml-2 text-white">{stock.data_source || 'Not specified'}</span>
-              </div>
-            </div>
           </div>
         </div>
 
