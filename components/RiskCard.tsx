@@ -13,7 +13,7 @@ export default function RiskCard({ stocks }: RiskCardProps) {
   if (active.length === 0) return null;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+    <div className="h-full flex flex-col bg-gray-800 rounded-lg p-6 border border-gray-700">
       <h3 className="text-sm font-medium text-gray-400 mb-2">
         Concentration & tail risk
       </h3>

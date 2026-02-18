@@ -242,11 +242,11 @@ export default function AnalysisPage() {
         {/* Sector rebalance, concentration & tail risk, suggested next actions */}
         {!portfolioLoading && portfolioMetrics && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-              <div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 items-stretch">
+              <div className="min-h-0 flex">
                 <RebalanceHint metrics={portfolioMetrics} sectorTargets={targetPctBySector} />
               </div>
-              <div>
+              <div className="min-h-0 flex">
                 <RiskCard stocks={portfolioStocks} />
               </div>
             </div>

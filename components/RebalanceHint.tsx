@@ -11,12 +11,11 @@ interface RebalanceHintProps {
 
 export default function RebalanceHint({ metrics, sectorTargets }: RebalanceHintProps) {
   const summary = getSectorRebalanceSummary(metrics.sector_weights, sectorTargets);
-  const { over, at, under, noTarget } = summary;
-  const total = over.length + at.length + under.length;
-  if (total === 0 && noTarget.length === 0) return null;
+  const { over, under, noTarget } = summary;
+  if (over.length === 0 && under.length === 0 && noTarget.length === 0) return null;
 
   return (
-    <div className="mb-6 bg-gray-800 rounded-lg p-4 border border-gray-700">
+    <div className="h-full flex flex-col mb-0 bg-gray-800 rounded-lg p-4 border border-gray-700">
       <h3 className="text-sm font-semibold text-gray-200 mb-2">
         Sector rebalance hint
       </h3>
@@ -48,14 +47,6 @@ export default function RebalanceHint({ metrics, sectorTargets }: RebalanceHintP
               ))}
               {under.length > 5 && <li className="text-gray-500">+{under.length - 5} more</li>}
             </ul>
-          </div>
-        )}
-        {at.length > 0 && (
-          <div>
-            <span className="text-gray-400 font-medium">{at.length} at target</span>
-            <span className="text-gray-500 ml-1">
-              {at.map((d) => d.sector).join(', ')}
-            </span>
           </div>
         )}
         {noTarget.length > 0 && (
