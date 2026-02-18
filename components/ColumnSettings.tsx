@@ -58,6 +58,7 @@ export const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'unrealized_pnl', label: 'P&L', visible: true, order: 23, portfolioOnly: true },
   { id: 'comment', label: 'Notes', visible: true, order: 24 },
   { id: 'assessment', label: 'Assessment', visible: true, order: 25 },
+  { id: 'action', label: 'Action', visible: true, order: 26, portfolioOnly: true },
 ];
 
 export default function ColumnSettings({ onSettingsChange, initialColumns = DEFAULT_COLUMNS }: ColumnSettingsProps) {
