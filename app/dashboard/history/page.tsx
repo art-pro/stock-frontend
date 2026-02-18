@@ -3,13 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { operationsAPI, type Operation } from '@/lib/api';
+import { operationsAPI, invalidateCache, type Operation } from '@/lib/api';
+import AddOperationModal from '@/components/AddOperationModal';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 export default function HistoryPage() {
   const router = useRouter();
   const [operations, setOperations] = useState<Operation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editOperation, setEditOperation] = useState<Operation | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -30,6 +34,25 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = async (op: Operation) => {
+    if (!confirm(`Delete this ${op.operation_type} operation (${op.trade_date}, ${op.amount} ${op.currency})? Cash and positions will be recalculated.`)) return;
+    try {
+      setDeletingId(op.id);
+      await operationsAPI.delete(op.id);
+      invalidateCache('portfolio');
+      await fetchOperations();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete operation');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleEditSuccess = () => {
+    invalidateCache('portfolio');
+    fetchOperations();
   };
 
   const assetLabel = (op: Operation) => {
@@ -76,12 +99,13 @@ export default function HistoryPage() {
               <th className="px-4 py-3 text-gray-300 font-medium text-right">Price</th>
               <th className="px-4 py-3 text-gray-300 font-medium text-right">Amount</th>
               <th className="px-4 py-3 text-gray-300 font-medium">Note</th>
+              <th className="px-4 py-3 text-gray-300 font-medium w-28">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
             {operations.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                   No operations yet. Add a Buy, Sell, Deposit, Withdraw, or Dividend from Portfolio or Watchlist.
                 </td>
               </tr>
@@ -105,12 +129,41 @@ export default function HistoryPage() {
                   <td className="px-4 py-3 text-gray-300 text-right">{op.price > 0 ? op.price.toFixed(2) : '—'}</td>
                   <td className="px-4 py-3 text-white text-right">{formatAmount(op)} {op.currency}</td>
                   <td className="px-4 py-3 text-gray-400 max-w-xs truncate" title={op.note || ''}>{op.note || '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditOperation(op)}
+                        className="p-1.5 text-gray-400 hover:text-primary-400 hover:bg-gray-700 rounded transition-colors"
+                        title="Modify"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(op)}
+                        disabled={deletingId === op.id}
+                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
+                        title="Delete"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {editOperation && (
+        <AddOperationModal
+          editOperation={editOperation}
+          onClose={() => setEditOperation(null)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
     </div>
   );
 }

@@ -350,6 +350,10 @@ export const operationsAPI = {
     api.post<Operation>('/operations', data, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
   list: (portfolioId?: number) =>
     api.get<Operation[]>('/operations', { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  delete: (id: number, portfolioId?: number) =>
+    api.delete(`/operations/${id}`, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  update: (id: number, data: CreateOperationRequest, portfolioId?: number) =>
+    api.put<Operation>(`/operations/${id}`, data, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
 };
 
 // Portfolio API with caching

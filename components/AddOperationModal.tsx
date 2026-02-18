@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, FormEvent, useEffect } from 'react';
-import { operationsAPI, type OperationType, type CreateOperationRequest } from '@/lib/api';
+import { operationsAPI, type OperationType, type CreateOperationRequest, type Operation } from '@/lib/api';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 const OPERATION_TYPES: OperationType[] = ['Buy', 'Sell', 'Deposit', 'Withdraw', 'Dividend'];
@@ -28,26 +28,44 @@ interface AddOperationModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialValues?: AddOperationInitialValues;
+  /** When set, modal is in edit mode: title "Modify Operation", submit calls update(id). */
+  editOperation?: Operation | null;
+  portfolioId?: number;
 }
 
-export default function AddOperationModal({ onClose, onSuccess, initialValues }: AddOperationModalProps) {
+export default function AddOperationModal({ onClose, onSuccess, initialValues, editOperation, portfolioId }: AddOperationModalProps) {
+  const isEdit = !!editOperation;
   const [formData, setFormData] = useState({
-    operation_type: (initialValues?.operation_type || 'Buy') as OperationType,
-    ticker: initialValues?.ticker ?? '',
-    isin: initialValues?.isin ?? '',
-    company_name: initialValues?.company_name ?? '',
-    sector: initialValues?.sector ?? '',
-    currency: initialValues?.currency ?? 'USD',
-    quantity: 0,
-    price: 0,
-    trade_date: todayDDMMYYYY(),
-    note: '',
+    operation_type: (initialValues?.operation_type ?? editOperation?.operation_type ?? 'Buy') as OperationType,
+    ticker: initialValues?.ticker ?? editOperation?.ticker ?? '',
+    isin: initialValues?.isin ?? editOperation?.isin ?? '',
+    company_name: initialValues?.company_name ?? editOperation?.company_name ?? '',
+    sector: initialValues?.sector ?? editOperation?.sector ?? '',
+    currency: initialValues?.currency ?? editOperation?.currency ?? 'USD',
+    quantity: initialValues ? 0 : (editOperation?.quantity ?? 0),
+    price: initialValues ? 0 : (editOperation?.price ?? 0),
+    trade_date: initialValues ? todayDDMMYYYY() : (editOperation?.trade_date ?? todayDDMMYYYY()),
+    note: initialValues ? '' : (editOperation?.note ?? ''),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (initialValues) {
+    if (editOperation) {
+      setFormData(prev => ({
+        ...prev,
+        operation_type: editOperation.operation_type,
+        ticker: editOperation.ticker ?? '',
+        isin: editOperation.isin ?? '',
+        company_name: editOperation.company_name ?? '',
+        sector: editOperation.sector ?? '',
+        currency: editOperation.currency ?? 'USD',
+        quantity: editOperation.quantity ?? 0,
+        price: editOperation.price ?? 0,
+        trade_date: editOperation.trade_date ?? prev.trade_date,
+        note: editOperation.note ?? '',
+      }));
+    } else if (initialValues) {
       setFormData(prev => ({
         ...prev,
         ticker: initialValues.ticker ?? prev.ticker,
@@ -58,7 +76,7 @@ export default function AddOperationModal({ onClose, onSuccess, initialValues }:
         operation_type: initialValues.operation_type ?? prev.operation_type,
       }));
     }
-  }, [initialValues]);
+  }, [editOperation, initialValues]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -79,16 +97,19 @@ export default function AddOperationModal({ onClose, onSuccess, initialValues }:
       payload.company_name = formData.company_name.trim() || undefined;
       payload.sector = formData.sector.trim() || undefined;
       payload.price = formData.price;
-      if (initialValues?.stock_id) payload.stock_id = initialValues.stock_id;
+      if (initialValues?.stock_id || editOperation?.stock_id) payload.stock_id = initialValues?.stock_id ?? editOperation?.stock_id;
     }
-    // Deposit/Withdraw/Dividend: backend uses quantity as cash amount when amount is 0
 
     try {
-      await operationsAPI.create(payload);
+      if (isEdit && editOperation) {
+        await operationsAPI.update(editOperation.id, payload, portfolioId);
+      } else {
+        await operationsAPI.create(payload, portfolioId);
+      }
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to add operation');
+      setError(err.response?.data?.error || (isEdit ? 'Failed to update operation' : 'Failed to add operation'));
     } finally {
       setLoading(false);
     }
@@ -108,7 +129,7 @@ export default function AddOperationModal({ onClose, onSuccess, initialValues }:
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b border-gray-700">
-          <h2 className="text-xl font-bold text-white">Add New Operation</h2>
+          <h2 className="text-xl font-bold text-white">{isEdit ? 'Modify Operation' : 'Add New Operation'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <XMarkIcon className="h-6 w-6" />
           </button>
@@ -277,7 +298,7 @@ export default function AddOperationModal({ onClose, onSuccess, initialValues }:
               disabled={loading}
               className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Adding...' : 'Add Operation'}
+              {loading ? (isEdit ? 'Saving...' : 'Adding...') : (isEdit ? 'Save Changes' : 'Add Operation')}
             </button>
           </div>
         </form>
