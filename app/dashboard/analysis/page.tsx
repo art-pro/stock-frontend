@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { assessmentAPI, exchangeRateAPI, portfolioAPI, settingsAPI, getErrorMessage } from '@/lib/api';
 import type { AssessmentRequest, AssessmentResponse } from '@/lib/api';
-import type { Stock, PortfolioMetrics } from '@/lib/api';
+import type { Stock, PortfolioMetrics, PortfolioUnits } from '@/lib/api';
 import {
   getSectorRebalanceSummary,
   getConcentration,
@@ -15,6 +15,7 @@ import {
   formatSuggestedActionsHintText,
 } from '@/lib/portfolioInsights';
 import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
+import PortfolioOverviewSection from '@/components/PortfolioOverviewSection';
 import RebalanceHint from '@/components/RebalanceHint';
 import RiskCard from '@/components/RiskCard';
 import SuggestedActions from '@/components/SuggestedActions';
@@ -31,9 +32,10 @@ export default function AnalysisPage() {
   const router = useRouter();
   const { targetPctBySector } = useSectorTargetsContext();
 
-  // Portfolio context for rebalance / risk / suggested actions
+  // Portfolio context for rebalance / risk / suggested actions / overview
   const [portfolioMetrics, setPortfolioMetrics] = useState<PortfolioMetrics | null>(null);
   const [portfolioStocks, setPortfolioStocks] = useState<Stock[]>([]);
+  const [portfolioUnits, setPortfolioUnits] = useState<PortfolioUnits | null>(null);
   const [portfolioLoading, setPortfolioLoading] = useState(true);
 
   // Single Assessment State
@@ -67,6 +69,7 @@ export default function AnalysisPage() {
       const response = await portfolioAPI.getSummary(undefined, { forceRefresh: false });
       setPortfolioStocks(response.data.stocks || []);
       setPortfolioMetrics(response.data.summary || null);
+      setPortfolioUnits(response.data.units || null);
     } catch (err) {
       console.warn('Failed to fetch portfolio for analysis context:', err);
     } finally {
@@ -237,8 +240,19 @@ export default function AnalysisPage() {
     setShowAssessmentModal(false);
   };
 
+  const activeStocks = portfolioStocks.filter((s) => (s.shares_owned ?? 0) > 0);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Portfolio overview: milestones, total value, EV, volatility, sector allocation */}
+        {!portfolioLoading && portfolioMetrics && (
+          <PortfolioOverviewSection
+            metrics={portfolioMetrics}
+            units={portfolioUnits}
+            stocks={activeStocks}
+          />
+        )}
+
         {/* Sector rebalance, concentration & tail risk, suggested next actions */}
         {!portfolioLoading && portfolioMetrics && (
           <>

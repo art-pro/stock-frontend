@@ -7,63 +7,45 @@ import { Pie } from 'react-chartjs-2';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-interface PortfolioSummaryProps {
+interface PortfolioOverviewSectionProps {
   metrics: PortfolioMetrics;
   units?: PortfolioUnits | null;
-  /** Active positions (shares_owned > 0) for sector drill-down: show stocks and % when a sector is selected */
-  stocks?: Stock[];
+  /** Active positions (shares_owned > 0) for sector drill-down */
+  stocks: Stock[];
 }
 
-export default function PortfolioSummary({ metrics, units, stocks = [] }: PortfolioSummaryProps) {
+export default function PortfolioOverviewSection({ metrics, units, stocks }: PortfolioOverviewSectionProps) {
   const [totalCashValue, setTotalCashValue] = useState(0);
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
     isMountedRef.current = true;
-
     const fetchCashData = async () => {
       try {
         const [response, ratesResponse] = await Promise.all([
           cashAPI.getAll(),
           exchangeRateAPI.getAll(),
         ]);
-
-        // Check if component is still mounted before updating state
         if (!isMountedRef.current) return;
-
         const usdRate = ratesResponse.data.find((rate) => rate.currency_code === 'USD')?.rate || 0;
         const totalCash = response.data.reduce((total, cash) => {
-          if (cash.currency_code === 'EUR') {
-            return total + cash.amount;
-          }
-          // usd_value is in USD; convert to EUR using EUR->USD rate.
-          if (usdRate <= 0) {
-            return total;
-          }
+          if (cash.currency_code === 'EUR') return total + cash.amount;
+          if (usdRate <= 0) return total;
           return total + (cash.usd_value / usdRate);
         }, 0);
         setTotalCashValue(totalCash);
       } catch (err) {
-        // If cash API fails, set to 0 (cash management might not be enabled)
-        if (isMountedRef.current) {
-          setTotalCashValue(0);
-        }
+        if (isMountedRef.current) setTotalCashValue(0);
         console.warn('Failed to fetch cash holdings:', err);
       }
     };
-
     fetchCashData();
-
-    // Cleanup function to prevent state updates after unmount
-    return () => {
-      isMountedRef.current = false;
-    };
+    return () => { isMountedRef.current = false; };
   }, []);
+
   const formatCurrency = (num: number) => {
-    if (num === 0 || num === null || num === undefined) {
-      return 'N/A';
-    }
+    if (num === 0 || num === null || num === undefined) return 'N/A';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: units?.summary_total_value === 'USD' ? 'USD' : 'EUR',
@@ -71,17 +53,13 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
   };
 
   const formatPercent = (num: number, decimals: number = 2) => {
-    if (num === 0 || num === null || num === undefined) {
-      return 'N/A';
-    }
+    if (num === 0 || num === null || num === undefined) return 'N/A';
     return `${num?.toFixed(decimals) || 'N/A'}%`;
   };
 
-  // Stock-level pie: one slice per stock (and Cash), each sector in shades of one color.
   const totalPortfolioValue = metrics.total_value + totalCashValue;
   const cashFraction = totalPortfolioValue > 0 ? totalCashValue / totalPortfolioValue : 0;
 
-  // Sector base colors (RGB) – same sector = same hue, stocks = shades
   const SECTOR_BASE_RGB: Record<string, [number, number, number]> = {
     Healthcare: [16, 185, 129],
     Technology: [59, 130, 246],
@@ -115,7 +93,6 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
     return out;
   };
 
-  // Active stocks sorted by sector then by weight desc; each slice = stock share of total portfolio
   const weightToFraction = (w: number) => (w <= 1 && w > 0 ? w : w / 100);
   const sortedStocks = [...stocks]
     .filter((s) => s.shares_owned > 0 && weightToFraction(s.weight) > 0)
@@ -186,12 +163,7 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
     plugins: {
       legend: {
         position: 'bottom' as const,
-        labels: {
-          color: 'rgb(209, 213, 219)',
-          padding: 8,
-          boxWidth: 12,
-          font: { size: 11 },
-        },
+        labels: { color: 'rgb(209, 213, 219)', padding: 8, boxWidth: 12, font: { size: 11 } },
       },
       tooltip: {
         callbacks: {
@@ -200,14 +172,13 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
             const sector = sectorByIndex[context.dataIndex];
             if (sector && sector !== 'Cash') return `${context.label} (${sector}): ${pct}%`;
             return `${context.label}: ${pct}%`;
-          }
-        }
-      }
+          },
+        },
+      },
     },
     maintainAspectRatio: false,
   };
 
-  // Weight as percentage: backend may send 0–1 or 0–100
   const weightToPct = (w: number) => (w <= 1 && w > 0 ? w * 100 : w);
   const stocksInSector = selectedSector && selectedSector !== 'Cash'
     ? stocks.filter((s) => s.sector && s.sector.trim().toLowerCase() === selectedSector.trim().toLowerCase())
@@ -220,7 +191,6 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
 
   return (
     <>
-      {/* Milestone progress bar */}
       <div className="mb-6 bg-gray-800 rounded-lg p-5 border border-gray-700">
         <h3 className="text-sm font-medium text-gray-400 mb-2">Portfolio milestones</h3>
         <p className="text-xs text-gray-500 mb-3">
@@ -254,90 +224,85 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      {/* Total Portfolio Value */}
-      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h3 className="text-sm font-medium text-gray-400 mb-2">
-          Total Portfolio Value {totalCashValue > 0 ? '(Stocks + Cash)' : ''}
-        </h3>
-        <p className="text-2xl font-bold text-white">
-          {formatCurrency(metrics.total_value + totalCashValue)}
-        </p>
-        {totalCashValue > 0 && (
-          <p className="text-xs text-gray-400 mt-1">
-            Stocks: {formatCurrency(metrics.total_value)} + Cash: {formatCurrency(totalCashValue)}
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-sm font-medium text-gray-400 mb-2">
+            Total Portfolio Value {totalCashValue > 0 ? '(Stocks + Cash)' : ''}
+          </h3>
+          <p className="text-2xl font-bold text-white">
+            {formatCurrency(metrics.total_value + totalCashValue)}
           </p>
-        )}
-      </div>
-
-      {/* Overall EV */}
-      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h3 className="text-sm font-medium text-gray-400 mb-2 tooltip">
-          Overall Expected Value
-          <span className="tooltiptext">Weighted average EV across all positions</span>
-        </h3>
-        <p className={`text-2xl font-bold ${
-          metrics.overall_ev > 7 ? 'text-green-400' : 
-          metrics.overall_ev > 0 ? 'text-yellow-400' : 
-          'text-red-400'
-        }`}>
-          {formatPercent(metrics.overall_ev, 1)}
-        </p>
-      </div>
-
-      {/* Volatility */}
-      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h3 className="text-sm font-medium text-gray-400 mb-2 tooltip">
-          Portfolio Volatility
-          <span className="tooltiptext">Weighted average volatility (target: 11-13%)</span>
-        </h3>
-        <p className={`text-2xl font-bold ${
-          metrics.weighted_volatility > 13 ? 'text-red-400' : 
-          metrics.weighted_volatility < 11 ? 'text-yellow-400' : 
-          'text-green-400'
-        }`}>
-          {formatPercent(metrics.weighted_volatility, 1)}
-        </p>
-      </div>
-
-      {/* Sector Allocation Chart */}
-      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 col-span-1 md:col-span-2 lg:col-span-3">
-        <h3 className="text-sm font-medium text-gray-400 mb-4">
-          Sector Allocation {selectedSector && <span className="text-primary-400">— click a sector to see stocks</span>}
-        </h3>
-        <div className="h-64">
-          <Pie data={chartData} options={chartOptions} />
+          {totalCashValue > 0 && (
+            <p className="text-xs text-gray-400 mt-1">
+              Stocks: {formatCurrency(metrics.total_value)} + Cash: {formatCurrency(totalCashValue)}
+            </p>
+          )}
         </div>
-        {selectedSector && (
-          <div className="mt-4 pt-4 border-t border-gray-700">
-            {selectedSector === 'Cash' ? (
-              <p className="text-gray-400 text-sm">Cash is not broken down by holding here. Use Cash Management below for details.</p>
-            ) : stocksInSector.length > 0 ? (
-              <>
-                <p className="text-gray-400 text-sm font-medium mb-2">
-                  {selectedSector} — {stocksInSector.length} position{stocksInSector.length !== 1 ? 's' : ''}
-                </p>
-                <ul className="space-y-1 text-sm">
-                  {stocksInSector
-                    .slice()
-                    .sort((a, b) => weightToPct(b.weight) - weightToPct(a.weight))
-                    .map((s) => (
-                      <li key={s.id} className="flex justify-between text-gray-300">
-                        <span>{s.ticker}</span>
-                        <span>{weightToPct(s.weight).toFixed(1)}%</span>
-                      </li>
-                    ))}
-                </ul>
-              </>
-            ) : (
-              <p className="text-gray-400 text-sm">
-                No positions in {selectedSector}. {stocks.length === 0 ? 'Stock list not available.' : ''}
-              </p>
-            )}
+
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-sm font-medium text-gray-400 mb-2 tooltip">
+            Overall Expected Value
+            <span className="tooltiptext">Weighted average EV across all positions</span>
+          </h3>
+          <p className={`text-2xl font-bold ${
+            metrics.overall_ev > 7 ? 'text-green-400' :
+            metrics.overall_ev > 0 ? 'text-yellow-400' :
+            'text-red-400'
+          }`}>
+            {formatPercent(metrics.overall_ev, 1)}
+          </p>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-sm font-medium text-gray-400 mb-2 tooltip">
+            Portfolio Volatility
+            <span className="tooltiptext">Weighted average volatility (target: 11-13%)</span>
+          </h3>
+          <p className={`text-2xl font-bold ${
+            metrics.weighted_volatility > 13 ? 'text-red-400' :
+            metrics.weighted_volatility < 11 ? 'text-yellow-400' :
+            'text-green-400'
+          }`}>
+            {formatPercent(metrics.weighted_volatility, 1)}
+          </p>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 col-span-1 md:col-span-2 lg:col-span-3">
+          <h3 className="text-sm font-medium text-gray-400 mb-4">
+            Sector Allocation {selectedSector && <span className="text-primary-400">— click a sector to see stocks</span>}
+          </h3>
+          <div className="h-64">
+            <Pie data={chartData} options={chartOptions} />
           </div>
-        )}
+          {selectedSector && (
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              {selectedSector === 'Cash' ? (
+                <p className="text-gray-400 text-sm">Cash is not broken down by holding here. Use Cash Management for details.</p>
+              ) : stocksInSector.length > 0 ? (
+                <>
+                  <p className="text-gray-400 text-sm font-medium mb-2">
+                    {selectedSector} — {stocksInSector.length} position{stocksInSector.length !== 1 ? 's' : ''}
+                  </p>
+                  <ul className="space-y-1 text-sm">
+                    {stocksInSector
+                      .slice()
+                      .sort((a, b) => weightToPct(b.weight) - weightToPct(a.weight))
+                      .map((s) => (
+                        <li key={s.id} className="flex justify-between text-gray-300">
+                          <span>{s.ticker}</span>
+                          <span>{weightToPct(s.weight).toFixed(1)}%</span>
+                        </li>
+                      ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="text-gray-400 text-sm">
+                  No positions in {selectedSector}. {stocks.length === 0 ? 'Stock list not available.' : ''}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </>
   );
 }
-

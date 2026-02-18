@@ -6,7 +6,6 @@ import { isAuthenticated } from '@/lib/auth';
 import { stockAPI, portfolioAPI, invalidateCache, Stock, PortfolioMetrics, PortfolioUnits } from '@/lib/api';
 import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
 import StockTable from '@/components/StockTable';
-import PortfolioSummary from '@/components/PortfolioSummary';
 import AddOperationModal, { type AddOperationInitialValues } from '@/components/AddOperationModal';
 import JsonUploadModal from '@/components/JsonUploadModal';
 import ExchangeRateTable from '@/components/ExchangeRateTable';
@@ -278,8 +277,6 @@ export default function PortfolioPage() {
           {error}
         </div>
       )}
-
-      {metrics && <PortfolioSummary metrics={metrics} units={units} stocks={activeStocks} />}
 
       <div className="mb-4 flex items-center justify-between text-xs px-1">
         <span className="text-gray-400">{stocks.length} positions tracked</span>
