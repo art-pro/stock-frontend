@@ -55,7 +55,7 @@ export default function DashboardLayout({
             <ChartBarIcon className="h-6 w-6 text-primary-500" />
             <span>Portfolio</span>
           </Link>
-          <p className="text-xs text-gray-500 mt-1">v{FRONTEND_VERSION} · Backend v{backendVersion}</p>
+          <p className="text-xs text-gray-500 mt-1">v{FRONTEND_VERSION} · v{backendVersion}</p>
         </div>
         <nav className="p-2 flex-1">
           {navItems.map(({ href, label, icon: Icon }) => {
