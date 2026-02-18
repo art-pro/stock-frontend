@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { stockAPI, assessmentAPI, exchangeRateAPI, portfolioAPI, settingsAPI, getErrorMessage } from '@/lib/api';
 import type { AssessmentRequest, AssessmentResponse } from '@/lib/api';
+import type { Stock, PortfolioMetrics } from '@/lib/api';
 import {
   getSectorRebalanceSummary,
   getConcentration,
@@ -13,6 +14,10 @@ import {
   formatConcentrationHintText,
   formatSuggestedActionsHintText,
 } from '@/lib/portfolioInsights';
+import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
+import RebalanceHint from '@/components/RebalanceHint';
+import RiskCard from '@/components/RiskCard';
+import SuggestedActions from '@/components/SuggestedActions';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -28,8 +33,14 @@ import {
 
 export default function AnalysisPage() {
   const router = useRouter();
+  const { targetPctBySector } = useSectorTargetsContext();
   const [activeTab, setActiveTab] = useState<'single' | 'extraction'>('single');
-  
+
+  // Portfolio context for rebalance / risk / suggested actions
+  const [portfolioMetrics, setPortfolioMetrics] = useState<PortfolioMetrics | null>(null);
+  const [portfolioStocks, setPortfolioStocks] = useState<Stock[]>([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
+
   // Single Assessment State
   const [ticker, setTicker] = useState('');
   const [isin, setIsin] = useState('');
@@ -62,7 +73,21 @@ export default function AnalysisPage() {
     }
     fetchRecentAssessments();
     fetchCurrencies();
+    fetchPortfolioSummary();
   }, [router]);
+
+  const fetchPortfolioSummary = async () => {
+    try {
+      setPortfolioLoading(true);
+      const response = await portfolioAPI.getSummary(undefined, { forceRefresh: false });
+      setPortfolioStocks(response.data.stocks || []);
+      setPortfolioMetrics(response.data.summary || null);
+    } catch (err) {
+      console.warn('Failed to fetch portfolio for analysis context:', err);
+    } finally {
+      setPortfolioLoading(false);
+    }
+  };
 
   const fetchCurrencies = async () => {
     try {
@@ -450,6 +475,23 @@ export default function AnalysisPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Sector rebalance, concentration & tail risk, suggested next actions */}
+        {!portfolioLoading && portfolioMetrics && (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+              <div className="lg:col-span-2">
+                <RebalanceHint metrics={portfolioMetrics} sectorTargets={targetPctBySector} />
+              </div>
+              <div>
+                <RiskCard stocks={portfolioStocks} />
+              </div>
+            </div>
+            <div className="mb-8">
+              <SuggestedActions metrics={portfolioMetrics} stocks={portfolioStocks} sectorTargets={targetPctBySector} />
+            </div>
+          </>
+        )}
+
         {/* Tabs */}
         <div className="flex space-x-4 mb-8 border-b border-gray-700">
           <button

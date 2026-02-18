@@ -9,9 +9,6 @@ import { formatSectorTarget } from '@/lib/sectorTargets';
 import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
 import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
-import RebalanceHint from '@/components/RebalanceHint';
-import RiskCard from '@/components/RiskCard';
-import SuggestedActions from '@/components/SuggestedActions';
 import AddStockModal from '@/components/AddStockModal';
 import JsonUploadModal from '@/components/JsonUploadModal';
 import ExchangeRateTable from '@/components/ExchangeRateTable';
@@ -361,23 +358,6 @@ export default function PortfolioPage() {
       )}
 
       {metrics && <PortfolioSummary metrics={metrics} units={units} stocks={activeStocks} />}
-
-      {metrics && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          <div className="lg:col-span-2">
-            <RebalanceHint metrics={metrics} sectorTargets={targetPctBySector} />
-          </div>
-          <div>
-            <RiskCard stocks={stocks} />
-          </div>
-        </div>
-      )}
-
-      {metrics && (
-        <div className="mb-6">
-          <SuggestedActions metrics={metrics} stocks={stocks} sectorTargets={targetPctBySector} />
-        </div>
-      )}
 
       <div className="mb-4 flex items-center justify-between text-xs px-1">
         <span className="text-gray-400">{stocks.length} positions tracked</span>
