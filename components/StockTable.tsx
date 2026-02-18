@@ -593,39 +593,37 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
         </span>
       )
     },
-    ...(onBuyClick || onSellClick
-      ? [{
-          id: 'action',
-          label: 'Action',
-          align: 'center' as const,
-          portfolioOnly: true,
-          required: false,
-          render: (stock: Stock) => (
-            <div className="flex justify-center gap-2">
-              {onBuyClick && (
-                <button
-                  type="button"
-                  onClick={() => onBuyClick(stock)}
-                  className="px-2 py-1 text-xs font-medium text-green-400 hover:text-green-300 hover:bg-green-900/30 rounded transition-colors"
-                  title="Add Buy operation"
-                >
-                  Buy
-                </button>
-              )}
-              {onSellClick && (
-                <button
-                  type="button"
-                  onClick={() => onSellClick(stock)}
-                  className="px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
-                  title="Add Sell operation"
-                >
-                  Sell
-                </button>
-              )}
-            </div>
-          ),
-        }]
-      : []),
+    {
+      id: 'action',
+      label: 'Action',
+      align: 'center' as const,
+      required: false,
+      render: (stock: Stock) => (
+        <div className="flex justify-center gap-2">
+          {onBuyClick && (
+            <button
+              type="button"
+              onClick={() => onBuyClick(stock)}
+              className="px-2 py-1 text-xs font-medium text-green-400 hover:text-green-300 hover:bg-green-900/30 rounded transition-colors"
+              title="Add Buy operation"
+            >
+              Buy
+            </button>
+          )}
+          {onSellClick && (
+            <button
+              type="button"
+              onClick={() => onSellClick(stock)}
+              className="px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
+              title="Add Sell operation"
+            >
+              Sell
+            </button>
+          )}
+          {!onBuyClick && !onSellClick && <span className="text-gray-500">—</span>}
+        </div>
+      ),
+    },
   ];
 
   // Get visible columns based on settings and watchlist mode
