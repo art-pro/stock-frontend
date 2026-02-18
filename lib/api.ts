@@ -309,6 +309,49 @@ export const stockAPI = {
   exportJSON: (portfolioId?: number) => api.get('/export/json', { responseType: 'blob', params: portfolioId ? { portfolio_id: portfolioId } : {} }),
 };
 
+export type OperationType = 'Buy' | 'Sell' | 'Deposit' | 'Withdraw' | 'Dividend';
+
+export interface Operation {
+  id: number;
+  portfolio_id: number;
+  stock_id?: number;
+  operation_type: OperationType;
+  ticker: string;
+  isin: string;
+  company_name: string;
+  sector: string;
+  currency: string;
+  quantity: number;
+  price: number;
+  amount: number;
+  note: string;
+  trade_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateOperationRequest {
+  operation_type: OperationType;
+  ticker?: string;
+  isin?: string;
+  company_name?: string;
+  sector?: string;
+  currency: string;
+  quantity: number;
+  price?: number;
+  amount?: number;
+  note?: string;
+  trade_date: string;
+  stock_id?: number;
+}
+
+export const operationsAPI = {
+  create: (data: CreateOperationRequest, portfolioId?: number) =>
+    api.post<Operation>('/operations', data, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  list: (portfolioId?: number) =>
+    api.get<Operation[]>('/operations', { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+};
+
 // Portfolio API with caching
 export const portfolioAPI = {
   getSummary: async (portfolioId?: number, options?: { forceRefresh?: boolean }) => {

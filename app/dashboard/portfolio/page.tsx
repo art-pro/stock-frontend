@@ -9,7 +9,7 @@ import { formatSectorTarget } from '@/lib/sectorTargets';
 import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
 import StockTable from '@/components/StockTable';
 import PortfolioSummary from '@/components/PortfolioSummary';
-import AddStockModal from '@/components/AddStockModal';
+import AddOperationModal, { type AddOperationInitialValues } from '@/components/AddOperationModal';
 import JsonUploadModal from '@/components/JsonUploadModal';
 import ExchangeRateTable from '@/components/ExchangeRateTable';
 import CashManagementTable from '@/components/CashManagementTable';
@@ -28,7 +28,8 @@ export default function PortfolioPage() {
   const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null);
   const [units, setUnits] = useState<PortfolioUnits | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddOperationModal, setShowAddOperationModal] = useState(false);
+  const [addOperationInitialValues, setAddOperationInitialValues] = useState<AddOperationInitialValues | undefined>(undefined);
   const [showJsonUploadModal, setShowJsonUploadModal] = useState(false);
   const [error, setError] = useState('');
   const [apiStatus, setApiStatus] = useState<any>(null);
@@ -382,11 +383,11 @@ export default function PortfolioPage() {
       <div className="mb-6 flex flex-wrap gap-3">
         <div className="flex gap-2">
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => { setAddOperationInitialValues(undefined); setShowAddOperationModal(true); }}
             className="flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-md hover:shadow-lg"
           >
             <PlusIcon className="h-5 w-5 mr-2" />
-            Add Position
+            Add Operation
           </button>
           <button
             onClick={() => fetchData(true)}
@@ -490,6 +491,30 @@ export default function PortfolioPage() {
           units={units}
           sectorWeights={metrics?.sector_weights}
           sectorTargets={targetPctBySector}
+          onBuyClick={(stock) => {
+            setAddOperationInitialValues({
+              ticker: stock.ticker,
+              isin: stock.isin ?? '',
+              company_name: stock.company_name ?? '',
+              sector: stock.sector ?? '',
+              currency: stock.currency ?? 'USD',
+              operation_type: 'Buy',
+              stock_id: stock.id,
+            });
+            setShowAddOperationModal(true);
+          }}
+          onSellClick={(stock) => {
+            setAddOperationInitialValues({
+              ticker: stock.ticker,
+              isin: stock.isin ?? '',
+              company_name: stock.company_name ?? '',
+              sector: stock.sector ?? '',
+              currency: stock.currency ?? 'USD',
+              operation_type: 'Sell',
+              stock_id: stock.id,
+            });
+            setShowAddOperationModal(true);
+          }}
         />
       </div>
 
@@ -524,15 +549,17 @@ export default function PortfolioPage() {
         </details>
       </div>
 
-      {showAddModal && (
-        <AddStockModal
-          onClose={() => setShowAddModal(false)}
+      {showAddOperationModal && (
+        <AddOperationModal
+          onClose={() => { setShowAddOperationModal(false); setAddOperationInitialValues(undefined); }}
           onSuccess={async () => {
-            setShowAddModal(false);
+            setShowAddOperationModal(false);
+            setAddOperationInitialValues(undefined);
             invalidateCache('portfolio');
             await new Promise(resolve => setTimeout(resolve, 500));
             await fetchData(true);
           }}
+          initialValues={addOperationInitialValues}
         />
       )}
       <JsonUploadModal

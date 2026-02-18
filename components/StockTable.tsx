@@ -39,9 +39,12 @@ interface StockTableProps {
   sectorWeights?: Record<string, number>;
   /** Persisted sector targets (min/max %); when set, sector headers show target from these instead of defaults */
   sectorTargets?: Record<string, { min: number; max: number }>;
+  /** When set (Active Positions only), show Action column with Buy/Sell that open Add Operation with prefilled stock */
+  onBuyClick?: (stock: Stock) => void;
+  onSellClick?: (stock: Stock) => void;
 }
 
-export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false, onTickerUpdate, units, sectorWeights, sectorTargets }: StockTableProps) {
+export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, onFieldUpdate, updatingStocks = [], selectedStockIds = [], onSelectStock, onSelectAll, isWatchlist = false, onTickerUpdate, units, sectorWeights, sectorTargets, onBuyClick, onSellClick }: StockTableProps) {
   const [sortField, setSortField] = useState<keyof Stock>('ticker');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState('');
@@ -589,7 +592,40 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
           {stock.assessment}
         </span>
       )
-    }
+    },
+    ...(onBuyClick || onSellClick
+      ? [{
+          id: 'action',
+          label: 'Action',
+          align: 'center' as const,
+          portfolioOnly: true,
+          required: false,
+          render: (stock: Stock) => (
+            <div className="flex justify-center gap-2">
+              {onBuyClick && (
+                <button
+                  type="button"
+                  onClick={() => onBuyClick(stock)}
+                  className="px-2 py-1 text-xs font-medium text-green-400 hover:text-green-300 hover:bg-green-900/30 rounded transition-colors"
+                  title="Add Buy operation"
+                >
+                  Buy
+                </button>
+              )}
+              {onSellClick && (
+                <button
+                  type="button"
+                  onClick={() => onSellClick(stock)}
+                  className="px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
+                  title="Add Sell operation"
+                >
+                  Sell
+                </button>
+              )}
+            </div>
+          ),
+        }]
+      : []),
   ];
 
   // Get visible columns based on settings and watchlist mode

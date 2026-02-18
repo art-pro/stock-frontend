@@ -73,4 +73,38 @@ describe('api subsystem', () => {
 
     expect(mockApiInstance.get).toHaveBeenCalledTimes(2);
   });
+
+  it('operationsAPI.create calls POST /operations with body and optional portfolio_id', async () => {
+    mockApiInstance.post.mockResolvedValue({
+      data: { id: 1, operation_type: 'Deposit', currency: 'USD', amount: 100 },
+    });
+    const { operationsAPI } = loadApiModule();
+    const payload = {
+      operation_type: 'Deposit' as const,
+      currency: 'USD',
+      quantity: 100,
+      trade_date: '15.02.2026',
+    };
+
+    await operationsAPI.create(payload);
+    expect(mockApiInstance.post).toHaveBeenCalledWith('/operations', payload, { params: {} });
+
+    mockApiInstance.post.mockClear();
+    await operationsAPI.create(payload, 5);
+    expect(mockApiInstance.post).toHaveBeenCalledWith('/operations', payload, {
+      params: { portfolio_id: 5 },
+    });
+  });
+
+  it('operationsAPI.list calls GET /operations with optional portfolio_id', async () => {
+    mockApiInstance.get.mockResolvedValue({ data: [] });
+    const { operationsAPI } = loadApiModule();
+
+    await operationsAPI.list();
+    expect(mockApiInstance.get).toHaveBeenCalledWith('/operations', { params: {} });
+
+    mockApiInstance.get.mockClear();
+    await operationsAPI.list(3);
+    expect(mockApiInstance.get).toHaveBeenCalledWith('/operations', { params: { portfolio_id: 3 } });
+  });
 });

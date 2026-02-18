@@ -13,10 +13,12 @@ import {
   WalletIcon,
   ListBulletIcon,
   ChartPieIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 
 const navItems = [
   { href: '/dashboard/portfolio', label: 'Portfolio', icon: WalletIcon },
+  { href: '/dashboard/history', label: 'History', icon: ClockIcon },
   { href: '/dashboard/watchlist', label: 'Watchlist', icon: ListBulletIcon },
   { href: '/dashboard/analysis', label: 'Analysis', icon: ChartPieIcon },
   { href: '/dashboard/settings', label: 'Settings', icon: Cog6ToothIcon },

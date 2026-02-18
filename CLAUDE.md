@@ -31,21 +31,22 @@ Scripts (`package.json`):
 The app uses a **left sidebar** for main navigation when the user is in the dashboard area.
 
 - **Layout:** `app/dashboard/layout.tsx` wraps all routes under `/dashboard/*`. It provides:
-  - **Left sidebar** with nav links: **Portfolio**, **Watchlist**, **Analysis**, **Settings**; active route is highlighted; **Logout** at bottom.
+  - **Left sidebar** with nav links: **Portfolio**, **History**, **Watchlist**, **Analysis**, **Settings**; active route is highlighted; **Logout** at bottom.
   - A thin top bar showing backend version.
   - Auth check: unauthenticated users are redirected to `/login`.
 - **Routes:**
   - `/dashboard` → redirects to `/dashboard/portfolio`.
   - `/dashboard/portfolio` — Portfolio page (summary, positions, calculator, import/export, snapshots, cash/FX).
-  - `/dashboard/watchlist` — Watchlist table and Add Position / Import / Export.
+  - `/dashboard/history` — History page: table of operations (Asset | Operation | Trade date | Quantity | Price | Amount | Note) from `GET /operations`.
+  - `/dashboard/watchlist` — Watchlist table and Add Operation / Import / Export.
   - `/dashboard/analysis` — Analysis page: sector rebalance hint, concentration & tail risk, suggested next actions (at top), then Request Stock Assessment and Extract from Screenshots tabs.
   - `/dashboard/settings` — Settings (username, password, portfolio, column settings, Sector Targets).
   - `/assessment` → redirects to `/dashboard/analysis`.
   - `/settings` → redirects to `/dashboard/settings`.
 
-**Portfolio page** (`app/dashboard/portfolio/page.tsx`): PortfolioSummary, status bar, selection, toolbar (Add Position, Refresh, Import, Export, Snapshot JSON, Snapshot CSV — **no** Market Data or AI Analysis buttons), Position Size Calculator, Active Positions table (with Fair Value Sync), collapsible Cash Management and Exchange Rates. Rebalance hint, Risk card, and Suggested actions are **not** on this page (they live on Analysis).
+**Portfolio page** (`app/dashboard/portfolio/page.tsx`): PortfolioSummary, status bar, selection, toolbar (Add Operation, Refresh, Import, Export, Snapshot JSON, Snapshot CSV — **no** Market Data or AI Analysis buttons), Position Size Calculator, Active Positions table (with Fair Value Sync; Action column with Buy/Sell opens Add Operation prefilled), collapsible Cash Management and Exchange Rates. Rebalance hint, Risk card, and Suggested actions are **not** on this page (they live on Analysis).
 
-**Watchlist page** (`app/dashboard/watchlist/page.tsx`): Watchlist table only; Add Position, Import, Export.
+**Watchlist page** (`app/dashboard/watchlist/page.tsx`): Watchlist table only; Add Operation, Import, Export.
 
 **Analysis page** (`app/dashboard/analysis/page.tsx`): At the top, **Sector rebalance hint** (RebalanceHint), **Concentration & tail risk** (RiskCard), and **Suggested next actions** (SuggestedActions); then tabs for Single Ticker Analysis (Request Stock Assessment) and Extract from Screenshots. Fetches portfolio summary on load to render the three widgets; when the user requests an assessment, the same hint text is still sent to the LLM (see “Request Stock Assessment and dashboard hints”).
 
@@ -82,9 +83,12 @@ The app uses a **left sidebar** for main navigation when the user is in the dash
 - `app/dashboard/settings/page.tsx` + `hooks/useColumnSettings.ts` + **Sector Targets**
   User/password/portfolio settings; persistent column-visibility/order; **Sector Targets** tab: table of sector allocation targets (min–max %, rationale) loaded from and saved to backend (`GET/POST /settings/sector-targets`). RBAC: only admin can add, edit, delete rows and save; all users can view. Admins get Add sector, Save, Reset to defaults; inline edit sector/min/max/rationale; delete row (≥1 row). Saved targets apply to Portfolio/Watchlist tables and Analysis widgets. “Reset to defaults” persists the built-in sector table.
 - `lib/api.ts`  
-  API contracts, request methods, lightweight cache layer, cache invalidation helper.
+  API contracts, request methods, lightweight cache layer, cache invalidation helper. **Operations**: `operationsAPI.create(data, portfolioId?)`, `operationsAPI.list(portfolioId?)` for `POST/GET /operations`.
 - `lib/auth.ts`  
   Cookie token helpers for client auth state.
+- **Operations and History**
+  - **Add Operation** modal (`components/AddOperationModal.tsx`): Operation type (Buy, Sell, Deposit, Withdraw, Dividend), Date (DD.MM.YYYY), Ticker, ISIN, Company name, Sector, Currency, Number of shares/Amount, Price (for Buy/Sell), Comment. Data stored via `POST /operations`. Portfolio and Watchlist use “Add Operation” and open this modal; Active Positions (Portfolio only) have an Action column with Buy/Sell buttons that open the modal with prefilled stock and operation type.
+  - **History page** (`app/dashboard/history/page.tsx`): Fetches `GET /operations` and shows table: Asset | Operation | Trade date | Quantity | Price | Amount | Note. Operations drive cash (Buy/Withdraw decrease, Sell/Deposit/Dividend increase) and stock positions (Buy/Sell create or update positions).
 
 ## Product Principles (Frontend)
 
@@ -387,7 +391,7 @@ API methods added in `lib/api.ts`:
 
 ## Versioning
 
-- **Frontend version** is set in `lib/version.ts` (`FRONTEND_VERSION`) and `package.json` (`version`). Bump both for releases.
+- **Frontend version** is set in `lib/version.ts` (`FRONTEND_VERSION`) and `package.json` (`version`). Bump both for releases. Current: **2.11.0** (Operations: Add Operation modal, History page, Buy/Sell actions on Active Positions).
 - **Backend version** is reported by the API (`versionAPI.getBackendVersion()`); bump the backend version in the backend repository when releasing the backend.
 
 ## Suggested improvements (additive only)
@@ -400,4 +404,4 @@ See **`INVESTMENT_IMPROVEMENTS.md`** for the full list. **Phase 1 (math/logic an
 
 ---
 
-Last updated: 2026-02-15
+Last updated: 2026-02-18

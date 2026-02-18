@@ -6,7 +6,7 @@ import { isAuthenticated } from '@/lib/auth';
 import { stockAPI, portfolioAPI, invalidateCache, Stock, PortfolioUnits } from '@/lib/api';
 import { useSectorTargetsContext } from '@/contexts/SectorTargetsContext';
 import StockTable from '@/components/StockTable';
-import AddStockModal from '@/components/AddStockModal';
+import AddOperationModal from '@/components/AddOperationModal';
 import JsonUploadModal from '@/components/JsonUploadModal';
 import { PlusIcon, ArrowPathIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 
@@ -16,7 +16,7 @@ export default function WatchlistPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [units, setUnits] = useState<PortfolioUnits | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddOperationModal, setShowAddOperationModal] = useState(false);
   const [showJsonUploadModal, setShowJsonUploadModal] = useState(false);
   const [error, setError] = useState('');
   const [updatingStocks, setUpdatingStocks] = useState<Array<{ stockId: number; source: 'grok' | 'alphavantage' }>>([]);
@@ -188,11 +188,11 @@ export default function WatchlistPage() {
       <div className="mb-6 flex flex-wrap gap-3">
         <div className="flex gap-2">
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => setShowAddOperationModal(true)}
             className="flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-md hover:shadow-lg"
           >
             <PlusIcon className="h-5 w-5 mr-2" />
-            Add Position
+            Add Operation
           </button>
           <button
             onClick={() => fetchData(true)}
@@ -240,11 +240,11 @@ export default function WatchlistPage() {
         />
       </div>
 
-      {showAddModal && (
-        <AddStockModal
-          onClose={() => setShowAddModal(false)}
+      {showAddOperationModal && (
+        <AddOperationModal
+          onClose={() => setShowAddOperationModal(false)}
           onSuccess={async () => {
-            setShowAddModal(false);
+            setShowAddOperationModal(false);
             invalidateCache('portfolio');
             await new Promise(resolve => setTimeout(resolve, 500));
             await fetchData(true);
