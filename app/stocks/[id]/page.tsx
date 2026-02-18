@@ -488,8 +488,13 @@ export default function StockDetailPage() {
     let numericToken = numberMatch[0];
     if (numericToken.includes(',') && numericToken.includes('.')) {
       numericToken = numericToken.replace(/,/g, '');
-    } else {
-      numericToken = numericToken.replace(/,/g, '.');
+    } else if (numericToken.includes(',')) {
+      const afterComma = numericToken.split(',').pop() ?? '';
+      if (afterComma.length === 3 && /^\d{3}$/.test(afterComma)) {
+        numericToken = numericToken.replace(/,/g, '');
+      } else {
+        numericToken = numericToken.replace(/,/g, '.');
+      }
     }
     const numericValue = Number.parseFloat(numericToken);
     if (!Number.isFinite(numericValue)) {
