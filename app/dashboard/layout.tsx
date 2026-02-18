@@ -55,7 +55,7 @@ export default function DashboardLayout({
             <ChartBarIcon className="h-6 w-6 text-primary-500" />
             <span>Portfolio</span>
           </Link>
-          <p className="text-xs text-gray-500 mt-1">v{FRONTEND_VERSION}</p>
+          <p className="text-xs text-gray-500 mt-1">v{FRONTEND_VERSION} · Backend v{backendVersion}</p>
         </div>
         <nav className="p-2 flex-1">
           {navItems.map(({ href, label, icon: Icon }) => {
@@ -75,27 +75,19 @@ export default function DashboardLayout({
               </Link>
             );
           })}
-        </nav>
-        <div className="p-3 border-t border-gray-700">
           <button
+            type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-red-600/20 hover:text-red-300 transition-colors"
+            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-red-300 transition-colors"
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5" />
-            Logout
+            <ArrowRightOnRectangleIcon className="h-5 w-5 shrink-0" />
+            Exit
           </button>
-        </div>
+        </nav>
       </aside>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="shrink-0 bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700 px-6 py-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-400">
-              Backend v{backendVersion}
-            </p>
-          </div>
-        </header>
         <main className="flex-1 overflow-auto">
           {children}
         </main>
