@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { stockAPI, assessmentAPI, exchangeRateAPI, portfolioAPI, settingsAPI, getErrorMessage } from '@/lib/api';
+import { assessmentAPI, exchangeRateAPI, portfolioAPI, settingsAPI, getErrorMessage } from '@/lib/api';
 import type { AssessmentRequest, AssessmentResponse } from '@/lib/api';
 import type { Stock, PortfolioMetrics } from '@/lib/api';
 import {
@@ -25,16 +25,11 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
-  PhotoIcon,
-  DocumentTextIcon,
-  ArrowUpTrayIcon,
-  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 export default function AnalysisPage() {
   const router = useRouter();
   const { targetPctBySector } = useSectorTargetsContext();
-  const [activeTab, setActiveTab] = useState<'single' | 'extraction'>('single');
 
   // Portfolio context for rebalance / risk / suggested actions
   const [portfolioMetrics, setPortfolioMetrics] = useState<PortfolioMetrics | null>(null);
@@ -55,16 +50,6 @@ export default function AnalysisPage() {
   const [recentAssessments, setRecentAssessments] = useState<AssessmentResponse[]>([]);
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentResponse | null>(null);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
-
-  // Extraction State
-  const [files, setFiles] = useState<File[]>([]);
-  // This state holds sanitized representations (DataURLs) of each file for preview
-  const [sanitizedPreviews, setSanitizedPreviews] = useState<string[]>([]);
-  const [extractionSource, setExtractionSource] = useState<'grok'>('grok');
-  const [extractionLoading, setExtractionLoading] = useState(false);
-  const [extractedJson, setExtractedJson] = useState<string>('');
-  const [extractionError, setExtractionError] = useState('');
-  const [jsonValidationErrors, setJsonValidationErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -194,227 +179,6 @@ export default function AnalysisPage() {
     }
   };
 
-  // Utility: Check magic numbers for allowed image types (JPEG, PNG, GIF, BMP, WebP)
-  const isValidImageFileContent = (file: File): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const bytes = new Uint8Array(event.target?.result as ArrayBuffer);
-        // Check for JPEG: 0xFF 0xD8 0xFF
-        if (bytes.length >= 3 && bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
-          resolve(true);
-          return;
-        }
-        // Check for PNG: 0x89 0x50 0x4E 0x47 0x0D 0x0A 0x1A 0x0A
-        if (bytes.length >= 8 &&
-          bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E &&
-          bytes[3] === 0x47 && bytes[4] === 0x0D && bytes[5] === 0x0A &&
-          bytes[6] === 0x1A && bytes[7] === 0x0A) {
-          resolve(true);
-          return;
-        }
-        // Check for GIF ('GIF87a' or 'GIF89a')
-        if (bytes.length >= 6 &&
-          bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 &&
-          ((bytes[3] === 0x38 && bytes[4] === 0x37 && bytes[5] === 0x61) ||
-           (bytes[3] === 0x38 && bytes[4] === 0x39 && bytes[5] === 0x61))) {
-          resolve(true);
-          return;
-        }
-        // Check for BMP: 0x42 0x4D
-        if (bytes.length >= 2 &&
-          bytes[0] === 0x42 && bytes[1] === 0x4D) {
-          resolve(true);
-          return;
-        }
-        // Check for WebP: RIFF....WEBP (starts with 0x52 0x49 0x46 0x46 [RIFF], 'WEBP' at offset 8)
-        if (bytes.length >= 12 &&
-          bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
-          bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
-          resolve(true);
-          return;
-        }
-        resolve(false);
-      };
-      reader.onerror = (error) => {
-        resolve(false);
-      };
-      reader.readAsArrayBuffer(file.slice(0, 16));
-    });
-  };
-
-  // File handling for extraction (now async for magic number verification)
-  // Returns Promise<string> (dataURL) or null if file cannot be safely sanitized
-  const fileToSanitizedDataUrl = (file: File): Promise<string | null> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const img = new window.Image();
-        img.onload = function () {
-          try {
-            // Draw on canvas as PNG, discarding any non-image/polyglot portions.
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return resolve(null);
-            ctx.drawImage(img, 0, 0);
-            // Returning PNG always is safe
-            const dataUrl = canvas.toDataURL('image/png');
-            resolve(dataUrl);
-          } catch (err) {
-            resolve(null);
-          }
-        };
-        img.onerror = function () {
-          resolve(null);
-        };
-        if (typeof e.target?.result === "string") {
-          img.src = e.target.result;
-        } else {
-          resolve(null);
-        }
-      };
-      reader.onerror = function () {
-        resolve(null);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-
-      // Validate file types to prevent XSS
-      const filteredByTypeExt = newFiles.filter(file => {
-        const isValidType = file.type.startsWith('image/');
-        const hasValidExtension = /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file.name);
-        return isValidType && hasValidExtension;
-      });
-
-      if (filteredByTypeExt.length !== newFiles.length) {
-        setExtractionError("Only image files (JPG, PNG, GIF, BMP, WebP) are allowed");
-        return;
-      }
-
-      // Filter by magic number content
-      const validityList = await Promise.all(filteredByTypeExt.map(file => isValidImageFileContent(file)));
-      const validFiles = filteredByTypeExt.filter((file, idx) => validityList[idx]);
-
-      if (validFiles.length !== filteredByTypeExt.length) {
-        setExtractionError("One or more files are not valid images");
-        return;
-      }
-
-      if (files.length + validFiles.length > 3) {
-        setExtractionError("Maximum 3 images allowed");
-        return;
-      }
-
-      // Sanitize new files for previews
-      const sanitizedList = await Promise.all(
-        validFiles.map(file => fileToSanitizedDataUrl(file))
-      );
-      // Only keep successfully sanitized files
-      const validSanitizedPairs = validFiles
-        .map((file, idx) => ({ file, preview: sanitizedList[idx] }))
-        .filter(item => item.preview !== null) as { file: File, preview: string }[];
-      if (validSanitizedPairs.length !== validFiles.length) {
-        setExtractionError("One or more images could not be previewed.");
-        return;
-      }
-      setFiles(prev => [...prev, ...validSanitizedPairs.map(item => item.file)]);
-      setSanitizedPreviews(prev => [...prev, ...validSanitizedPairs.map(item => item.preview)]);
-      setExtractionError('');
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-    setSanitizedPreviews(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        // Remove data:image/xyz;base64, prefix if needed by backend, 
-        // but usually it's better to keep it or strip it depending on backend expectation.
-        // Assuming backend expects full data URI or just base64. 
-        // Let's send full data URI for now as it's safer.
-        resolve(reader.result as string);
-      };
-      reader.onerror = error => reject(error);
-    });
-  };
-
-  const handleExtraction = async () => {
-    if (files.length === 0) {
-      setExtractionError('Please select at least one image');
-      return;
-    }
-
-    setExtractionLoading(true);
-    setExtractionError('');
-    setExtractedJson('');
-
-    try {
-      const base64Images = await Promise.all(files.map(convertFileToBase64));
-      const response = await assessmentAPI.extractFromImages(base64Images, extractionSource);
-      
-      // Format JSON nicely
-      setExtractedJson(JSON.stringify(response.data, null, 2));
-    } catch (err: any) {
-      setExtractionError(err.response?.data?.error || 'Failed to extract data from images');
-    } finally {
-      setExtractionLoading(false);
-    }
-  };
-
-  const validateJson = (content: string) => {
-    setJsonValidationErrors([]);
-    try {
-      const data = JSON.parse(content);
-      if (!Array.isArray(data)) {
-        setJsonValidationErrors(['JSON must be an array of stock objects']);
-        return false;
-      }
-      // Basic validation
-      const errors: string[] = [];
-      data.forEach((stock, index) => {
-        if (!stock.ticker) errors.push(`Index ${index}: Missing ticker`);
-        if (!stock.company_name) errors.push(`Index ${index}: Missing company_name`);
-        // Add more checks if needed
-      });
-      if (errors.length > 0) {
-        setJsonValidationErrors(errors);
-        return false;
-      }
-      return true;
-    } catch (e) {
-      setJsonValidationErrors(['Invalid JSON format']);
-      return false;
-    }
-  };
-
-  const handleApplyChanges = async () => {
-    if (!validateJson(extractedJson)) return;
-
-    setExtractionLoading(true);
-    try {
-      const data = JSON.parse(extractedJson);
-      await stockAPI.bulkUpdate(data);
-      alert('Stocks updated successfully!');
-      router.push('/dashboard/portfolio');
-    } catch (err: any) {
-      setExtractionError(err.response?.data?.error || 'Failed to update stocks');
-    } finally {
-      setExtractionLoading(false);
-    }
-  };
-
   // Custom markdown components (same as before)
   const markdownComponents = {
     h1: ({ children }: any) => <h1 className="text-2xl font-bold text-white mt-8 mb-4 border-b border-gray-600 pb-2">{children}</h1>,
@@ -478,8 +242,8 @@ export default function AnalysisPage() {
         {/* Sector rebalance, concentration & tail risk, suggested next actions */}
         {!portfolioLoading && portfolioMetrics && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-              <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              <div>
                 <RebalanceHint metrics={portfolioMetrics} sectorTargets={targetPctBySector} />
               </div>
               <div>
@@ -492,33 +256,7 @@ export default function AnalysisPage() {
           </>
         )}
 
-        {/* Tabs */}
-        <div className="flex space-x-4 mb-8 border-b border-gray-700">
-          <button
-            className={`pb-4 px-4 font-medium text-sm focus:outline-none ${
-              activeTab === 'single'
-                ? 'text-primary-500 border-b-2 border-primary-500'
-                : 'text-gray-400 hover:text-gray-300'
-            }`}
-            onClick={() => setActiveTab('single')}
-          >
-            Single Ticker Analysis
-          </button>
-          <button
-            className={`pb-4 px-4 font-medium text-sm focus:outline-none ${
-              activeTab === 'extraction'
-                ? 'text-primary-500 border-b-2 border-primary-500'
-                : 'text-gray-400 hover:text-gray-300'
-            }`}
-            onClick={() => setActiveTab('extraction')}
-          >
-            Extract from Screenshots
-          </button>
-        </div>
-
-        {activeTab === 'single' ? (
-          <>
-            {/* Assessment Form */}
+        {/* Request Stock Assessment */}
             <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
               <h2 className="text-xl font-bold text-white mb-4">Request Stock Assessment</h2>
               
@@ -711,140 +449,9 @@ export default function AnalysisPage() {
                 </div>
               </div>
             )}
-          </>
-        ) : (
-          <>
-            {/* Extraction Interface */}
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
-              <h2 className="text-xl font-bold text-white mb-4">Extract Data from Screenshots</h2>
-              
-              {/* Source Selection */}
-              <div className="mb-6">
-                <label htmlFor="extraction-source" className="block text-sm font-medium text-gray-400 mb-2">
-                  AI Source
-                </label>
-                <select
-                  id="extraction-source"
-                  value={extractionSource}
-                  onChange={(e) => setExtractionSource(e.target.value as 'grok')}
-                  className="w-full md:w-64 bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
-                  disabled={extractionLoading}
-                >
-                  <option value="grok">Grok AI</option>
-                </select>
-              </div>
-
-              {/* File Upload */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Upload Screenshots (Max 3)
-                </label>
-                <div className="flex items-center gap-4">
-                  <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer bg-gray-700 hover:bg-gray-600 transition-colors">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <PhotoIcon className="w-8 h-8 text-gray-400 mb-2" />
-                      <p className="text-xs text-gray-400">Add Image</p>
-                    </div>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*" 
-                      multiple 
-                      onChange={handleFileChange}
-                    />
-                  </label>
-
-                  {files.map((file, index) => {
-                    const previewUrl = sanitizedPreviews[index];
-                    return (
-                      <div key={index} className="relative w-32 h-32 bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
-                        {previewUrl ? (
-                          <img
-                            src={previewUrl}
-                            alt={`Upload ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onError={() => {
-                              console.error('Failed to load image:', file.name);
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-red-400">
-                            <ExclamationTriangleIcon className="w-8 h-8" />
-                          </div>
-                        )}
-                        <button
-                          onClick={() => removeFile(index)}
-                          className="absolute top-1 right-1 bg-red-500 rounded-full p-1 text-white hover:bg-red-600"
-                        >
-                          <XMarkIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {extractionError && (
-                <div className="mb-6 bg-red-900 bg-opacity-50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
-                  {extractionError}
-                </div>
-              )}
-
-              <button
-                onClick={handleExtraction}
-                disabled={extractionLoading || files.length === 0}
-                className="flex items-center px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
-              >
-                <DocumentTextIcon className="h-5 w-5 mr-2" />
-                {extractionLoading ? 'Extracting Data...' : 'Extract Data'}
-              </button>
-
-              {/* JSON Editor */}
-              {extractedJson && (
-                <div className="animate-in fade-in duration-300">
-                  <h3 className="text-lg font-bold text-white mb-2 flex items-center justify-between">
-                    <span>Extracted Data (Editable)</span>
-                    <span className="text-xs text-gray-400 font-normal">Edit JSON below to correct any errors</span>
-                  </h3>
-                  
-                  <textarea
-                    value={extractedJson}
-                    onChange={(e) => {
-                      setExtractedJson(e.target.value);
-                      validateJson(e.target.value);
-                    }}
-                    className="w-full h-96 p-4 bg-gray-900 text-green-400 font-mono text-sm rounded-lg border border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
-                  />
-
-                  {jsonValidationErrors.length > 0 && (
-                    <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-600 rounded">
-                      <p className="text-yellow-300 mb-2">Validation Errors:</p>
-                      <ul className="list-disc list-inside text-yellow-300 text-sm">
-                        {jsonValidationErrors.map((err, idx) => (
-                          <li key={idx}>{err}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div className="mt-6 flex justify-end">
-                    <button
-                      onClick={handleApplyChanges}
-                      disabled={extractionLoading || jsonValidationErrors.length > 0}
-                      className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
-                      Apply Changes to Dashboard
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
 
         {/* Loading State */}
-        {(loading || extractionLoading) && (
+        {loading && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
               <div className="flex items-center space-x-3">

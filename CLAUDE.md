@@ -39,16 +39,16 @@ The app uses a **left sidebar** for main navigation when the user is in the dash
   - `/dashboard/portfolio` — Portfolio page (summary, positions, calculator, import/export, snapshots, cash/FX).
   - `/dashboard/history` — History page: table of operations (Asset | Operation | Trade date | Quantity | Price | Amount | Note) from `GET /operations`.
   - `/dashboard/watchlist` — Watchlist table and Add Operation / Import / Export.
-  - `/dashboard/analysis` — Analysis page: sector rebalance hint, concentration & tail risk, suggested next actions (at top), then Request Stock Assessment and Extract from Screenshots tabs.
+  - `/dashboard/analysis` — Analysis page: sector rebalance hint, concentration & tail risk, suggested next actions (at top), then Request Stock Assessment and Recent Assessments.
   - `/dashboard/settings` — Settings (username, password, portfolio, column settings, Sector Targets).
   - `/assessment` → redirects to `/dashboard/analysis`.
   - `/settings` → redirects to `/dashboard/settings`.
 
-**Portfolio page** (`app/dashboard/portfolio/page.tsx`): PortfolioSummary, status bar, selection, toolbar (Add Operation, Refresh, Import, Export, Snapshot JSON, Snapshot CSV — **no** Market Data or AI Analysis buttons), Position Size Calculator, Active Positions table (with Fair Value Sync; Action column with Buy/Sell opens Add Operation prefilled), collapsible Cash Management and Exchange Rates. Rebalance hint, Risk card, and Suggested actions are **not** on this page (they live on Analysis).
+**Portfolio page** (`app/dashboard/portfolio/page.tsx`): PortfolioSummary (Overall EV, Volatility; no Sharpe/Kelly), status bar, selection, toolbar (Add Operation, Refresh, Import, Export), Position Size Calculator, Active Positions table (with Fair Value Sync; Action column with Buy/Sell opens Add Operation prefilled), collapsible Cash Management and Exchange Rates. Rebalance hint, Risk card, and Suggested actions are **not** on this page (they live on Analysis).
 
 **Watchlist page** (`app/dashboard/watchlist/page.tsx`): Watchlist table only; Add Operation, Import, Export.
 
-**Analysis page** (`app/dashboard/analysis/page.tsx`): At the top, **Sector rebalance hint** (RebalanceHint), **Concentration & tail risk** (RiskCard), and **Suggested next actions** (SuggestedActions); then tabs for Single Ticker Analysis (Request Stock Assessment) and Extract from Screenshots. Fetches portfolio summary on load to render the three widgets; when the user requests an assessment, the same hint text is still sent to the LLM (see “Request Stock Assessment and dashboard hints”).
+**Analysis page** (`app/dashboard/analysis/page.tsx`): At the top, **Sector rebalance hint** (RebalanceHint), **Concentration & tail risk** (RiskCard), and **Suggested next actions** (SuggestedActions), each in equal-width panels; then **Request Stock Assessment** form and **Recent Assessments** list. Fetches portfolio summary on load to render the three widgets; when the user requests an assessment, the same hint text is still sent to the LLM (see “Request Stock Assessment and dashboard hints”).
 
 **Settings** (`app/dashboard/settings/page.tsx`): Full settings UI; no “Back to Dashboard” button (sidebar is used for navigation).
 
@@ -77,7 +77,7 @@ The app uses a **left sidebar** for main navigation when the user is in the dash
 - `app/assessment/page.tsx`  
   Redirects to `/dashboard/analysis`. The actual assessment UI lives in `app/dashboard/analysis/page.tsx` (see Dashboard layout above).
 - `app/dashboard/analysis/page.tsx`  
-  **Analysis** page: shows RebalanceHint, RiskCard, SuggestedActions at top; then Single-ticker AI assessment and image extraction workflow (Request Stock Assessment, Extract from Screenshots). When the user requests a stock assessment, the page fetches portfolio summary and sector targets, computes **dashboard hints** (sector rebalance, concentration & tail risk, suggested next actions) from `lib/portfolioInsights.ts`, and sends them as optional body fields to `POST /assessment/request` so the LLM receives the same context as the three panes above.
+  **Analysis** page: shows RebalanceHint, RiskCard, SuggestedActions at top (equal-width panels); then Request Stock Assessment form and Recent Assessments list. When the user requests a stock assessment, the page fetches portfolio summary and sector targets, computes **dashboard hints** (sector rebalance, concentration & tail risk, suggested next actions) from `lib/portfolioInsights.ts`, and sends them as optional body fields to `POST /assessment/request` so the LLM receives the same context as the three panes above.
 - `app/settings/page.tsx`  
   Redirects to `/dashboard/settings`. The actual settings UI lives in `app/dashboard/settings/page.tsx`.
 - `app/dashboard/settings/page.tsx` + `hooks/useColumnSettings.ts` + **Sector Targets**
@@ -153,7 +153,7 @@ The frontend should align with backend formulas and action bands from `pkg/servi
   - Weight % column tooltip: portfolio % and position size vs ½-Kelly (when available)
   - tooltips for metric meaning
 - `components/PortfolioSummary.tsx`
-  - overall EV, Sharpe, volatility, Kelly utilization displays; Kelly card shows target band 75–85%
+  - overall EV and volatility displays (no Sharpe or Kelly utilization)
 - `app/stocks/[id]/page.tsx`
   - per-stock metrics and action interpretation text/tooltips
   - dedicated sell-zone cards (min/max/status) aligned to backend EV thresholds
@@ -183,7 +183,7 @@ The frontend should align with backend formulas and action bands from `pkg/servi
 
 1. **Portfolio (dashboard/portfolio)**
    - View portfolio summary and active positions (grouped by sector; sector headers show current % and target range)
-   - Add Position, Import, Export, Snapshot (JSON/CSV); Position Size Calculator
+   - Add Operation, Import, Export; Position Size Calculator
    - Run trusted fair-value sync for selected active positions (Grok + Deepseek backend collection)
    - Review buy zone limits and distance to buy zone (tooltip on Buy Zone Status)
    - Review sell-zone thresholds and status (tooltip on Sell Zone Status)
@@ -192,13 +192,13 @@ The frontend should align with backend formulas and action bands from `pkg/servi
    - Collapsible Cash Management and Exchange Rates
    - (Market Data and AI Analysis bulk-update buttons are **not** on this page; use stock-level actions in the table if needed.)
 2. **Watchlist (dashboard/watchlist)**
-   - View watchlist table (grouped by sector); Add Position, Import, Export
+   - View watchlist table (grouped by sector); Add Operation, Import, Export
 3. **Analysis (dashboard/analysis)**
    - **Sector rebalance hint**: sectors vs targets (over / at / under); consider trim/add by sector
    - **Concentration & tail risk**: largest position, top 3, top 5 % of equity
    - **Suggested next actions**: sector trim, sell/trim zone, buy zone add, etc.
    - Request Stock Assessment (single ticker; sends above hints to LLM)
-   - Extract from Screenshots (image-to-JSON pipeline)
+   - Request Stock Assessment and Recent Assessments (no screenshot extraction)
 4. **Stock detail editing**
    - granular edits with calculated-vs-editable separation
    - source transparency modal for raw provider payloads
@@ -261,11 +261,11 @@ Additive display-only features to support EV optimization, sector targets, and r
 - **Concentration and tail risk**: `getConcentration(stocks)` in `lib/portfolioInsights.ts`; `RiskCard` on the **Analysis** page shows largest position, top 3, top 5 % of equity.
 - **Suggested next actions**: Rendered by `SuggestedActions` on the **Analysis** page (sector trim, sell/trim zone, buy zone add, etc.).
 - **Fair value source/date**: StockTable Fair Value cell tooltip shows `fair_value_source` and `last_updated`.
-- **Export decision snapshot**: **Portfolio** page buttons “Snapshot (JSON)” and “Snapshot (CSV)”. JSON: `exported_at`, portfolio metrics, rebalance_summary, concentration, per-stock fields (sector, assessment, zones, weight, half-Kelly, etc.). CSV: one row per active stock with key decision fields.
+- (Export decision snapshot was removed in v2.12.0.)
 
 ## Request Stock Assessment and dashboard hints
 
-When the user clicks **Generate Assessment** on the **Request Stock Assessment** tab (Analysis → Single Ticker Analysis), the frontend sends the same information as the three Analysis panes (rebalance hint, concentration, suggested actions) to the LLM so recommendations can consider current portfolio state.
+When the user clicks **Generate Assessment** on the **Request Stock Assessment** section (Analysis page), the frontend sends the same information as the three Analysis panes (rebalance hint, concentration, suggested actions) to the LLM so recommendations can consider current portfolio state.
 
 - **Data flow:** Before calling `POST /assessment/request`, the page fetches `GET /portfolio/summary` and `GET /settings/sector-targets` (in parallel). From `summary.sector_weights`, `stocks`, and optional sector targets it computes:
   - **Sector rebalance hint** — `getSectorRebalanceSummary` + `formatRebalanceHintText` (over/at/under/no target sectors).
@@ -391,16 +391,17 @@ API methods added in `lib/api.ts`:
 
 ## Versioning
 
-- **Frontend version** is set in `lib/version.ts` (`FRONTEND_VERSION`) and `package.json` (`version`). Bump both for releases. Current: **2.11.0** (Operations: Add Operation modal, History page, Buy/Sell actions on Active Positions).
+- **Frontend version** is set in `lib/version.ts` (`FRONTEND_VERSION`) and `package.json` (`version`). Bump both for releases. Current: **2.12.0**.
 - **Backend version** is reported by the API (`versionAPI.getBackendVersion()`); bump the backend version in the backend repository when releasing the backend.
 
 ## Suggested improvements (additive only)
 
-See **`INVESTMENT_IMPROVEMENTS.md`** for the full list. **Phase 1 (math/logic and data)** is implemented: rebalance hint, distance to buy/sell zone, Kelly hint, concentration/Risk card, fair value source/date in table, decision snapshot export (JSON/CSV). Sector targets (persistent, Settings tab, RBAC) and stock-level sector pie with shades/click-to-highlight are in place; tests cover sectorTargets, portfolioInsights, useSectorTargets. Remaining ideas: LLMs (batch assessment, explain assessment, Grok vs Deepseek comparison, sector summary); alerts and “suggested next actions”; price/buy-zone alerts if backend supports them. **Backend:** See **`BACKEND_IMPROVEMENTS.md`** for more. Sector targets and LLM endpoints are implemented.
+See **`INVESTMENT_IMPROVEMENTS.md`** for the full list. **Phase 1 (math/logic and data)** is implemented: rebalance hint, distance to buy/sell zone, Kelly hint, concentration/Risk card, fair value source/date in table. Sector targets (persistent, Settings tab, RBAC) and stock-level sector pie with shades/click-to-highlight are in place; tests cover sectorTargets, portfolioInsights, useSectorTargets. Remaining ideas: LLMs (batch assessment, explain assessment, Grok vs Deepseek comparison, sector summary); alerts and “suggested next actions”; price/buy-zone alerts if backend supports them. **Backend:** See **`BACKEND_IMPROVEMENTS.md`** for more. Sector targets and LLM endpoints are implemented.
 
 ## Changelog (recent)
 
-- **Dashboard layout and split pages:** Introduced left sidebar layout (`app/dashboard/layout.tsx`) with nav items Portfolio, Watchlist, Analysis, Settings. `/dashboard` redirects to `/dashboard/portfolio`. Portfolio page holds summary, toolbar (Add Position, Import, Export, Snapshot JSON/CSV — no Market Data/AI Analysis buttons), Position Size Calculator, Active Positions, Cash/FX. Watchlist page holds watchlist table and Add/Import/Export. Analysis page holds Sector rebalance hint, Concentration & tail risk, Suggested next actions at top, then Request Stock Assessment and Extract from Screenshots. Settings moved to `/dashboard/settings`. `/assessment` and `/settings` redirect to `/dashboard/analysis` and `/dashboard/settings`. RebalanceHint, RiskCard, and SuggestedActions moved from Portfolio to Analysis page.
+- **v2.12.0:** Sidebar shows frontend and backend versions (e.g. v2.12.0 · v2.10.0); Exit menu item in left nav (logs out). Portfolio page: removed Sharpe Ratio and Kelly Utilization from summary; removed Snapshot (JSON) and Snapshot (CSV) buttons. Analysis page: removed Single Ticker Analysis / Extract from Screenshots tabs; page shows only Request Stock Assessment and Recent Assessments. Sector rebalance hint and Concentration & tail risk panels use equal width (2-column grid). History page: Delete and Modify operations with asset recalculation (see Operations and History in Architecture).
+- **Dashboard layout and split pages:** Left sidebar: Portfolio, History, Watchlist, Analysis, Settings, Exit. Portfolio: summary (Overall EV, Volatility), toolbar (Add Operation, Refresh, Import, Export), Position Size Calculator, Active Positions, Cash/FX. Analysis: RebalanceHint, RiskCard, SuggestedActions (equal-width top panels), then Request Stock Assessment form and Recent Assessments list.
 
 ---
 
