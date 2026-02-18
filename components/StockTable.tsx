@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { PortfolioUnits, Stock } from '@/lib/api';
-import { TrashIcon, ArrowPathIcon, PencilIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, PencilIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import EditTickerModal from './EditTickerModal';
 import { useColumnSettings } from '@/hooks/useColumnSettings';
 import { formatSectorTarget } from '@/lib/sectorTargets';
@@ -588,46 +588,6 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
         }`}>
           {stock.assessment}
         </span>
-      )
-    },
-    {
-      id: 'actions',
-      label: 'Actions',
-      align: 'center',
-      required: true,
-      render: (stock, props) => (
-        <div className="flex justify-center space-x-2">
-          <button
-            onClick={() => props.onUpdate(stock.id, 'alphavantage')}
-            disabled={props.isUpdatingAlphaVantage}
-            className="text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Update from Alpha Vantage (raw financial data)"
-          >
-            <div className="flex flex-col items-center">
-              <ArrowPathIcon className={`h-5 w-5 ${props.isUpdatingAlphaVantage ? 'animate-spin' : ''}`} />
-              <span className="text-xs mt-0.5">📊</span>
-            </div>
-          </button>
-          <button
-            onClick={() => props.onUpdate(stock.id, 'grok')}
-            disabled={props.isUpdatingGrok}
-            className="text-purple-400 hover:text-purple-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Update from Grok AI (analytical data)"
-          >
-            <div className="flex flex-col items-center">
-              <ArrowPathIcon className={`h-5 w-5 ${props.isUpdatingGrok ? 'animate-spin' : ''}`} />
-              <span className="text-xs mt-0.5">🤖</span>
-            </div>
-          </button>
-          <button
-            onClick={() => props.onDelete(stock.id)}
-            disabled={props.isAnyUpdating}
-            className="text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Delete stock"
-          >
-            <TrashIcon className="h-5 w-5" />
-          </button>
-        </div>
       )
     }
   ];

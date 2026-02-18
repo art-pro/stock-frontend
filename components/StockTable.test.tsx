@@ -15,7 +15,6 @@ jest.mock('@/hooks/useColumnSettings', () => ({
       { id: 'ticker', order: 1 },
       { id: 'company_name', order: 2 },
       { id: 'unrealized_pnl', order: 3 },
-      { id: 'actions', order: 4 },
     ],
     isColumnVisible: () => true,
   }),
