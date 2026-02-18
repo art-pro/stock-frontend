@@ -213,8 +213,47 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
     ? stocks.filter((s) => s.sector && s.sector.trim().toLowerCase() === selectedSector.trim().toLowerCase())
     : [];
 
+  const MILESTONES_EUR = [25_000, 50_000, 100_000];
+  const maxMilestone = 100_000;
+  const fillPercent = Math.min(100, (totalPortfolioValue / maxMilestone) * 100);
+  const formatMilestone = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 0 }).replace(/,/g, ' ');
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <>
+      {/* Milestone progress bar */}
+      <div className="mb-6 bg-gray-800 rounded-lg p-5 border border-gray-700">
+        <h3 className="text-sm font-medium text-gray-400 mb-2">Portfolio milestones</h3>
+        <p className="text-xs text-gray-500 mb-3">
+          Total value: <span className="text-white font-semibold">{formatCurrency(totalPortfolioValue)}</span>
+        </p>
+        <div className="relative h-8 bg-gray-700 rounded-lg overflow-visible">
+          <div
+            className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-primary-600 to-primary-500 transition-all duration-500"
+            style={{ width: `${fillPercent}%` }}
+          />
+          {MILESTONES_EUR.map((milestone) => {
+            const posPercent = (milestone / maxMilestone) * 100;
+            return (
+              <div
+                key={milestone}
+                className="absolute top-0 bottom-0 w-0.5 bg-gray-500 -translate-x-px z-10"
+                style={{ left: `${posPercent}%` }}
+                title={`${formatMilestone(milestone)} Euro`}
+              >
+                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-medium whitespace-nowrap text-gray-400">
+                  {formatMilestone(milestone)} €
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex justify-between mt-6 text-xs text-gray-500">
+          <span>0 €</span>
+          <span>{formatMilestone(maxMilestone)} €</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       {/* Total Portfolio Value */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <h3 className="text-sm font-medium text-gray-400 mb-2">
@@ -298,6 +337,7 @@ export default function PortfolioSummary({ metrics, units, stocks = [] }: Portfo
         )}
       </div>
     </div>
+    </>
   );
 }
 
