@@ -17,6 +17,8 @@ import {
   ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 
+const LATEST_PRICE_QUERY_DELAY_MS = 300;
+
 export default function PortfolioPage() {
   const router = useRouter();
   const { targetPctBySector } = useSectorTargetsContext();
@@ -35,8 +37,8 @@ export default function PortfolioPage() {
   const [updatingLatestPrices, setUpdatingLatestPrices] = useState(false);
   const [latestPriceResult, setLatestPriceResult] = useState<{
     requested: number;
-    updated: number;
-    failedTickers: string[];
+    updatedTickers: string[];
+    failedStocks: string[];
     completedAt: string;
   } | null>(null);
   const [collectNotice, setCollectNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
@@ -205,23 +207,32 @@ export default function PortfolioPage() {
     try {
       setUpdatingLatestPrices(true);
       setLatestPriceResult(null);
-      const response = await stockAPI.bulkLatestPrice(selectedActiveIds);
+      const selectedActiveStocks = stocks.filter(s => selectedActiveIds.includes(s.id));
+      const updatedTickers: string[] = [];
+      const failedStocks: string[] = [];
+
+      for (const activeStock of selectedActiveStocks) {
+        try {
+          await stockAPI.latestPrice(activeStock.id);
+          updatedTickers.push(activeStock.ticker);
+        } catch (err: any) {
+          failedStocks.push(`${activeStock.ticker}: ${err.response?.data?.error || err.message || 'Unknown error'}`);
+        }
+        await new Promise(resolve => setTimeout(resolve, LATEST_PRICE_QUERY_DELAY_MS));
+      }
+
       invalidateCache('portfolio');
       await fetchData(true);
-      const data = response.data || {};
-      const updated = data.updated ?? 0;
-      const errors = data.errors ?? 0;
-      const details = Array.isArray(data.error_details) ? data.error_details : [];
-      const failedTickers = details
-        .map((entry: string) => entry.split(':')[0]?.trim())
-        .filter((ticker: string) => Boolean(ticker));
       setLatestPriceResult({
         requested: selectedActiveIds.length,
-        updated,
-        failedTickers,
+        updatedTickers,
+        failedStocks,
         completedAt: new Date().toISOString(),
       });
-      const detailText = details.length > 0 ? ` ${details.slice(0, 2).join(' | ')}` : '';
+
+      const errors = failedStocks.length;
+      const updated = updatedTickers.length;
+      const detailText = failedStocks.length > 0 ? ` ${failedStocks.slice(0, 2).join(' | ')}` : '';
       showCollectNotice(
         errors > 0 ? 'error' : 'success',
         `Latest price refresh complete. Updated: ${updated}. Errors: ${errors}.${detailText}`
@@ -438,16 +449,21 @@ export default function PortfolioPage() {
           Tip: According to Alpha Vantage, the default quote endpoint is updated at the end of each trading day for all users.
         </p>
         {latestPriceResult && (
-          <div className={`mb-3 rounded-lg px-3 py-2 text-sm border ${latestPriceResult.failedTickers.length > 0 ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-emerald-900/30 border-emerald-700 text-emerald-200'}`}>
+          <div className={`mb-3 rounded-lg px-3 py-2 text-sm border ${latestPriceResult.failedStocks.length > 0 ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-emerald-900/30 border-emerald-700 text-emerald-200'}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p>
                   Latest price request finished at {new Date(latestPriceResult.completedAt).toLocaleString()}.
-                  Requested: {latestPriceResult.requested}, Updated: {latestPriceResult.updated}, Failed: {latestPriceResult.failedTickers.length}.
+                  Requested: {latestPriceResult.requested}, Updated: {latestPriceResult.updatedTickers.length}, Failed: {latestPriceResult.failedStocks.length}.
                 </p>
-                {latestPriceResult.failedTickers.length > 0 && (
+                {latestPriceResult.updatedTickers.length > 0 && (
                   <p className="mt-1">
-                    Failed tickers: {latestPriceResult.failedTickers.join(', ')}
+                    Updated: {latestPriceResult.updatedTickers.join(', ')}
+                  </p>
+                )}
+                {latestPriceResult.failedStocks.length > 0 && (
+                  <p className="mt-1">
+                    Failed: {latestPriceResult.failedStocks.join(' | ')}
                   </p>
                 )}
               </div>
