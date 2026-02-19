@@ -266,6 +266,20 @@ export default function PortfolioOverviewSection({ metrics, units, stocks }: Por
           </p>
         </div>
 
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-sm font-medium text-gray-400 mb-2 tooltip">
+            Realized PnL
+            <span className="tooltiptext">Money gained or lost from trades you closed (sells), after fees. Independent from deposits/withdrawals.</span>
+          </h3>
+          <p className={`text-2xl font-bold ${
+            (metrics.realized_pnl ?? 0) > 0 ? 'text-green-400' :
+            (metrics.realized_pnl ?? 0) < 0 ? 'text-red-400' :
+            'text-gray-300'
+          }`}>
+            {formatCurrency(metrics.realized_pnl ?? 0)}
+          </p>
+        </div>
+
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 col-span-1 md:col-span-2 lg:col-span-3">
           <h3 className="text-sm font-medium text-gray-400 mb-4">
             Sector Allocation {selectedSector && <span className="text-primary-400">— click a sector to see stocks</span>}

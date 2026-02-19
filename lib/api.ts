@@ -202,6 +202,8 @@ export interface PortfolioMetrics {
   sharpe_ratio: number;
   kelly_utilization: number;
   sector_weights: { [key: string]: number };
+  /** Lifetime realized PnL from closed trades (FIFO), in base currency (EUR). */
+  realized_pnl?: number;
 }
 
 export interface PortfolioUnits {
