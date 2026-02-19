@@ -22,6 +22,12 @@ export default function WatchlistPage() {
   const [updatingStocks, setUpdatingStocks] = useState<Array<{ stockId: number; source: 'grok' | 'alphavantage' }>>([]);
   const [selectedStockIds, setSelectedStockIds] = useState<number[]>([]);
   const [updatingLatestPrices, setUpdatingLatestPrices] = useState(false);
+  const [latestPriceResult, setLatestPriceResult] = useState<{
+    requested: number;
+    updated: number;
+    failedTickers: string[];
+    completedAt: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -170,15 +176,26 @@ export default function WatchlistPage() {
 
     try {
       setUpdatingLatestPrices(true);
+      setLatestPriceResult(null);
       const response = await stockAPI.bulkLatestPrice(selectedWatchlistIds);
       invalidateCache('portfolio');
       await fetchData(true);
       const data = response.data || {};
       const updated = data.updated ?? 0;
       const errors = data.errors ?? 0;
+      const details = Array.isArray(data.error_details) ? data.error_details : [];
+      const failedTickers = details
+        .map((entry: string) => entry.split(':')[0]?.trim())
+        .filter((ticker: string) => Boolean(ticker));
+      setLatestPriceResult({
+        requested: selectedWatchlistIds.length,
+        updated,
+        failedTickers,
+        completedAt: new Date().toISOString(),
+      });
       if (errors > 0) {
-        const details = Array.isArray(data.error_details) ? data.error_details.slice(0, 3).join(' | ') : '';
-        alert(`Latest price refresh finished. Updated: ${updated}, Errors: ${errors}${details ? ` (${details})` : ''}`);
+        const detailsText = details.slice(0, 3).join(' | ');
+        alert(`Latest price refresh finished. Updated: ${updated}, Errors: ${errors}${detailsText ? ` (${detailsText})` : ''}`);
       }
     } catch (err: any) {
       alert('Failed to refresh latest prices: ' + (err.response?.data?.error || err.message));
@@ -264,6 +281,24 @@ export default function WatchlistPage() {
         <p className="text-xs text-gray-400 mb-3">
           Tip: According to Alpha Vantage, the default quote endpoint is updated at the end of each trading day for all users.
         </p>
+        {latestPriceResult && (
+          <div className={`mb-3 rounded-lg px-3 py-2 text-sm border ${latestPriceResult.failedTickers.length > 0 ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-emerald-900/30 border-emerald-700 text-emerald-200'}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p>
+                  Latest price request finished at {new Date(latestPriceResult.completedAt).toLocaleString()}.
+                  Requested: {latestPriceResult.requested}, Updated: {latestPriceResult.updated}, Failed: {latestPriceResult.failedTickers.length}.
+                </p>
+                {latestPriceResult.failedTickers.length > 0 && (
+                  <p className="mt-1">
+                    Failed tickers: {latestPriceResult.failedTickers.join(', ')}
+                  </p>
+                )}
+              </div>
+              <button onClick={() => setLatestPriceResult(null)} className="text-lg leading-none opacity-80 hover:opacity-100" title="Close">x</button>
+            </div>
+          </div>
+        )}
         <StockTable
           stocks={watchlistStocks}
           onDelete={handleDelete}

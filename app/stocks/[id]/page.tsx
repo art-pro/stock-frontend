@@ -1590,6 +1590,16 @@ export default function StockDetailPage() {
                 {new Date(stock.last_updated).toLocaleDateString()}
               </p>
             </div>
+
+            <div>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Latest Price Updated At
+                <TooltipIcon text="Timestamp of the most recent successful Alpha Vantage quote refresh for this stock." />
+              </p>
+              <p className="text-lg font-semibold text-white">
+                {stock.alpha_vantage_fetched_at ? new Date(stock.alpha_vantage_fetched_at).toLocaleString() : 'Not refreshed yet'}
+              </p>
+            </div>
           </div>
         </div>
 

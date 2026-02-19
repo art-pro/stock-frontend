@@ -7,6 +7,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 const DEFAULT_TIMEOUT = 30000;
 // LLM-heavy endpoints may require substantially longer response times.
 const ASSESSMENT_TIMEOUT = 180000;
+// Bulk quote refresh can exceed default timeout on Alpha Vantage free tier.
+const PRICE_REFRESH_TIMEOUT = 300000;
 
 // Maximum cache size to prevent memory leaks
 const MAX_CACHE_SIZE = 100;
@@ -291,9 +293,17 @@ export const stockAPI = {
   updateSingle: (id: number, source?: 'grok' | 'alphavantage', portfolioId?: number) =>
     api.post(`/stocks/${id}/update`, {}, { params: { ...(source ? { source } : {}), ...(portfolioId ? { portfolio_id: portfolioId } : {}) } }),
   latestPrice: (id: number, portfolioId?: number) =>
-    api.post<Stock>(`/stocks/${id}/latest-price`, {}, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+    api.post<Stock>(
+      `/stocks/${id}/latest-price`,
+      {},
+      { params: portfolioId ? { portfolio_id: portfolioId } : {}, timeout: PRICE_REFRESH_TIMEOUT }
+    ),
   bulkLatestPrice: (ids: number[], portfolioId?: number) =>
-    api.post('/stocks/bulk-latest-price', { ids }, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+    api.post(
+      '/stocks/bulk-latest-price',
+      { ids },
+      { params: portfolioId ? { portfolio_id: portfolioId } : {}, timeout: PRICE_REFRESH_TIMEOUT }
+    ),
   updatePrice: (id: number, newPrice: number) => api.patch(`/stocks/${id}/price`, { current_price: newPrice }),
   updateField: (id: number, field: string, value: number | string) => {
     const payload: any = { field };
