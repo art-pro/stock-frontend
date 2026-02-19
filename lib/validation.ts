@@ -85,14 +85,13 @@ export function isValidPercentage(
 }
 
 /**
- * Sanitizes text input to prevent XSS
- * Removes HTML tags (complete and incomplete) and trims whitespace.
- * Incomplete sequences like "<script" are removed to prevent HTML element injection.
+ * Sanitizes text input to prevent XSS / HTML element injection.
+ * Removes all angle brackets so no tag or partial tag can be formed, then trims.
+ * Single-character removal satisfies CodeQL (no incomplete multi-char sanitization).
  */
 export function sanitizeTextInput(text: string): string {
   if (!text) return '';
-  // Remove complete tags <...> and incomplete tag starts <... (no closing >)
-  return text.replace(/<[^>]*>?/g, '').trim();
+  return text.replace(/</g, '').replace(/>/g, '').trim();
 }
 
 /**
