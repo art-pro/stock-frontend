@@ -141,7 +141,7 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
       align: 'left',
       render: (stock) => (
         <Link
-          href={`/stocks/${stock.id}`}
+          href={`/stocks/${stock.id}${isWatchlist ? '?from=watchlist' : ''}`}
           className="text-primary-400 hover:text-primary-300 hover:underline"
         >
           {stock.company_name}

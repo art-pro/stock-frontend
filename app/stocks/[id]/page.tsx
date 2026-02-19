@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { invalidateCache, stockAPI, assessmentAPI, Stock, StockHistory, AssessmentResponse, AssessmentCompareRow } from '@/lib/api';
 import { getDistanceToBuyZone, getDistanceToSellZone, getKellyHint } from '@/lib/portfolioInsights';
@@ -32,7 +32,10 @@ ChartJS.register(
 export default function StockDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = parseInt(params.id as string);
+  const fromWatchlist = searchParams.get('from') === 'watchlist';
+  const backHref = fromWatchlist ? '/dashboard/watchlist' : '/dashboard/portfolio';
 
   const [stock, setStock] = useState<Stock | null>(null);
   const [history, setHistory] = useState<StockHistory[]>([]);
@@ -750,7 +753,7 @@ export default function StockDetailPage() {
         <div className="text-center">
           <p className="text-gray-400">Stock not found</p>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(backHref)}
             className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
           >
             Back to Dashboard
@@ -851,7 +854,7 @@ export default function StockDetailPage() {
       <header className="bg-gray-800 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(backHref)}
             className="flex items-center text-primary-400 hover:text-primary-300 mb-2"
           >
             <ArrowLeftIcon className="h-5 w-5 mr-2" />
