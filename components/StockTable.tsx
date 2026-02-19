@@ -620,7 +620,17 @@ export default function StockTable({ stocks, onDelete, onUpdate, onPriceUpdate, 
               Sell
             </button>
           )}
-          {!onBuyClick && !onSellClick && <span className="text-gray-500">—</span>}
+          {isWatchlist && onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(stock.id)}
+              className="px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
+              title="Delete stock and all associated information"
+            >
+              Delete
+            </button>
+          )}
+          {!onBuyClick && !onSellClick && !(isWatchlist && onDelete) && <span className="text-gray-500">—</span>}
         </div>
       ),
     },
