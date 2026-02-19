@@ -53,6 +53,9 @@ export default function StockDetailPage() {
   const [updatingGrok, setUpdatingGrok] = useState(false);
   const [updatingLatestPrice, setUpdatingLatestPrice] = useState(false);
   const [updatingFrequency, setUpdatingFrequency] = useState(false);
+  const [updatingCurrency, setUpdatingCurrency] = useState(false);
+
+  const currencyOptions = ['USD', 'EUR', 'GBP', 'DKK', 'NOK', 'SEK', 'CHF', 'JPY', 'CAD', 'AUD'];
 
   useEffect(() => {
     // Ensure LTR direction for the entire document
@@ -179,6 +182,20 @@ export default function StockDetailPage() {
       alert(`Failed to update refresh frequency: ${err.response?.data?.error || err.message}`);
     } finally {
       setUpdatingFrequency(false);
+    }
+  };
+
+  const handleUpdateCurrency = async (value: string) => {
+    if (!stock) return;
+    try {
+      setUpdatingCurrency(true);
+      const response = await stockAPI.updateField(stock.id, 'currency', value);
+      setStock(response.data);
+      invalidateCache('portfolio');
+    } catch (err: any) {
+      alert(`Failed to update currency: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setUpdatingCurrency(false);
     }
   };
 
@@ -1436,6 +1453,26 @@ export default function StockDetailPage() {
               value={stock.shares_owned}
               tooltip="The number of shares you currently own of this stock."
             />
+
+            <div>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Currency
+                <TooltipIcon text="Currency of this stock values. Changing this updates conversions and portfolio USD metrics." />
+              </p>
+              <select
+                value={stock.currency || 'USD'}
+                onChange={(e) => handleUpdateCurrency(e.target.value)}
+                disabled={updatingCurrency}
+                className="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+              >
+                {currencyOptions.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-600 mt-1">{updatingCurrency ? 'Saving...' : 'Editable'}</p>
+            </div>
 
             <div>
               <p className="text-sm text-gray-400 mb-1 flex items-center">
