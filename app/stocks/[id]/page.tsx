@@ -51,6 +51,8 @@ export default function StockDetailPage() {
   const [saving, setSaving] = useState(false);
   const [updatingAlphaVantage, setUpdatingAlphaVantage] = useState(false);
   const [updatingGrok, setUpdatingGrok] = useState(false);
+  const [updatingLatestPrice, setUpdatingLatestPrice] = useState(false);
+  const [updatingFrequency, setUpdatingFrequency] = useState(false);
 
   useEffect(() => {
     // Ensure LTR direction for the entire document
@@ -149,6 +151,34 @@ export default function StockDetailPage() {
       } else {
         setUpdatingGrok(false);
       }
+    }
+  };
+
+  const handleGetLatestPrice = async () => {
+    if (!stock) return;
+    try {
+      setUpdatingLatestPrice(true);
+      const response = await stockAPI.latestPrice(stock.id);
+      setStock(response.data);
+      invalidateCache('portfolio');
+    } catch (err: any) {
+      alert(`Failed to refresh latest price: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setUpdatingLatestPrice(false);
+    }
+  };
+
+  const handleUpdateFrequency = async (value: string) => {
+    if (!stock) return;
+    try {
+      setUpdatingFrequency(true);
+      const response = await stockAPI.updateField(stock.id, 'update_frequency', value);
+      setStock(response.data);
+      invalidateCache('portfolio');
+    } catch (err: any) {
+      alert(`Failed to update refresh frequency: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setUpdatingFrequency(false);
     }
   };
 
@@ -972,6 +1002,18 @@ export default function StockDetailPage() {
         {/* Update Buttons */}
         <div className="flex gap-4 mb-6">
           <button
+            onClick={handleGetLatestPrice}
+            disabled={updatingLatestPrice || updatingAlphaVantage || updatingGrok}
+            className="flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+            title="Fetch latest price from Alpha Vantage GLOBAL_QUOTE"
+          >
+            <svg className={`w-5 h-5 ${updatingLatestPrice ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{updatingLatestPrice ? 'Refreshing...' : 'Get Latest Price'}</span>
+          </button>
+
+          <button
             onClick={() => handleUpdateFromSource('alphavantage')}
             disabled={updatingAlphaVantage || updatingGrok}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
@@ -995,6 +1037,9 @@ export default function StockDetailPage() {
             <span>{updatingGrok ? 'Updating...' : 'Update from Grok AI'}</span>
           </button>
         </div>
+        <p className="text-xs text-gray-400 mb-6">
+          Tip: According to Alpha Vantage, the default quote endpoint is updated at the end of each trading day for all users.
+        </p>
 
         {/* Key Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -1391,6 +1436,24 @@ export default function StockDetailPage() {
               value={stock.shares_owned}
               tooltip="The number of shares you currently own of this stock."
             />
+
+            <div>
+              <p className="text-sm text-gray-400 mb-1 flex items-center">
+                Refresh Frequency
+                <TooltipIcon text="Controls automatic price refresh cadence for this stock. Manually means only when you click update actions." />
+              </p>
+              <select
+                value={stock.update_frequency || 'daily'}
+                onChange={(e) => handleUpdateFrequency(e.target.value)}
+                disabled={updatingFrequency}
+                className="w-full bg-gray-700 text-white border border-gray-600 rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="manually">Manually</option>
+              </select>
+              <p className="text-xs text-gray-600 mt-1">{updatingFrequency ? 'Saving...' : 'Editable'}</p>
+            </div>
             
             <EditableField 
               field="avg_price_local" 

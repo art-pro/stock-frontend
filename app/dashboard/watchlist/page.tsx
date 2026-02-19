@@ -21,6 +21,7 @@ export default function WatchlistPage() {
   const [error, setError] = useState('');
   const [updatingStocks, setUpdatingStocks] = useState<Array<{ stockId: number; source: 'grok' | 'alphavantage' }>>([]);
   const [selectedStockIds, setSelectedStockIds] = useState<number[]>([]);
+  const [updatingLatestPrices, setUpdatingLatestPrices] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -159,6 +160,33 @@ export default function WatchlistPage() {
     }
   };
 
+  const handleRefreshLatestPricesForWatchlist = async () => {
+    const watchlistIds = new Set(watchlistStocks.map(s => s.id));
+    const selectedWatchlistIds = selectedStockIds.filter(id => watchlistIds.has(id));
+    if (selectedWatchlistIds.length === 0) {
+      alert('Select at least one stock in Watchlist to refresh latest prices.');
+      return;
+    }
+
+    try {
+      setUpdatingLatestPrices(true);
+      const response = await stockAPI.bulkLatestPrice(selectedWatchlistIds);
+      invalidateCache('portfolio');
+      await fetchData(true);
+      const data = response.data || {};
+      const updated = data.updated ?? 0;
+      const errors = data.errors ?? 0;
+      if (errors > 0) {
+        const details = Array.isArray(data.error_details) ? data.error_details.slice(0, 3).join(' | ') : '';
+        alert(`Latest price refresh finished. Updated: ${updated}, Errors: ${errors}${details ? ` (${details})` : ''}`);
+      }
+    } catch (err: any) {
+      alert('Failed to refresh latest prices: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setUpdatingLatestPrices(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -221,8 +249,21 @@ export default function WatchlistPage() {
             <span className="text-amber-500 mr-2">○</span>
             Watchlist
           </h2>
-          <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">{watchlistStocks.length}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefreshLatestPricesForWatchlist}
+              disabled={updatingLatestPrices}
+              className="flex items-center px-3 py-1.5 bg-sky-600/90 text-white rounded-lg hover:bg-sky-600 transition-all disabled:opacity-50 shadow-sm text-xs font-medium"
+              title="Refresh latest prices from Alpha Vantage for selected watchlist stocks"
+            >
+              {updatingLatestPrices ? 'Refreshing...' : `Get Latest Price (${selectedStockIds.filter(id => watchlistStocks.some(s => s.id === id)).length})`}
+            </button>
+            <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">{watchlistStocks.length}</span>
+          </div>
         </div>
+        <p className="text-xs text-gray-400 mb-3">
+          Tip: According to Alpha Vantage, the default quote endpoint is updated at the end of each trading day for all users.
+        </p>
         <StockTable
           stocks={watchlistStocks}
           onDelete={handleDelete}

@@ -32,6 +32,7 @@ export default function PortfolioPage() {
   const [updatingStocks, setUpdatingStocks] = useState<Array<{ stockId: number; source: 'grok' | 'alphavantage' }>>([]);
   const [selectedStockIds, setSelectedStockIds] = useState<number[]>([]);
   const [collectingFairValues, setCollectingFairValues] = useState(false);
+  const [updatingLatestPrices, setUpdatingLatestPrices] = useState(false);
   const [collectNotice, setCollectNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [collectAbortController, setCollectAbortController] = useState<AbortController | null>(null);
   const [calculatorTicker, setCalculatorTicker] = useState('');
@@ -185,6 +186,35 @@ export default function PortfolioPage() {
 
   const handleCancelFairValueSync = () => {
     collectAbortController?.abort();
+  };
+
+  const handleRefreshLatestPricesForActive = async () => {
+    const activeIds = new Set(stocks.filter(s => s.shares_owned > 0).map(s => s.id));
+    const selectedActiveIds = selectedStockIds.filter(id => activeIds.has(id));
+    if (selectedActiveIds.length === 0) {
+      showCollectNotice('info', 'Select at least one stock in Active Positions to refresh latest prices.');
+      return;
+    }
+
+    try {
+      setUpdatingLatestPrices(true);
+      const response = await stockAPI.bulkLatestPrice(selectedActiveIds);
+      invalidateCache('portfolio');
+      await fetchData(true);
+      const data = response.data || {};
+      const updated = data.updated ?? 0;
+      const errors = data.errors ?? 0;
+      const details = Array.isArray(data.error_details) ? data.error_details : [];
+      const detailText = details.length > 0 ? ` ${details.slice(0, 2).join(' | ')}` : '';
+      showCollectNotice(
+        errors > 0 ? 'error' : 'success',
+        `Latest price refresh complete. Updated: ${updated}. Errors: ${errors}.${detailText}`
+      );
+    } catch (err: any) {
+      showCollectNotice('error', 'Failed to refresh latest prices: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setUpdatingLatestPrices(false);
+    }
   };
 
   const handleExportJSON = async () => {
@@ -371,6 +401,14 @@ export default function PortfolioPage() {
             Active Positions
           </h2>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefreshLatestPricesForActive}
+              disabled={updatingLatestPrices}
+              className="flex items-center px-3 py-1.5 bg-sky-600/90 text-white rounded-lg hover:bg-sky-600 transition-all disabled:opacity-50 shadow-sm text-xs font-medium"
+              title="Refresh latest prices from Alpha Vantage for selected active positions"
+            >
+              {updatingLatestPrices ? 'Refreshing...' : `Get Latest Price (${selectedStockIds.filter(id => activeStocks.some(s => s.id === id)).length})`}
+            </button>
             <button onClick={handleCollectFairValuesForActive} disabled={collectingFairValues} className="flex items-center px-3 py-1.5 bg-amber-600/90 text-white rounded-lg hover:bg-amber-600 transition-all disabled:opacity-50 shadow-sm text-xs font-medium" title="Collect trusted fair values for selected active positions">
               {collectingFairValues ? 'Collecting...' : `Fair Value Sync (${selectedStockIds.filter(id => activeStocks.some(s => s.id === id)).length})`}
             </button>
@@ -380,6 +418,9 @@ export default function PortfolioPage() {
             <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">{activeStocks.length}</span>
           </div>
         </div>
+        <p className="text-xs text-gray-400 mb-3">
+          Tip: According to Alpha Vantage, the default quote endpoint is updated at the end of each trading day for all users.
+        </p>
         {collectNotice && (
           <div className={`mb-3 rounded-lg px-3 py-2 text-sm border ${collectNotice.type === 'success' ? 'bg-emerald-900/30 border-emerald-700 text-emerald-200' : collectNotice.type === 'error' ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-blue-900/30 border-blue-700 text-blue-200'}`}>
             <div className="flex items-start justify-between gap-3">

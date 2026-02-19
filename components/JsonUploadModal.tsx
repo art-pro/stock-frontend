@@ -164,7 +164,7 @@ export default function JsonUploadModal({ isOpen, onClose, onSuccess }: JsonUplo
           buy_zone_min: 360.00,
           buy_zone_max: 375.00,
           assessment: "Add",
-          update_frequency: "weekly",
+          update_frequency: "daily",
           data_source: "Manual",
           fair_value_source: "DCF Analysis",
           comment: "Cloud growth continues to impress"

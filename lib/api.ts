@@ -290,6 +290,10 @@ export const stockAPI = {
   bulkUpdate: (stocks: Partial<Stock>[], portfolioId?: number) => api.post('/stocks/bulk-update', { stocks }, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
   updateSingle: (id: number, source?: 'grok' | 'alphavantage', portfolioId?: number) =>
     api.post(`/stocks/${id}/update`, {}, { params: { ...(source ? { source } : {}), ...(portfolioId ? { portfolio_id: portfolioId } : {}) } }),
+  latestPrice: (id: number, portfolioId?: number) =>
+    api.post<Stock>(`/stocks/${id}/latest-price`, {}, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
+  bulkLatestPrice: (ids: number[], portfolioId?: number) =>
+    api.post('/stocks/bulk-latest-price', { ids }, { params: portfolioId ? { portfolio_id: portfolioId } : {} }),
   updatePrice: (id: number, newPrice: number) => api.patch(`/stocks/${id}/price`, { current_price: newPrice }),
   updateField: (id: number, field: string, value: number | string) => {
     const payload: any = { field };
