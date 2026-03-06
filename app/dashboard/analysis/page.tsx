@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { assessmentAPI, exchangeRateAPI, portfolioAPI, settingsAPI, stockAPI, getErrorMessage } from '@/lib/api';
-import type { AssessmentRequest, AssessmentResponse, AssessmentCompareRow } from '@/lib/api';
+import { assessmentAPI, analyticsAPI, exchangeRateAPI, portfolioAPI, settingsAPI, stockAPI, getErrorMessage } from '@/lib/api';
+import type { AssessmentRequest, AssessmentResponse, AssessmentCompareRow, TopLoser, MoverData } from '@/lib/api';
 import type { Stock, PortfolioMetrics, PortfolioUnits } from '@/lib/api';
 import {
   getSectorRebalanceSummary,
@@ -28,6 +28,53 @@ import {
 } from '@heroicons/react/24/outline';
 
 type AskingSource = 'grok' | 'deepseek' | 'perplexity' | 'chatgpt' | 'alphavantage' | 'all' | null;
+
+function MoverCard({ title, items, valueKey, positive }: { title: string; items: MoverData[]; valueKey: 'price' | 'ev'; positive: boolean }) {
+  const arrow = positive ? '▲' : '▼';
+  const color = positive ? 'text-emerald-400' : 'text-red-400';
+  if (items.length === 0) {
+    return (
+      <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
+        <h3 className="text-sm font-semibold text-gray-300 mb-3">{title}</h3>
+        <p className="text-gray-500 text-xs text-center py-4">No data available. Historical snapshots will appear after the next scheduled update.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
+      <h3 className="text-sm font-semibold text-gray-300 mb-3">{title}</h3>
+      <div className="space-y-2">
+        {items.map((m) => {
+          const changePct = valueKey === 'price' ? m.price_change_percent : m.ev_change;
+          const changeAbs = valueKey === 'price' ? m.price_change : m.ev_change;
+          const unit = valueKey === 'price' ? '' : ' pp';
+          const assessChanged = m.current_assessment !== m.previous_assessment;
+          const assessColor = m.current_assessment === 'Add' ? 'text-emerald-300'
+            : m.current_assessment === 'Sell' ? 'text-red-300'
+            : m.current_assessment === 'Trim' ? 'text-orange-300'
+            : 'text-blue-300';
+          return (
+            <div key={m.stock_id} className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-b-0">
+              <div className="min-w-0 flex-1">
+                <span className="text-sm font-medium text-primary-400">{m.ticker}</span>
+                {m.company_name && <span className="ml-2 text-xs text-gray-500 truncate">{m.company_name}</span>}
+              </div>
+              <div className="flex items-center gap-4 text-sm shrink-0">
+                <span className={color}>
+                  {arrow} {Math.abs(changePct).toFixed(1)}%{unit}
+                  {valueKey === 'price' && <span className="text-gray-500 text-xs ml-1">({changeAbs >= 0 ? '+' : ''}{changeAbs.toFixed(2)})</span>}
+                </span>
+                <span className={`text-xs ${assessColor}`}>
+                  {assessChanged ? `${m.previous_assessment} → ${m.current_assessment}` : m.current_assessment}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function AnalysisPage() {
   const router = useRouter();
@@ -58,6 +105,19 @@ export default function AnalysisPage() {
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentResponse | null>(null);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
 
+  const [topLosers, setTopLosers] = useState<TopLoser[]>([]);
+  const [topLosersLoading, setTopLosersLoading] = useState(false);
+  const [topLosersError, setTopLosersError] = useState<string | null>(null);
+  const [topLosersLimit, setTopLosersLimit] = useState(10);
+  const [topLosersMinShares, setTopLosersMinShares] = useState(1);
+
+  const [topMovers, setTopMovers] = useState<{ topGainers: MoverData[]; topLosers: MoverData[]; biggestEVRises: MoverData[]; biggestEVDrops: MoverData[] }>({ topGainers: [], topLosers: [], biggestEVRises: [], biggestEVDrops: [] });
+  const [topMoversLoading, setTopMoversLoading] = useState(false);
+  const [topMoversError, setTopMoversError] = useState<string | null>(null);
+  const [topMoversTimeframe, setTopMoversTimeframe] = useState<'24h' | '7d' | '30d'>('24h');
+  const [topMoversLimit, setTopMoversLimit] = useState(5);
+  const [topMoversGeneratedAt, setTopMoversGeneratedAt] = useState<string | null>(null);
+
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login');
@@ -66,6 +126,9 @@ export default function AnalysisPage() {
     fetchRecentAssessments();
     fetchCurrencies();
     fetchPortfolioSummary();
+    fetchTopLosers();
+    fetchTopMovers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const fetchPortfolioSummary = async () => {
@@ -98,6 +161,42 @@ export default function AnalysisPage() {
       setRecentAssessments(response.data);
     } catch (err) {
       console.warn('Failed to fetch recent assessments:', err);
+    }
+  };
+
+  const fetchTopLosers = async (limit?: number, minShares?: number) => {
+    const l = limit ?? topLosersLimit;
+    const ms = minShares ?? topLosersMinShares;
+    try {
+      setTopLosersLoading(true);
+      setTopLosersError(null);
+      const response = await analyticsAPI.getTopLosers(l, ms);
+      setTopLosers(response.data.losers || []);
+    } catch (err) {
+      setTopLosersError(getErrorMessage(err));
+    } finally {
+      setTopLosersLoading(false);
+    }
+  };
+
+  const fetchTopMovers = async (timeframe?: '24h' | '7d' | '30d', limit?: number) => {
+    const tf = timeframe ?? topMoversTimeframe;
+    const l = limit ?? topMoversLimit;
+    try {
+      setTopMoversLoading(true);
+      setTopMoversError(null);
+      const response = await analyticsAPI.getTopMovers(tf, l);
+      setTopMovers({
+        topGainers: response.data.top_gainers || [],
+        topLosers: response.data.top_losers || [],
+        biggestEVRises: response.data.biggest_ev_rises || [],
+        biggestEVDrops: response.data.biggest_ev_drops || [],
+      });
+      setTopMoversGeneratedAt(response.data.generated_at || null);
+    } catch (err) {
+      setTopMoversError(getErrorMessage(err));
+    } finally {
+      setTopMoversLoading(false);
     }
   };
 
@@ -490,6 +589,160 @@ export default function AnalysisPage() {
           </div>
         </>
       )}
+
+      {/* Top Losers */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-xl font-bold text-white">Top Losers</h2>
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-gray-400">
+              Limit
+              <select
+                value={topLosersLimit}
+                onChange={(e) => { const v = Number(e.target.value); setTopLosersLimit(v); fetchTopLosers(v, topLosersMinShares); }}
+                className="ml-1 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600"
+              >
+                {[5, 10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <label className="text-xs text-gray-400">
+              Min shares
+              <input
+                type="number"
+                min={0}
+                value={topLosersMinShares}
+                onChange={(e) => { const v = Math.max(0, Number(e.target.value)); setTopLosersMinShares(v); fetchTopLosers(topLosersLimit, v); }}
+                className="ml-1 w-16 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600"
+              />
+            </label>
+            <button
+              onClick={() => fetchTopLosers()}
+              disabled={topLosersLoading}
+              className="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {topLosersLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+
+        {topLosersError && (
+          <p className="text-red-400 text-sm mb-3">{topLosersError}</p>
+        )}
+
+        {topLosersLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
+          </div>
+        ) : topLosers.length === 0 ? (
+          <p className="text-gray-500 text-sm text-center py-6">No losing positions found.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-700 text-left">
+                  <th className="py-2 pr-3">Ticker</th>
+                  <th className="py-2 pr-3">Company</th>
+                  <th className="py-2 pr-3">Sector</th>
+                  <th className="py-2 pr-3 text-right">P&amp;L (USD)</th>
+                  <th className="py-2 pr-3 text-right">P&amp;L %</th>
+                  <th className="py-2 pr-3 text-right">Price</th>
+                  <th className="py-2 pr-3 text-right">Shares</th>
+                  <th className="py-2 pr-3 text-right">Weight</th>
+                  <th className="py-2 pr-3 text-right">EV</th>
+                  <th className="py-2 pr-3">Assessment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topLosers.map((loser) => {
+                  const weightPct = loser.weight <= 1 ? loser.weight * 100 : loser.weight;
+                  const assessColor = loser.assessment === 'Sell' ? 'bg-red-900 text-red-300'
+                    : loser.assessment === 'Trim' ? 'bg-orange-900 text-orange-300'
+                    : loser.assessment === 'Add' ? 'bg-green-900 text-green-300'
+                    : 'bg-blue-900 text-blue-300';
+                  return (
+                    <tr key={loser.ticker} className="border-b border-gray-800 hover:bg-gray-750">
+                      <td className="py-2 pr-3 font-medium text-primary-400">{loser.ticker}</td>
+                      <td className="py-2 pr-3 text-gray-300 max-w-[120px] truncate" title={loser.company_name}>{loser.company_name}</td>
+                      <td className="py-2 pr-3"><span className="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-300">{loser.sector || '—'}</span></td>
+                      <td className="py-2 pr-3 text-right text-red-400 font-medium">${loser.unrealized_pnl.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                      <td className="py-2 pr-3 text-right text-red-400">{loser.unrealized_pnl_pct.toFixed(1)}%</td>
+                      <td className="py-2 pr-3 text-right text-gray-300">{loser.current_price.toFixed(2)} {loser.currency}</td>
+                      <td className="py-2 pr-3 text-right text-gray-300">{loser.shares_owned}</td>
+                      <td className="py-2 pr-3 text-right text-gray-300" title={`Buy zone: ${loser.buy_zone_status} · Sell zone: ${loser.sell_zone_status}`}>{weightPct.toFixed(1)}%</td>
+                      <td className="py-2 pr-3 text-right text-gray-300">{loser.expected_value.toFixed(1)}%</td>
+                      <td className="py-2 pr-3"><span className={`text-xs px-2 py-0.5 rounded ${assessColor}`}>{loser.assessment}</span></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Top Movers */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-white">Top Movers</h2>
+            {topMoversGeneratedAt && (
+              <span className="text-xs text-gray-500">as of {new Date(topMoversGeneratedAt).toLocaleString()}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-gray-400">
+              Timeframe
+              <select
+                value={topMoversTimeframe}
+                onChange={(e) => { const v = e.target.value as '24h' | '7d' | '30d'; setTopMoversTimeframe(v); fetchTopMovers(v, topMoversLimit); }}
+                className="ml-1 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600"
+              >
+                <option value="24h">24 h</option>
+                <option value="7d">7 d</option>
+                <option value="30d">30 d</option>
+              </select>
+            </label>
+            <label className="text-xs text-gray-400">
+              Limit
+              <select
+                value={topMoversLimit}
+                onChange={(e) => { const v = Number(e.target.value); setTopMoversLimit(v); fetchTopMovers(topMoversTimeframe, v); }}
+                className="ml-1 bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600"
+              >
+                {[5, 10, 20].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <button
+              onClick={() => fetchTopMovers()}
+              disabled={topMoversLoading}
+              className="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {topMoversLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+
+        {topMoversError && (
+          <p className="text-red-400 text-sm mb-3">{topMoversError}</p>
+        )}
+
+        {topMoversLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Top Gainers (price) */}
+            <MoverCard title="Top Gainers" items={topMovers.topGainers} valueKey="price" positive />
+            {/* Top Losers (price) */}
+            <MoverCard title="Top Losers" items={topMovers.topLosers} valueKey="price" positive={false} />
+            {/* Biggest EV Rises */}
+            <MoverCard title="Biggest EV Rises" items={topMovers.biggestEVRises} valueKey="ev" positive />
+            {/* Biggest EV Drops */}
+            <MoverCard title="Biggest EV Drops" items={topMovers.biggestEVDrops} valueKey="ev" positive={false} />
+          </div>
+        )}
+      </div>
 
       {/* Assessment Pane */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">

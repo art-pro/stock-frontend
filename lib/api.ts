@@ -550,5 +550,67 @@ export interface SectorTargetRow {
   rationale: string;
 }
 
+// Analytics API
+export interface TopLoser {
+  ticker: string;
+  company_name: string;
+  sector: string;
+  currency: string;
+  current_price: number;
+  unrealized_pnl: number;
+  unrealized_pnl_pct: number;
+  shares_owned: number;
+  avg_price_local: number;
+  current_value_usd: number;
+  weight: number;
+  expected_value: number;
+  assessment: string;
+  buy_zone_status: string;
+  sell_zone_status: string;
+}
+
+export interface TopLosersResponse {
+  losers: TopLoser[];
+  count: number;
+  meta: { portfolio_id: number; limit: number; min_shares: number };
+}
+
+export interface MoverData {
+  stock_id: number;
+  ticker: string;
+  company_name: string;
+  sector: string;
+  current_price: number;
+  previous_price: number;
+  price_change: number;
+  price_change_percent: number;
+  current_ev: number;
+  previous_ev: number;
+  ev_change: number;
+  current_assessment: string;
+  previous_assessment: string;
+  last_updated: string;
+}
+
+export interface TopMoversResponse {
+  timeframe: string;
+  top_gainers: MoverData[];
+  top_losers: MoverData[];
+  biggest_ev_rises: MoverData[];
+  biggest_ev_drops: MoverData[];
+  generated_at: string;
+}
+
+export const analyticsAPI = {
+  getTopLosers: (limit: number = 10, minShares: number = 1, portfolioId?: number) =>
+    api.get<TopLosersResponse>('/analytics/top-losers', {
+      params: { limit, min_shares: minShares, ...(portfolioId ? { portfolio_id: portfolioId } : {}) },
+    }),
+  getTopMovers: (timeframe: '24h' | '7d' | '30d' = '24h', limit: number = 5, portfolioId?: number) =>
+    api.get<TopMoversResponse>('/analytics/top-movers', {
+      params: { timeframe, limit, ...(portfolioId ? { portfolio_id: portfolioId } : {}) },
+    }),
+};
+
 export default api;
 

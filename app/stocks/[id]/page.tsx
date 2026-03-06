@@ -1520,7 +1520,7 @@ export default function StockDetailPage() {
                 <TooltipIcon text="What percentage of your total portfolio this stock represents. Helps track diversification." />
               </p>
               <p className="text-lg font-semibold text-white">
-                {stock.weight.toFixed(2)}%
+                {(stock.weight <= 1 ? stock.weight * 100 : stock.weight).toFixed(2)}%
               </p>
               <p className="text-xs text-gray-600 mt-1">
                 {getKellyHint(stock) ?? 'Calculated'}
